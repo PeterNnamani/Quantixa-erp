@@ -59,7 +59,7 @@ export default function Topbar({
     <div className="topbar">
       <button
         type="button"
-        className="topbar-menu-toggle"
+        className={`topbar-menu-toggle ${isSidebarOpen ? 'open' : ''}`}
         onClick={onToggleSidebar}
         aria-label={isSidebarOpen ? 'Hide navigation' : 'Show navigation'}
       >

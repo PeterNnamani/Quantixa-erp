@@ -3142,7 +3142,8 @@ html[data-theme='dark'] .topbar {
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 6px;
   padding: 0;
 }
 
@@ -3152,10 +3153,34 @@ html[data-theme='dark'] .topbar {
   height: 2px;
   background: #fff;
   border-radius: 999px;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.topbar-menu-toggle.open span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.topbar-menu-toggle.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.topbar-menu-toggle.open span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 .topbar-menu-toggle:hover {
   background: rgba(255, 255, 255, 0.16);
+}
+
+.quantixa-root {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .quantixa-orb {
@@ -3174,6 +3199,7 @@ html[data-theme='dark'] .topbar {
   cursor: pointer;
   z-index: 1200;
   transition: transform 180ms ease, box-shadow 180ms ease;
+  pointer-events: auto;
 }
 
 .quantixa-orb:hover {
@@ -3205,7 +3231,7 @@ html[data-theme='dark'] .topbar {
     position: fixed;
     top: 58px;
     left: 0;
-    width: 280px;
+    width: 260px;
     max-width: 80vw;
     height: calc(100vh - 58px);
     transform: translateX(-100%);
@@ -3222,17 +3248,24 @@ html[data-theme='dark'] .topbar {
   }
 
   .main-area {
-    padding: 16px;
+    padding: 14px 12px 18px;
     min-height: calc(100vh - 58px);
     height: auto;
   }
 
   .topbar {
-    padding: 0 16px;
+    padding: 0 12px;
+    min-height: 56px;
   }
 
   .topbar-brand {
-    gap: 10px;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .topbar-icon {
+    width: 34px;
+    height: 34px;
   }
 
   .topbar-name {
@@ -3244,7 +3277,13 @@ html[data-theme='dark'] .topbar {
   }
 
   .topbar-right {
-    gap: 10px;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .topbar-brand > div,
+  .topbar-right {
+    min-width: 0;
   }
 
   .topbar-menu-toggle {
@@ -3256,8 +3295,8 @@ html[data-theme='dark'] .topbar {
   }
 
   .topbar-theme-toggle {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
   }
 
   .profile-trigger {
@@ -3279,20 +3318,20 @@ html[data-theme='dark'] .topbar {
   }
 
   .quantixa-orb {
-    right: 14px;
-    bottom: 14px;
-    width: 48px;
-    height: 48px;
+    right: 12px;
+    bottom: 12px;
+    width: 46px;
+    height: 46px;
   }
 
   .quantixa-orb-core {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
   }
 
   .quantixa-logo {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   .mobile-sidebar-backdrop {

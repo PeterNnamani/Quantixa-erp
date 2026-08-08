@@ -421,7 +421,13 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         if (purchasesErr) console.error('Error loading purchases from Supabase', purchasesErr)
         if (expensesErr) console.error('Error loading expenses from Supabase', expensesErr)
         if (inventoryErr) console.error('Error loading inventory from Supabase', inventoryErr)
-        if (prepaymentsErr) console.error('Error loading prepayments from Supabase', prepaymentsErr)
+        if (prepaymentsErr) {
+          if (prepaymentsErr.code === 'PGRST205') {
+            console.warn('Supabase prepayments table not found. Skipping prepayments remote load.')
+          } else {
+            console.error('Error loading prepayments from Supabase', prepaymentsErr)
+          }
+        }
         if (contactsErr) console.error('Error loading contacts from Supabase', contactsErr)
         if (banksErr) console.error('Error loading bank accounts from Supabase', banksErr)
         if (txnsErr) console.error('Error loading bank transactions from Supabase', txnsErr)
@@ -432,7 +438,11 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         const remotePurchases = purchasesData && purchasesData.length > 0 ? normalizeRemotePurchases(purchasesData) : []
         const remoteExpenses = expensesData && expensesData.length > 0 ? normalizeRemoteExpenses(expensesData) : []
         const remoteInventory = inventoryData && inventoryData.length > 0 ? normalizeRemoteInventory(inventoryData) : []
-        const remotePrepayments = prepaymentsData && prepaymentsData.length > 0 ? normalizeRemotePrepayments(prepaymentsData) : []
+        const remotePrepayments = prepaymentsErr && prepaymentsErr.code === 'PGRST205'
+          ? []
+          : prepaymentsData && prepaymentsData.length > 0
+            ? normalizeRemotePrepayments(prepaymentsData)
+            : []
         const { supplierList, customerList } = normalizeRemoteContacts(contactsData || [])
 
         if (remoteSales.length > 0 || remotePurchases.length > 0 || remoteExpenses.length > 0 || remoteInventory.length > 0 || remotePrepayments.length > 0 || supplierList.length > 0 || customerList.length > 0) {
@@ -543,30 +553,14 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
                 updated_at: new Date().toISOString(),
               }))
 
-              await supabase.from('prepayments').upsert(prepaymentRows, { onConflict: 'reference' })
-
-              const references = prepayments.map((p) => p.reference)
-              const { data: savedPrepayments } = await supabase.from('prepayments').select('id,reference').in('reference', references)
-              const referenceMap: Record<string, string> = {}
-                ; (savedPrepayments || []).forEach((row: any) => {
-                  referenceMap[row.reference] = row.id
-                })
-
-              const scheduleRows = prepayments.flatMap((p) =>
-                (p.schedule || []).map((schedule) => {
-                  const prepaymentId = referenceMap[p.reference]
-                  return {
-                    id: schedule.id || undefined,
-                    prepayment_id: prepaymentId || null,
-                    period: schedule.period,
-                    amount: schedule.amount,
-                    recognized: schedule.recognized,
-                    recognition_date: schedule.recognitionDate || null,
-                  }
-                })
-              )
-
-              const scheduleUpserts = scheduleRows.filter((row) => row.id && row.prepayment_id)
+              const { error: prepaymentsPersistErr } = await supabase.from('prepayments').upsert(prepaymentRows, { onConflict: 'reference' })
+              if (prepaymentsPersistErr) {
+                if (prepaymentsPersistErr.code === 'PGRST205') {
+                  console.warn('Supabase prepayments table not found. Skipping prepayments persistence.')
+                } else {
+                  throw prepaymentsPersistErr
+                }
+              }
               const scheduleInserts = scheduleRows.filter((row) => !row.id && row.prepayment_id)
 
               if (scheduleUpserts.length > 0) {
