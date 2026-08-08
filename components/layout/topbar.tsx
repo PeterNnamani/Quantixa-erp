@@ -9,9 +9,13 @@ import { getRoleBadgeClass } from '@/lib/utils'
 export default function Topbar({
   user,
   onLogout,
+  onToggleSidebar,
+  isSidebarOpen,
 }: {
   user: User
   onLogout: () => void
+  onToggleSidebar?: () => void
+  isSidebarOpen?: boolean
 }) {
   const roleBadgeClass = getRoleBadgeClass(user.role)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -53,6 +57,16 @@ export default function Topbar({
 
   return (
     <div className="topbar">
+      <button
+        type="button"
+        className="topbar-menu-toggle"
+        onClick={onToggleSidebar}
+        aria-label={isSidebarOpen ? 'Hide navigation' : 'Show navigation'}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
       <div className="topbar-brand">
         <div className="topbar-icon">
           <img src="/quantixa.png" alt="QUANTIXA logo" />

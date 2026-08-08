@@ -19,6 +19,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [recentCommand, setRecentCommand] = useState('Ask about cash, loans, or audit insights.')
   const [toast, setToast] = useState<{ title: string; description: string } | null>(null)
   const [lastAction, setLastAction] = useState('No action yet')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const pageConfig = useMemo(() => {
     if (pathname?.startsWith('/loans')) {
@@ -200,13 +201,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div style={{ height: '100vh', overflow: 'hidden' }}>
       <div className="app">
-        <Topbar user={user} onLogout={logout} />
-        <div className="layout">
-          <Navigation userRole={user.role} />
+        <Topbar user={user} onLogout={logout} onToggleSidebar={() => setSidebarOpen((current) => !current)} isSidebarOpen={sidebarOpen} />
+        <div className={`layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
+          <Navigation userRole={user.role} isOpen={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
           <div className="main-area">
             {children}
           </div>
         </div>
+        <div className={`mobile-sidebar-backdrop ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} />
 
         <div className="quantixa-root">
           {toast && (

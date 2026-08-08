@@ -285,7 +285,7 @@ const renderIcon = (icon: string) => (
   <span className="nav-icon">{ICONS[icon] || ICONS['settings']}</span>
 )
 
-export default function Navigation({ userRole }: { userRole: string }) {
+export default function Navigation({ userRole, isOpen, onNavigate }: { userRole: string; isOpen: boolean; onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const { user } = useAccounting()
@@ -300,7 +300,7 @@ export default function Navigation({ userRole }: { userRole: string }) {
   }))
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
         <div className="sidebar-brand-wrap">
           <img src="/quantixa.png" alt="QUANTIXA logo" className="sidebar-logo-image" />
@@ -326,6 +326,7 @@ export default function Navigation({ userRole }: { userRole: string }) {
                   onClick={() => {
                     if (canAccessRoute(user, item.href)) {
                       router.push(item.href)
+                      onNavigate?.()
                     }
                   }}
                 >
