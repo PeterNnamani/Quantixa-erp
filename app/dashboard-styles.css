@@ -747,8 +747,9 @@ html[data-theme='dark'] {
     display: grid;
     gap: 18px;
     animation: quantixa-panel-enter 0.28s ease;
-    z-index: 1240;
+    z-index: 99998;
     pointer-events: auto;
+    transform-origin: bottom right;
 }
 
 .quantixa-panel-header {

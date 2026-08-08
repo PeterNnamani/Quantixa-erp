@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { useAccounting } from '@/lib/context'
 import { usePathname, useRouter } from 'next/navigation'
-import { triggerAppToast, formatCurrencyOrZero } from '@/lib/utils'
+import { formatCurrencyOrZero } from '@/lib/utils'
 import { canAccessRoute } from '@/lib/rbac'
 import Navigation from './navigation'
 import Topbar from './topbar'
@@ -17,8 +17,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [voiceActive, setVoiceActive] = useState(false)
   const [queryText, setQueryText] = useState('')
   const [recentCommand, setRecentCommand] = useState('Ask about cash, loans, or audit insights.')
-  const [toast, setToast] = useState<{ title: string; description: string } | null>(null)
-  const [lastAction, setLastAction] = useState('No action yet')
+  
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const pageConfig = useMemo(() => {
@@ -116,71 +115,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [router, user, pathname])
 
-  useEffect(() => {
-    let timeoutId: number | undefined
-
-    const handleToast = (event: Event) => {
-      const detail = (event as CustomEvent<{ title?: string; description?: string }>).detail
-      setToast({
-        title: detail?.title || 'Action completed',
-        description: detail?.description || 'The workspace action is now live.',
-      })
-
-      if (timeoutId) {
-        window.clearTimeout(timeoutId)
-      }
-
-      timeoutId = window.setTimeout(() => setToast(null), 2600)
-    }
-
-    window.addEventListener('hw:toast', handleToast as EventListener)
-
-    return () => {
-      window.removeEventListener('hw:toast', handleToast as EventListener)
-      if (timeoutId) {
-        window.clearTimeout(timeoutId)
-      }
-    }
-  }, [])
+  
 
   useEffect(() => {
-    const handleGlobalClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-
-      const interactive = target.closest('button, [role="button"], a[href], .option-card, .faq-question, .history-row, .report-button, .quick-action-button')
-      if (!interactive) return
-
-      const labelText = (interactive as HTMLElement).textContent?.trim() || (interactive as HTMLElement).getAttribute('aria-label') || 'Action'
-      const isLink = (interactive as HTMLElement).tagName.toLowerCase() === 'a'
-      const normalizedLabel = labelText.toLowerCase()
-
-      setLastAction(labelText.slice(0, 60) || 'Action')
-
-      if (isLink) {
-        triggerAppToast('Opening view', `Loading ${labelText}`)
-        return
-      }
-
-      if (/export|print|download|pdf|excel|report/i.test(normalizedLabel)) {
-        triggerAppToast('Action ready', `${labelText} is now ready.`)
-        return
-      }
-
-      if (/new|add|create|generate|save|record|send|reconcile|archive|close|run|schedule|bulk|preview|transfer|compare|import|calculate|review|open|select/i.test(normalizedLabel)) {
-        triggerAppToast('Action started', `${labelText} is now running in this workspace.`)
-        return
-      }
-
-      triggerAppToast(labelText.slice(0, 60), 'The action has been queued for this workspace.')
-    }
-
-    window.addEventListener('click', handleGlobalClick, true)
-
-    return () => {
-      window.removeEventListener('click', handleGlobalClick, true)
-    }
-  }, [])
+  
 
   if (!user) {
     return null
@@ -211,27 +149,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className={`mobile-sidebar-backdrop ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} />
 
         <div className="quantixa-root">
-          {toast && (
-            <div
-              style={{
-                position: 'fixed',
-                right: '20px',
-                bottom: '20px',
-                zIndex: 9999,
-                minWidth: '260px',
-                maxWidth: '360px',
-                padding: '14px 16px',
-                borderRadius: '14px',
-                background: 'rgba(8, 15, 32, 0.95)',
-                color: '#f8fafc',
-                boxShadow: '0 20px 45px rgba(0, 0, 0, 0.28)',
-                border: '1px solid rgba(255,255,255,0.12)',
-              }}
-            >
-              <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>{toast.title}</div>
-              <div style={{ fontSize: '13px', color: '#cbd5e1' }}>{toast.description}</div>
-            </div>
-          )}
           <button
             type="button"
             className={`quantixa-orb ${orbHovered ? 'hovered' : ''} ${isQUANTIXAOpen ? 'active' : ''}`}

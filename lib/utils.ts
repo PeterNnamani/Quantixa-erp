@@ -42,12 +42,8 @@ export function getCurrentDate(): string {
 }
 
 export function triggerAppToast(title: string, description: string): void {
-  if (typeof window === 'undefined') return
-  window.dispatchEvent(
-    new CustomEvent('hw:toast', {
-      detail: { title, description },
-    })
-  )
+  // Toasts have been disabled globally. Keep function for backward compatibility.
+  return
 }
 
 export function getYesterdayDate(): string {
