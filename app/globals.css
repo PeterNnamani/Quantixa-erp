@@ -3382,6 +3382,38 @@ html[data-theme='dark'] .topbar {
   border-radius: 999px;
 }
 
+/* QUANTIXA overlay: enforce floating chat orb and modal as true overlays */
+.quantixa-root {
+  pointer-events: none; /* root container shouldn't capture clicks */
+}
+
+.quantixa-orb {
+  position: fixed !important;
+  right: env(safe-area-inset-right, 16px) !important;
+  bottom: env(safe-area-inset-bottom, 16px) !important;
+  z-index: 2200 !important;
+  pointer-events: auto !important; /* allow clicking the orb */
+  width: 56px !important;
+  height: 56px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 999px !important;
+}
+
+.quantixa-panel {
+  pointer-events: auto; /* allow interacting with the panel */
+}
+
+@media (max-width: 640px) {
+  .quantixa-orb {
+    width: 44px !important;
+    height: 44px !important;
+    right: env(safe-area-inset-right, 10px) !important;
+    bottom: env(safe-area-inset-bottom, 10px) !important;
+  }
+}
+
+
 html[data-theme='dark'] .sidebar-body::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.04);
 }
