@@ -199,7 +199,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div style={{ height: '100vh', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', overflow: 'visible' }}>
       <div className="app">
         <Topbar user={user} onLogout={logout} onToggleSidebar={() => setSidebarOpen((current) => !current)} isSidebarOpen={sidebarOpen} />
         <div className={`layout ${sidebarOpen ? 'sidebar-open' : ''}`}>

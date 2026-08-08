@@ -236,7 +236,10 @@ body {
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
-  overflow: hidden;
+  min-height: 100svh;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  overflow-x: hidden;
 }
 
 html[data-theme='dark'] body {
@@ -2435,8 +2438,16 @@ html[data-theme='dark'] .topbar {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow: visible;
+}
+
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: visible;
+  min-height: 0;
 }
 
 /* ── TOPBAR ─────────────────────────────────────────────── */
@@ -3229,11 +3240,11 @@ html[data-theme='dark'] .topbar {
 
   .sidebar {
     position: fixed;
-    top: 58px;
+    top: calc(58px + env(safe-area-inset-top, 0));
     left: 0;
     width: 260px;
     max-width: 80vw;
-    height: calc(100vh - 58px);
+    height: calc(100svh - 58px - env(safe-area-inset-top, 0));
     transform: translateX(-100%);
     opacity: 0;
     z-index: 1000;
@@ -3249,7 +3260,7 @@ html[data-theme='dark'] .topbar {
 
   .main-area {
     padding: 14px 12px 18px;
-    min-height: calc(100vh - 58px);
+    min-height: calc(100svh - 58px);
     height: auto;
   }
 
@@ -3281,7 +3292,7 @@ html[data-theme='dark'] .topbar {
     min-width: 0;
   }
 
-  .topbar-brand > div,
+  .topbar-brand>div,
   .topbar-right {
     min-width: 0;
   }
@@ -3315,6 +3326,7 @@ html[data-theme='dark'] .topbar {
 
   .app {
     min-height: 100vh;
+    min-height: 100svh;
   }
 
   .quantixa-orb {

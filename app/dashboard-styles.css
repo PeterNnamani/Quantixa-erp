@@ -615,18 +615,21 @@ html[data-theme='dark'] {
 
 .quantixa-root {
     position: fixed;
-    right: 32px;
-    bottom: 32px;
+    right: env(safe-area-inset-right, 16px);
+    bottom: env(safe-area-inset-bottom, 16px);
     z-index: 60;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 18px;
+    pointer-events: none;
 }
 
 .quantixa-orb {
     width: 112px;
     height: 112px;
+    right: 0;
+    bottom: 0;
     border-radius: 50%;
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.45);
@@ -636,6 +639,7 @@ html[data-theme='dark'] {
     place-items: center;
     cursor: pointer;
     overflow: hidden;
+    pointer-events: auto;
     transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
 
@@ -692,6 +696,30 @@ html[data-theme='dark'] {
     width: 100%;
     height: 100%;
     object-fit: contain;
+}
+
+@media (max-width: 640px) {
+    .quantixa-root {
+        right: env(safe-area-inset-right, 10px);
+        bottom: env(safe-area-inset-bottom, 10px);
+    }
+
+    .quantixa-orb {
+        width: 42px;
+        height: 42px;
+        right: env(safe-area-inset-right, 10px);
+        bottom: env(safe-area-inset-bottom, 10px);
+    }
+
+    .quantixa-orb-core {
+        width: 28px;
+        height: 28px;
+    }
+
+    .quantixa-logo {
+        width: 18px;
+        height: 18px;
+    }
 }
 
 .quantixa-panel {
