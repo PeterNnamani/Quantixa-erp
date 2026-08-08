@@ -3127,7 +3127,8 @@ html[data-theme='dark'] .topbar {
   background: var(--bg);
   border-right: 1px solid var(--border);
   flex-shrink: 0;
-  height: 100%;
+  min-height: 0;
+  height: calc(100svh - 58px);
   box-shadow: var(--shadow-sm);
   transition: transform 220ms ease, opacity 220ms ease;
 }
@@ -3251,6 +3252,7 @@ html[data-theme='dark'] .topbar {
     border-right: 1px solid var(--border);
     box-shadow: 4px 0 30px rgba(15, 28, 58, 0.16);
     background: var(--bg);
+    min-height: 0;
   }
 
   .sidebar.open {
@@ -3365,6 +3367,7 @@ html[data-theme='dark'] .topbar {
 
 .sidebar-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding-bottom: 16px;
 }
@@ -3392,13 +3395,14 @@ html[data-theme='dark'] .topbar {
   right: env(safe-area-inset-right, 18px) !important;
   bottom: env(safe-area-inset-bottom, 18px) !important;
   z-index: 99999 !important;
-  pointer-events: auto !important; /* allow clicking the orb */
+  pointer-events: auto !important;
+  /* allow clicking the orb */
   width: 64px !important;
   height: 64px !important;
   display: grid !important;
   place-items: center !important;
   border-radius: 999px !important;
-  box-shadow: 0 22px 48px rgba(0,0,0,0.28) !important;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.28) !important;
   transition: transform 160ms ease, box-shadow 160ms ease, width 160ms ease, height 160ms ease !important;
 }
 
@@ -3418,8 +3422,11 @@ html[data-theme='dark'] .topbar {
 }
 
 .quantixa-panel {
-  pointer-events: auto; /* allow interacting with the panel */
-  z-index: 99998 !important; /* ensure panel overlays header/nav */
+  pointer-events: auto;
+  /* allow interacting with the panel */
+  z-index: 99999 !important;
+  /* ensure panel overlays header/nav */
+  position: fixed !important;
   transform-origin: bottom right !important;
 }
 
@@ -3466,9 +3473,10 @@ html[data-theme='dark'] .sidebar-body {
 
 .main-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 24px 28px;
-  height: 100%;
+  height: calc(100svh - 58px);
   background: var(--bg3);
 }
 

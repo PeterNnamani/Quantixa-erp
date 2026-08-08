@@ -17,7 +17,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [voiceActive, setVoiceActive] = useState(false)
   const [queryText, setQueryText] = useState('')
   const [recentCommand, setRecentCommand] = useState('Ask about cash, loans, or audit insights.')
-  
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const pageConfig = useMemo(() => {
@@ -115,7 +115,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [router, user, pathname])
 
-  
+
 
   if (!user) {
     return null
