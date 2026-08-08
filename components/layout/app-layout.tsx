@@ -117,9 +117,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   
 
-  useEffect(() => {
-  
-
   if (!user) {
     return null
   }
