@@ -216,6 +216,7 @@ CREATE TABLE IF NOT EXISTS products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   sku text NOT NULL UNIQUE,
   name text NOT NULL,
+  description text,
   category text,
   unit_cost numeric(18,2) NOT NULL DEFAULT 0,
   unit_price numeric(18,2) NOT NULL DEFAULT 0,
@@ -223,7 +224,6 @@ CREATE TABLE IF NOT EXISTS products (
   expiry_date date,
   damaged_expired integer NOT NULL DEFAULT 0,
   reorder_level integer NOT NULL DEFAULT 0,
-  warehouse text,
   branch text,
   created_at timestamptz NOT NULL DEFAULT NOW(),
   updated_at timestamptz NOT NULL DEFAULT NOW()
@@ -231,6 +231,16 @@ CREATE TABLE IF NOT EXISTS products (
 
 ALTER TABLE products ADD COLUMN IF NOT EXISTS expiry_date date;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS damaged_expired integer NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS branch text;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'warehouse') THEN
+    UPDATE products SET branch = COALESCE(branch, warehouse);
+    ALTER TABLE products DROP COLUMN warehouse;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 

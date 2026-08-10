@@ -88,7 +88,7 @@ function auditSchemaCoverage(repoRoot) {
         if (table === 'sales') expected.push('sale_date', 'customer_id', 'total_amount', 'payment_status', 'status')
         if (table === 'purchases') expected.push('purchase_date', 'supplier_id', 'total', 'payment_status', 'status')
         if (table === 'expenses') expected.push('expense_date', 'description', 'amount', 'bank_account_id')
-        if (table === 'products') expected.push('sku', 'name', 'stock_qty', 'unit_cost', 'unit_price')
+        if (table === 'products') expected.push('sku', 'name', 'description', 'stock_qty', 'unit_cost', 'unit_price', 'branch')
         if (table === 'contacts') expected.push('type', 'name', 'credit_limit', 'opening_balance', 'status')
         if (table === 'bank_accounts') expected.push('name', 'balance', 'institution')
         if (table === 'bank_transactions') expected.push('bank_account_id', 'txn_date', 'description', 'amount', 'is_reconciled')

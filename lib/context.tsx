@@ -113,6 +113,8 @@ export interface Expense {
 export interface InventoryItem {
   product: string
   sku?: string
+  description?: string
+  branch?: string
   dept: string
   openQty: number
   purchased: number
@@ -340,6 +342,9 @@ function normalizeRemoteExpenses(data: any[]): AppState['expenses'] {
 function normalizeRemoteInventory(data: any[]): AppState['inventory'] {
   return (data || []).map((item: any) => ({
     product: item.name || item.sku || item.id,
+    sku: item.sku || '',
+    description: item.description || '',
+    branch: item.branch || '',
     dept: item.category || item.branch || 'General',
     openQty: Number(item.stock_qty || 0),
     purchased: 0,

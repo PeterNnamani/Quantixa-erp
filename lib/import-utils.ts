@@ -61,7 +61,7 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'i
     const lowerValues = Object.values(row).map((value) => stringValue(value).toLowerCase()).join(' ')
 
     const staffKeys = ['staff id', 'employee id', 'username', 'full name', 'role', 'department', 'position', 'email']
-    const inventoryKeys = ['sku', 'product', 'item', 'name', 'stock qty', 'opening stock qty', 'stock bal', 'stock balance', 'stock balance', 'quantity', 'qty sold', 'selling price', 'unit price', 'selling price', 'sales revenue', 'profit', 'cogs', 'unit cost', 'warehouse', 'reorder', 'department', 'category', 'category name', 'closing', 'opening', 'available', 'no. purchased', 'total']
+    const inventoryKeys = ['sku', 'product', 'item', 'name', 'description', 'stock qty', 'opening stock qty', 'stock bal', 'stock balance', 'stock balance', 'quantity', 'qty sold', 'selling price', 'unit price', 'selling price', 'sales revenue', 'profit', 'cogs', 'unit cost', 'branch', 'reorder', 'department', 'category', 'category name', 'closing', 'opening', 'available', 'no. purchased', 'total']
     const saleKeys = ['sale date', 'sale_date', 'customer', 'invoice', 'receipt', 'payment method', 'payment status', 'total amount', 'amount paid']
     const purchaseKeys = ['purchase date', 'supplier', 'invoice number', 'purchase order', 'payment status', 'total', 'amount paid', 'balance']
     const contactKeys = ['type', 'name', 'email', 'phone', 'address', 'credit limit', 'opening balance']
@@ -242,19 +242,19 @@ function normalizeProductRow(row: ImportRecord, existingSkus: string[]) {
     const unitPrice = Math.max(0, parseNumeric(row['selling price'] || row['unit selling price'] || row['unit price'] || row['unit_price'] || row['price'] || 0))
     const purchased = Math.max(0, parseNumeric(row['purchased'] || row['purchase qty'] || row['purchased qty'] || row['no. purchased'] || 0))
     const sold = Math.max(0, parseNumeric(row['sold'] || row['sold qty'] || row['qty sold'] || 0))
-    const warehouse = stringValue(row['warehouse'] || row['location'] || '')
-    const branch = stringValue(row['branch'] || '')
+    const description = stringValue(row['description'] || row['product description'] || '')
+    const branch = stringValue(row['branch'] || row['location'] || '')
     const reorderLevel = Math.max(0, parseNumeric(row['reorder level'] || row['reorder_level'] || row['reorder'] || 0))
 
     return {
         id: makeID('PRD'),
         sku,
         name,
+        description,
         category,
         unit_cost: unitCost,
         unit_price: unitPrice,
         stock_qty: stockQty,
-        warehouse,
         branch,
         reorder_level: reorderLevel,
         product: name,

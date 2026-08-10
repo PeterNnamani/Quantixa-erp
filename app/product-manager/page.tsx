@@ -23,6 +23,8 @@ export default function ProductManagerPage() {
     const [productFormData, setProductFormData] = useState({
         name: '',
         sku: '',
+        description: '',
+        branch: '',
         category: '',
         brand: '',
         costPrice: 0,
@@ -39,19 +41,21 @@ export default function ProductManagerPage() {
             if (!item.sku) usedSkus.push(sku)
 
             return {
-            id: `PRD-${index + 1}`,
-            name: item.product,
-            sku,
-            category: item.dept || 'Uncategorized',
-            brand: '—',
-            costPrice: item.unitCost,
-            sellingPrice: item.unitCost * 1.35,
-            stockStatus: item.closing <= 0 ? 'Out of Stock' : item.closing <= 10 ? 'Low Stock' : 'In Stock',
-            status: 'Active',
-            supplier: '—',
-            stock: item.closing,
-            expiryDate: item.expiryDate || '',
-            damagedExpired: item.damagedExpired || 0,
+                id: `PRD-${index + 1}`,
+                name: item.product,
+                sku,
+                description: item.description || '',
+                branch: item.branch || '',
+                category: item.dept || 'Uncategorized',
+                brand: '—',
+                costPrice: item.unitCost,
+                sellingPrice: item.unitCost * 1.35,
+                stockStatus: item.closing <= 0 ? 'Out of Stock' : item.closing <= 10 ? 'Low Stock' : 'In Stock',
+                status: 'Active',
+                supplier: '—',
+                stock: item.closing,
+                expiryDate: item.expiryDate || '',
+                damagedExpired: item.damagedExpired || 0,
             }
         })
     }, [state.inventory])
@@ -88,6 +92,8 @@ export default function ProductManagerPage() {
         const newInventoryItem = {
             product: productFormData.name,
             sku,
+            description: productFormData.description,
+            branch: productFormData.branch,
             dept: productFormData.category || 'Uncategorized',
             openQty: productFormData.stock,
             purchased: 0,
@@ -104,6 +110,8 @@ export default function ProductManagerPage() {
         setProductFormData({
             name: '',
             sku: '',
+            description: '',
+            branch: '',
             category: '',
             brand: '',
             costPrice: 0,
@@ -168,10 +176,14 @@ export default function ProductManagerPage() {
                 const expiryDate = String(row['Expiry Date'] || row['ExpiryDate'] || row['Expiry'] || '').trim()
                 const damagedExpired = parseNumeric(row['Damaged/Expired'] || row['Damaged Expired'] || row['DamagedExpired'] || 0)
                 const sku = String(row['SKU'] || row['Sku'] || row['sku'] || row['Product Code'] || row['Product code'] || row['Item Code'] || row['Item code'] || '').trim()
+                const description = String(row['Description'] || row['description'] || row['Product Description'] || row['Product description'] || '').trim()
+                const branch = String(row['Branch'] || row['branch'] || '').trim()
 
                 return {
                     product,
                     sku,
+                    description,
+                    branch,
                     dept,
                     openQty,
                     purchased,
@@ -182,7 +194,7 @@ export default function ProductManagerPage() {
                     damagedExpired,
                 }
             })
-            .filter((item): item is { product: string; sku: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number; expiryDate: string; damagedExpired: number } => item !== null)
+            .filter((item): item is { product: string; sku: string; description: string; branch: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number; expiryDate: string; damagedExpired: number } => item !== null)
 
         if (normalizedProducts.length === 0) {
             setImportError('No valid product rows were found in the file.')
@@ -200,6 +212,8 @@ export default function ProductManagerPage() {
                 mergedInventory[existingIndex] = {
                     ...existing,
                     sku: productItem.sku || existing.sku || generateSku(productItem.product, mergedInventory.map((item) => item.sku || '')),
+                    description: productItem.description || existing.description,
+                    branch: productItem.branch || existing.branch,
                     dept: productItem.dept || existing.dept,
                     openQty: productItem.openQty || existing.openQty,
                     purchased: (existing.purchased || 0) + productItem.purchased,
@@ -213,6 +227,8 @@ export default function ProductManagerPage() {
                 mergedInventory.push({
                     product: productItem.product,
                     sku: productItem.sku || generateSku(productItem.product, mergedInventory.map((item) => item.sku || '')),
+                    description: productItem.description,
+                    branch: productItem.branch,
                     dept: productItem.dept,
                     openQty: productItem.openQty,
                     purchased: productItem.purchased,
@@ -284,12 +300,20 @@ export default function ProductManagerPage() {
                                 <input value={productFormData.name} onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })} placeholder="Product name" />
                             </div>
                             <div className="fg">
+                                <label>Description</label>
+                                <input value={productFormData.description} onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })} placeholder="Product description" />
+                            </div>
+                            <div className="fg">
                                 <label>SKU</label>
                                 <input value={productFormData.sku} onChange={(e) => setProductFormData({ ...productFormData, sku: e.target.value })} placeholder="SKU code" />
                             </div>
                             <div className="fg">
                                 <label>Category</label>
                                 <input value={productFormData.category} onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })} placeholder="Product category" />
+                            </div>
+                            <div className="fg">
+                                <label>Branch</label>
+                                <input value={productFormData.branch} onChange={(e) => setProductFormData({ ...productFormData, branch: e.target.value })} placeholder="Product branch" />
                             </div>
                             <div className="fg">
                                 <label>Brand</label>
@@ -398,7 +422,9 @@ export default function ProductManagerPage() {
                                     <tr>
                                         <th>SKU</th>
                                         <th>Product</th>
+                                        <th>Description</th>
                                         <th>Category</th>
+                                        <th>Branch</th>
                                         <th>Brand</th>
                                         <th>Cost Price</th>
                                         <th>Selling Price</th>
@@ -413,7 +439,9 @@ export default function ProductManagerPage() {
                                         <tr key={product.id} onClick={() => setSelectedRow(index)} className={selectedProduct?.id === product.id ? 'selected' : ''}>
                                             <td>{product.sku}</td>
                                             <td>{product.name}</td>
+                                            <td>{product.description || '—'}</td>
                                             <td>{product.category}</td>
+                                            <td>{product.branch || '—'}</td>
                                             <td>{product.brand}</td>
                                             <td>{formatCurrency(product.costPrice)}</td>
                                             <td>{formatCurrency(product.sellingPrice)}</td>
@@ -438,8 +466,10 @@ export default function ProductManagerPage() {
                             </div>
                             <div className="product-manager-detail-panel">
                                 <div className="product-manager-detail-row"><span>Product Name</span><strong>{selectedProduct?.name || 'Not selected'}</strong></div>
+                                <div className="product-manager-detail-row"><span>Description</span><strong>{selectedProduct?.description || '—'}</strong></div>
                                 <div className="product-manager-detail-row"><span>SKU</span><strong>{selectedProduct?.sku || '—'}</strong></div>
                                 <div className="product-manager-detail-row"><span>Category</span><strong>{selectedProduct?.category || '—'}</strong></div>
+                                <div className="product-manager-detail-row"><span>Branch</span><strong>{selectedProduct?.branch || '—'}</strong></div>
                                 <div className="product-manager-detail-row"><span>Brand</span><strong>—</strong></div>
                                 <div className="product-manager-detail-row"><span>Cost Price</span><strong>{selectedProduct?.costPrice ? formatCurrency(selectedProduct.costPrice) : formatCurrency(0)}</strong></div>
                                 <div className="product-manager-detail-row"><span>Selling Price</span><strong>{selectedProduct?.sellingPrice ? formatCurrency(selectedProduct.sellingPrice) : formatCurrency(0)}</strong></div>
@@ -457,7 +487,7 @@ export default function ProductManagerPage() {
                                 <div className="product-manager-detail-row"><span>Track Inventory</span><strong>—</strong></div>
                                 <div className="product-manager-detail-row"><span>Minimum Stock</span><strong>—</strong></div>
                                 <div className="product-manager-detail-row"><span>Reorder Level</span><strong>—</strong></div>
-                                <div className="product-manager-detail-row"><span>Preferred Warehouse</span><strong>—</strong></div>
+                                <div className="product-manager-detail-row"><span>Branch</span><strong>{selectedProduct?.branch || '—'}</strong></div>
                             </div>
                         </div>
                     </div>
