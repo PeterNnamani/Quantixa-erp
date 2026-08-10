@@ -6,6 +6,7 @@ import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, parseNumeric } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
 import { parseExcelFile } from '@/lib/import-utils'
+import { generateSku } from '@/lib/sku'
 
 export default function ProductManagerPage() {
     const { state, updateState, addAuditLog } = useAccounting()
@@ -32,10 +33,15 @@ export default function ProductManagerPage() {
     })
 
     const products = useMemo(() => {
-        return state.inventory.map((item, index) => ({
+        const usedSkus = state.inventory.map((item) => item.sku).filter((sku): sku is string => Boolean(sku))
+        return state.inventory.map((item, index) => {
+            const sku = item.sku || generateSku(item.product, usedSkus)
+            if (!item.sku) usedSkus.push(sku)
+
+            return {
             id: `PRD-${index + 1}`,
             name: item.product,
-            sku: `SKU-${index + 1}`,
+            sku,
             category: item.dept || 'Uncategorized',
             brand: '—',
             costPrice: item.unitCost,
@@ -46,7 +52,8 @@ export default function ProductManagerPage() {
             stock: item.closing,
             expiryDate: item.expiryDate || '',
             damagedExpired: item.damagedExpired || 0,
-        }))
+            }
+        })
     }, [state.inventory])
 
     const filteredProducts = useMemo(() => {
@@ -71,13 +78,16 @@ export default function ProductManagerPage() {
     ]
 
     const handleSaveProduct = () => {
-        if (!productFormData.name || !productFormData.sku) {
-            alert('Product name and SKU are required.')
+        if (!productFormData.name) {
+            alert('Product name is required.')
             return
         }
 
+        const sku = productFormData.sku.trim() || generateSku(productFormData.name, state.inventory.map((item) => item.sku || ''))
+
         const newInventoryItem = {
             product: productFormData.name,
+            sku,
             dept: productFormData.category || 'Uncategorized',
             openQty: productFormData.stock,
             purchased: 0,
@@ -89,7 +99,7 @@ export default function ProductManagerPage() {
         }
 
         updateState({ inventory: [...state.inventory, newInventoryItem] })
-        addAuditLog('CREATE', 'PRODUCT', productFormData.sku, `Product ${productFormData.name} added to catalog.`)
+        addAuditLog('CREATE', 'PRODUCT', sku, `Product ${productFormData.name} added to catalog.`)
         setShowProductForm(false)
         setProductFormData({
             name: '',
@@ -157,9 +167,11 @@ export default function ProductManagerPage() {
                 const sold = parseNumeric(row['Sold'] || row['Sold Qty'] || 0)
                 const expiryDate = String(row['Expiry Date'] || row['ExpiryDate'] || row['Expiry'] || '').trim()
                 const damagedExpired = parseNumeric(row['Damaged/Expired'] || row['Damaged Expired'] || row['DamagedExpired'] || 0)
+                const sku = String(row['SKU'] || row['Sku'] || row['sku'] || row['Product Code'] || row['Product code'] || row['Item Code'] || row['Item code'] || '').trim()
 
                 return {
                     product,
+                    sku,
                     dept,
                     openQty,
                     purchased,
@@ -170,7 +182,7 @@ export default function ProductManagerPage() {
                     damagedExpired,
                 }
             })
-            .filter((item): item is { product: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number; expiryDate: string; damagedExpired: number } => item !== null)
+            .filter((item): item is { product: string; sku: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number; expiryDate: string; damagedExpired: number } => item !== null)
 
         if (normalizedProducts.length === 0) {
             setImportError('No valid product rows were found in the file.')
@@ -187,6 +199,7 @@ export default function ProductManagerPage() {
                 const existing = mergedInventory[existingIndex]
                 mergedInventory[existingIndex] = {
                     ...existing,
+                    sku: productItem.sku || existing.sku || generateSku(productItem.product, mergedInventory.map((item) => item.sku || '')),
                     dept: productItem.dept || existing.dept,
                     openQty: productItem.openQty || existing.openQty,
                     purchased: (existing.purchased || 0) + productItem.purchased,
@@ -199,6 +212,7 @@ export default function ProductManagerPage() {
             } else {
                 mergedInventory.push({
                     product: productItem.product,
+                    sku: productItem.sku || generateSku(productItem.product, mergedInventory.map((item) => item.sku || '')),
                     dept: productItem.dept,
                     openQty: productItem.openQty,
                     purchased: productItem.purchased,

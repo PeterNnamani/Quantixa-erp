@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase.server'
+import { generateSku } from '@/lib/sku'
 
 type GenericImportPayload = {
     companyId?: string
@@ -86,8 +87,9 @@ async function buildContactMap(contacts: any[], companyId: string): Promise<Cont
 
 async function findOrCreateProduct(product: any, companyId: string): Promise<string | null> {
     if (!supabaseAdmin) return null
-    const sku = String(product.sku || product.product_code || product.item_code || product.name || '').trim()
     const name = String(product.name || product.product || product.item || '').trim()
+    const explicitSku = String(product.sku || product.product_code || product.item_code || '').trim()
+    const sku = explicitSku || generateSku(name)
     if (!sku || !name) return null
 
     const { data: existing, error: existingErr } = await supabaseAdmin

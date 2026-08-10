@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { makeID, parseNumeric } from './utils'
+import { generateSku } from './sku'
 
 export type ImportRecord = Record<string, unknown>
 
@@ -228,11 +229,10 @@ function normalizePurchaseRow(row: ImportRecord) {
     }
 }
 
-function normalizeProductRow(row: ImportRecord) {
+function normalizeProductRow(row: ImportRecord, existingSkus: string[]) {
     const name = buildProductName(row) || 'Unnamed Product'
     const explicitSku = stringValue(row['sku'] || row['product code'] || row['item code'] || '')
-    const fallbackSku = stringValue(row['name'] || row['product'] || name || '')
-    let sku = explicitSku || fallbackSku.replace(/\s+/g, '-').toUpperCase()
+    let sku = explicitSku || generateSku(name, existingSkus)
     if (!sku || sku === 'UNNAMED-PRODUCT') {
         sku = makeID('SKU')
     }
@@ -357,7 +357,8 @@ export function prepareGenericImportPayload(rows: ImportRecord[]): { payload: Ge
         }
 
         if (category === 'inventory') {
-            payload.products.push(normalizeProductRow(row))
+            const product = normalizeProductRow(row, payload.products.map((item) => String(item.sku || '')))
+            payload.products.push(product)
             return
         }
 

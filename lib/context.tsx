@@ -112,6 +112,7 @@ export interface Expense {
 
 export interface InventoryItem {
   product: string
+  sku?: string
   dept: string
   openQty: number
   purchased: number
