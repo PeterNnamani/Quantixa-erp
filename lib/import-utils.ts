@@ -46,7 +46,7 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'i
     const lowerValues = Object.values(row).map((value) => stringValue(value).toLowerCase()).join(' ')
 
     const staffKeys = ['staff id', 'employee id', 'username', 'full name', 'role', 'department', 'position', 'email']
-    const inventoryKeys = ['sku', 'product', 'item', 'stock qty', 'quantity', 'unit cost', 'unit price', 'warehouse', 'reorder']
+    const inventoryKeys = ['sku', 'product', 'item', 'stock qty', 'quantity', 'unit cost', 'unit price', 'warehouse', 'reorder', 'department', 'category', 'category name', 'closing', 'opening', 'available', 'stock', 'stock bal', 'stock balance', 'qty sold', 'selling price', 'sales revenue', 'profit', 'cogs', 'unit price']
     const saleKeys = ['sale date', 'sale_date', 'customer', 'invoice', 'receipt', 'payment method', 'payment status', 'total amount', 'amount paid']
     const purchaseKeys = ['purchase date', 'supplier', 'invoice number', 'purchase order', 'payment status', 'total', 'amount paid', 'balance']
     const contactKeys = ['type', 'name', 'email', 'phone', 'address', 'credit limit', 'opening balance']
@@ -55,7 +55,7 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'i
         normalizedKeys.reduce((score, key) => score + (keywords.some((token) => key.includes(token)) ? 2 : 0), 0)
 
     const staffScore = makeScore(staffKeys) + (lowerValues.includes('staff') ? 1 : 0)
-    const inventoryScore = makeScore(inventoryKeys) + (lowerValues.includes('stock') ? 1 : 0)
+    const inventoryScore = makeScore(inventoryKeys) + (lowerValues.includes('stock') || lowerValues.includes('inventory') ? 2 : 0)
     const saleScore = makeScore(saleKeys) + (lowerValues.includes('sale') ? 1 : 0)
     const purchaseScore = makeScore(purchaseKeys) + (lowerValues.includes('purchase') ? 1 : 0)
     const contactScore = makeScore(contactKeys) + (lowerValues.includes('customer') || lowerValues.includes('supplier') || lowerValues.includes('vendor') ? 1 : 0)
@@ -217,8 +217,8 @@ function normalizePurchaseRow(row: ImportRecord) {
 function normalizeProductRow(row: ImportRecord) {
     const name = buildProductName(row) || 'Unnamed Product'
     const sku = stringValue(row['sku'] || row['product code'] || row['item code'] || name)
-    const category = stringValue(row['category'] || row['dept'] || row['department'] || 'General') || 'General'
-    const stockQty = Math.max(0, parseNumeric(row['stock qty'] || row['stock_qty'] || row['quantity'] || row['qty'] || row['closing'] || 0))
+    const category = stringValue(row['category'] || row['dept'] || row['department'] || row['sheetCategory'] || 'General') || 'General'
+    const stockQty = Math.max(0, parseNumeric(row['stock qty'] || row['stock_qty'] || row['quantity'] || row['qty'] || row['closing'] || row['stock bal'] || row['stock balance'] || 0))
     const unitCost = Math.max(0, parseNumeric(row['unit cost'] || row['unit_cost'] || row['cost'] || 0))
     const unitPrice = Math.max(0, parseNumeric(row['unit price'] || row['unit_price'] || row['price'] || 0))
     const purchased = Math.max(0, parseNumeric(row['purchased'] || row['purchase qty'] || row['purchased qty'] || 0))
@@ -405,7 +405,13 @@ export async function parseSpreadsheetFile(file: File): Promise<ImportRecord[]> 
         if (!worksheet) return
         const sheetRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' })
         if (sheetRows.length > 0) {
-            rows.push(...sheetRows)
+            const normalizedSheetName = sheetName.trim()
+            const rowsWithCategory = sheetRows.map((row) => ({
+                ...row,
+                sheetCategory: normalizedSheetName,
+                category: row['category'] || row['dept'] || row['department'] || normalizedSheetName,
+            }))
+            rows.push(...rowsWithCategory)
         }
     })
 

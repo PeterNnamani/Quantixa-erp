@@ -9,8 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
-    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    var _ = { label: 0, sent: function () { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function () { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
@@ -61,11 +61,11 @@ function findOrCreateContact(contact) {
                     if (!name)
                         return [2 /*return*/, null];
                     return [4 /*yield*/, supabase_server_1.supabaseAdmin
-                            .from('contacts')
-                            .select('id')
-                            .eq('type', type)
-                            .eq('name', name)
-                            .limit(1)];
+                        .from('contacts')
+                        .select('id')
+                        .eq('type', type)
+                        .eq('name', name)
+                        .limit(1)];
                 case 1:
                     _a = _d.sent(), existing = _a.data, existingErr = _a.error;
                     if (existingErr) {
@@ -88,10 +88,10 @@ function findOrCreateContact(contact) {
                         updated_at: new Date().toISOString(),
                     };
                     return [4 /*yield*/, supabase_server_1.supabaseAdmin
-                            .from('contacts')
-                            .insert(insertData)
-                            .select('id')
-                            .limit(1)];
+                        .from('contacts')
+                        .insert(insertData)
+                        .select('id')
+                        .limit(1)];
                 case 2:
                     _b = _d.sent(), inserted = _b.data, insertErr = _b.error;
                     if (insertErr) {
@@ -149,10 +149,10 @@ function findOrCreateProduct(product) {
                     if (!sku || !name)
                         return [2 /*return*/, null];
                     return [4 /*yield*/, supabase_server_1.supabaseAdmin
-                            .from('products')
-                            .select('id')
-                            .eq('sku', sku)
-                            .limit(1)];
+                        .from('products')
+                        .select('id')
+                        .eq('sku', sku)
+                        .limit(1)];
                 case 1:
                     _a = _f.sent(), existing = _a.data, existingErr = _a.error;
                     if (existingErr) {
@@ -173,11 +173,11 @@ function findOrCreateProduct(product) {
                     };
                     if (!(existing && existing.length > 0)) return [3 /*break*/, 3];
                     return [4 /*yield*/, supabase_server_1.supabaseAdmin
-                            .from('products')
-                            .update(insertData)
-                            .eq('id', existing[0].id)
-                            .select('id')
-                            .limit(1)];
+                        .from('products')
+                        .update(insertData)
+                        .eq('id', existing[0].id)
+                        .select('id')
+                        .limit(1)];
                 case 2:
                     _b = _f.sent(), updated = _b.data, updateErr = _b.error;
                     if (updateErr) {
@@ -185,10 +185,10 @@ function findOrCreateProduct(product) {
                     }
                     return [2 /*return*/, ((_d = updated === null || updated === void 0 ? void 0 : updated[0]) === null || _d === void 0 ? void 0 : _d.id) || existing[0].id];
                 case 3: return [4 /*yield*/, supabase_server_1.supabaseAdmin
-                        .from('products')
-                        .insert(insertData)
-                        .select('id')
-                        .limit(1)];
+                    .from('products')
+                    .insert(insertData)
+                    .select('id')
+                    .limit(1)];
                 case 4:
                     _c = _f.sent(), inserted = _c.data, insertErr = _c.error;
                     if (insertErr) {
@@ -243,11 +243,11 @@ function findOrCreateStaff(staff) {
                     };
                     if (!(existing && existing.length > 0)) return [3 /*break*/, 3];
                     return [4 /*yield*/, supabase_server_1.supabaseAdmin
-                            .from('users')
-                            .update(insertData)
-                            .eq('id', existing[0].id)
-                            .select('id')
-                            .limit(1)];
+                        .from('users')
+                        .update(insertData)
+                        .eq('id', existing[0].id)
+                        .select('id')
+                        .limit(1)];
                 case 2:
                     _b = _f.sent(), updated = _b.data, updateErr = _b.error;
                     if (updateErr) {
@@ -255,10 +255,10 @@ function findOrCreateStaff(staff) {
                     }
                     return [2 /*return*/, ((_d = updated === null || updated === void 0 ? void 0 : updated[0]) === null || _d === void 0 ? void 0 : _d.id) || existing[0].id];
                 case 3: return [4 /*yield*/, supabase_server_1.supabaseAdmin
-                        .from('users')
-                        .insert(insertData)
-                        .select('id')
-                        .limit(1)];
+                    .from('users')
+                    .insert(insertData)
+                    .select('id')
+                    .limit(1)];
                 case 4:
                     _c = _f.sent(), inserted = _c.data, insertErr = _c.error;
                     if (insertErr) {
@@ -277,26 +277,28 @@ function insertSaleRecords(sales, contactMap) {
                 case 0:
                     if (!supabase_server_1.supabaseAdmin || sales.length === 0)
                         return [2 /*return*/];
-                    saleRows = sales.map(function (sale) { return ({
-                        reference: String(sale.reference || sale.id || '').trim() || "S-".concat(Date.now()),
-                        sale_date: sale.sale_date || sale.date || new Date().toISOString().slice(0, 10),
-                        customer_id: contactMap["customer:".concat(String(sale.customer || 'Unknown Customer').trim())] || null,
-                        branch: sale.branch || null,
-                        sales_rep: sale.sales_rep || sale.enteredBy || null,
-                        payment_method: sale.paymentMethod || sale.payment_method || 'Transfer',
-                        payment_status: sale.paymentStatus || sale.payment_status || 'PAID',
-                        status: sale.status || 'active',
-                        notes: sale.notes || null,
-                        subtotal: sale.subtotal || 0,
-                        tax: sale.tax || 0,
-                        discount: sale.discount || 0,
-                        shipping: sale.shipping || 0,
-                        total_amount: sale.totalAmount || sale.total_amount || 0,
-                        amount_paid: sale.amountPaid || sale.amount_paid || 0,
-                        balance: sale.balance || 0,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                    }); });
+                    saleRows = sales.map(function (sale) {
+                        return ({
+                            reference: String(sale.reference || sale.id || '').trim() || "S-".concat(Date.now()),
+                            sale_date: sale.sale_date || sale.date || new Date().toISOString().slice(0, 10),
+                            customer_id: contactMap["customer:".concat(String(sale.customer || 'Unknown Customer').trim())] || null,
+                            branch: sale.branch || null,
+                            sales_rep: sale.sales_rep || sale.enteredBy || null,
+                            payment_method: sale.paymentMethod || sale.payment_method || 'Transfer',
+                            payment_status: sale.paymentStatus || sale.payment_status || 'PAID',
+                            status: sale.status || 'active',
+                            notes: sale.notes || null,
+                            subtotal: sale.subtotal || 0,
+                            tax: sale.tax || 0,
+                            discount: sale.discount || 0,
+                            shipping: sale.shipping || 0,
+                            total_amount: sale.totalAmount || sale.total_amount || 0,
+                            amount_paid: sale.amountPaid || sale.amount_paid || 0,
+                            balance: sale.balance || 0,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        });
+                    });
                     return [4 /*yield*/, supabase_server_1.supabaseAdmin.from('sales').upsert(saleRows, { onConflict: 'reference' })];
                 case 1:
                     salesErr = (_b.sent()).error;
@@ -355,29 +357,31 @@ function insertPurchaseRecords(purchases, contactMap) {
                 case 0:
                     if (!supabase_server_1.supabaseAdmin || purchases.length === 0)
                         return [2 /*return*/];
-                    purchaseRows = purchases.map(function (purchase) { return ({
-                        reference: String(purchase.reference || purchase.id || '').trim() || "P-".concat(Date.now()),
-                        purchase_date: purchase.purchase_date || purchase.date || new Date().toISOString().slice(0, 10),
-                        supplier_id: contactMap["supplier:".concat(String(purchase.supplier || 'Unknown Supplier').trim())] || null,
-                        branch: purchase.branch || null,
-                        invoice_number: purchase.invoiceNumber || purchase.invoice_number || null,
-                        purchase_order: purchase.purchaseOrder || purchase.purchase_order || null,
-                        payment_method: purchase.paymentMethod || purchase.payment_method || 'Cash',
-                        payment_status: purchase.paymentStatus || purchase.payment_status || 'PAID',
-                        status: purchase.status || 'active',
-                        notes: purchase.notes || null,
-                        subtotal: purchase.subtotal || 0,
-                        tax: purchase.tax || 0,
-                        discount: purchase.discount || 0,
-                        shipping: purchase.shipping || 0,
-                        total: purchase.total || 0,
-                        amount_paid: purchase.amountPaid || purchase.amount_paid || 0,
-                        balance: purchase.balance || 0,
-                        due_date: purchase.dueDate || purchase.due_date || null,
-                        created_by: null,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                    }); });
+                    purchaseRows = purchases.map(function (purchase) {
+                        return ({
+                            reference: String(purchase.reference || purchase.id || '').trim() || "P-".concat(Date.now()),
+                            purchase_date: purchase.purchase_date || purchase.date || new Date().toISOString().slice(0, 10),
+                            supplier_id: contactMap["supplier:".concat(String(purchase.supplier || 'Unknown Supplier').trim())] || null,
+                            branch: purchase.branch || null,
+                            invoice_number: purchase.invoiceNumber || purchase.invoice_number || null,
+                            purchase_order: purchase.purchaseOrder || purchase.purchase_order || null,
+                            payment_method: purchase.paymentMethod || purchase.payment_method || 'Cash',
+                            payment_status: purchase.paymentStatus || purchase.payment_status || 'PAID',
+                            status: purchase.status || 'active',
+                            notes: purchase.notes || null,
+                            subtotal: purchase.subtotal || 0,
+                            tax: purchase.tax || 0,
+                            discount: purchase.discount || 0,
+                            shipping: purchase.shipping || 0,
+                            total: purchase.total || 0,
+                            amount_paid: purchase.amountPaid || purchase.amount_paid || 0,
+                            balance: purchase.balance || 0,
+                            due_date: purchase.dueDate || purchase.due_date || null,
+                            created_by: null,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        });
+                    });
                     return [4 /*yield*/, supabase_server_1.supabaseAdmin.from('purchases').upsert(purchaseRows, { onConflict: 'reference' })];
                 case 1:
                     purchasesErr = (_b.sent()).error;
