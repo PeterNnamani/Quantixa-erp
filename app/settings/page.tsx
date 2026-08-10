@@ -142,7 +142,7 @@ export default function SettingsPage() {
       const { payload, summary } = prepareGenericImportPayload(importRows)
       setImportSummary(summary)
 
-      const result = await postJsonWithProgress('/api/import', { ...payload, companyId: user?.companyId }, (percent) => {
+      const result = await postJsonWithProgress('/api/import', { ...payload, companyId: user?.companyId, staffId: user?.staffId }, (percent) => {
         setImportProgress(percent)
       })
 

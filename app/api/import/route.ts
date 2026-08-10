@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase.server'
 
 type GenericImportPayload = {
     companyId?: string
+    staffId?: string
     sales?: any[]
     purchases?: any[]
     products?: any[]
@@ -373,9 +374,22 @@ export async function POST(request: Request) {
         }
 
         const payload = (await request.json()) as GenericImportPayload
-        const companyId = String(payload.companyId || '').trim()
+        let companyId = String(payload.companyId || '').trim()
+        if (!companyId && payload.staffId) {
+            const { data: user, error: userError } = await supabaseAdmin
+                .from('users')
+                .select('company_id')
+                .eq('staff_id', String(payload.staffId).trim())
+                .limit(1)
+                .maybeSingle()
+
+            if (userError) {
+                throw userError
+            }
+            companyId = String(user?.company_id || '').trim()
+        }
         if (!companyId) {
-            return NextResponse.json({ success: false, error: 'A company is required for import' }, { status: 400 })
+            return NextResponse.json({ success: false, error: 'Unable to identify your company. Please sign out and sign in again before importing.' }, { status: 400 })
         }
         const contacts = Array.isArray(payload.contacts) ? payload.contacts : []
         const sales = Array.isArray(payload.sales) ? payload.sales : []
