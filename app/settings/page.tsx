@@ -222,6 +222,15 @@ export default function SettingsPage() {
     }
   }
 
+  const handleImportAction = () => {
+    if (importStatus === 'success') {
+      closeImportModal()
+      return
+    }
+
+    void handleImportUpload()
+  }
+
   const handleCreateRole = () => {
     const nextRole: RoleDefinition = {
       id: roleName.toLowerCase().replace(/\s+/g, '-'),
@@ -409,8 +418,8 @@ export default function SettingsPage() {
                   <button
                     className="btn btn-primary"
                     type="button"
-                    onClick={handleImportUpload}
-                    disabled={importRows.length === 0 || isImporting || importStatus === 'success'}
+                    onClick={handleImportAction}
+                    disabled={importStatus === 'success' ? false : importRows.length === 0 || isImporting}
                   >
                     {importStatus === 'uploading' ? 'Uploading…' : importStatus === 'success' ? 'Done' : 'Start import'}
                   </button>
