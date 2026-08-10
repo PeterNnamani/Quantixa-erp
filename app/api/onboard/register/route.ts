@@ -12,19 +12,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ ok: false, error: 'Supabase admin client is not configured' }, { status: 500 })
         }
 
-        // Disallow onboarding only if a super-admin already exists
-        const { count, error: countErr } = await supabaseAdmin
-            .from('users')
-            .select('id', { head: true, count: 'exact' })
-            .eq('role', 'super-admin')
-
-        if (countErr) {
-            return NextResponse.json({ ok: false, error: countErr.message }, { status: 500 })
-        }
-        if ((count || 0) > 0) {
-            return NextResponse.json({ ok: false, error: 'Onboarding not allowed: a super-admin already exists' }, { status: 409 })
-        }
-
+        // Allow onboarding for multiple companies. Multiple super-admins are permitted in this multi-company app.
         const now = new Date().toISOString()
 
         // Generate a staff ID if not provided
