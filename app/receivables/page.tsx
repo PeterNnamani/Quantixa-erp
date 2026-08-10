@@ -5,6 +5,7 @@ import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, triggerAppToast, makeID } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
+import PaymentModal from '@/components/modals/PaymentModal'
 
 
 export default function ReceivablesPage() {
@@ -66,38 +67,47 @@ export default function ReceivablesPage() {
     triggerAppToast(action, 'The receivables workflow has been queued for processing.')
     if (action === 'Export Excel') {
       downloadExcel('receivables-export.xlsx', filteredReceivables)
+      return
     }
     if (action === '+ Record Payment') {
-      const paymentAmount = 150000
-      const nextBalance = Math.max(0, (selectedItem?.balance || 0) - paymentAmount)
-      const bankName = Object.keys(state.banks)[0] || 'Access Bank'
-      const updatedReceivables = state.receivables.map((r) =>
-        r.id === selectedItem?.id ? { ...r, balanceDue: nextBalance, amountPaid: (r.amountPaid || r.paid || 0) + paymentAmount } : r
-      )
-      const updatedBanks = { ...state.banks }
-      updatedBanks[bankName] = (updatedBanks[bankName] ?? 0) + paymentAmount
-
-      const bankTxn = {
-        id: makeID('TXN'),
-        date: new Date().toISOString().slice(0, 10),
-        name: selectedItem?.customer || 'Customer payment',
-        activity: 'Customer payment received',
-        method: 'Bank Transfer',
-        amount: paymentAmount,
-        status: 'Completed',
-        description: `Receivable payment for ${selectedItem?.invoice}`,
-        attachments: 0,
-        type: 'Deposit',
-        bank: bankName,
-      }
-
-      updateState({
-        receivables: updatedReceivables,
-        banks: updatedBanks,
-        bankTxns: [bankTxn, ...state.bankTxns],
-      })
-      addAuditLog('PAYMENT', 'RECEIVABLES', selectedItem?.id || 'AR-000', 'Customer payment posted to accounts receivable.')
+      setShowPayment(true)
+      return
     }
+  }
+
+  const [showPayment, setShowPayment] = useState(false)
+
+  const handlePostPayment = (amount: number) => {
+    const paymentAmount = amount || 150000
+    const nextBalance = Math.max(0, (selectedItem?.balance || 0) - paymentAmount)
+    const bankName = Object.keys(state.banks)[0] || 'Access Bank'
+    const updatedReceivables = state.receivables.map((r) =>
+      r.id === selectedItem?.id ? { ...r, balanceDue: nextBalance, amountPaid: (r.amountPaid || r.paid || 0) + paymentAmount } : r
+    )
+    const updatedBanks = { ...state.banks }
+    updatedBanks[bankName] = (updatedBanks[bankName] ?? 0) + paymentAmount
+
+    const bankTxn = {
+      id: makeID('TXN'),
+      date: new Date().toISOString().slice(0, 10),
+      name: selectedItem?.customer || 'Customer payment',
+      activity: 'Customer payment received',
+      method: 'Bank Transfer',
+      amount: paymentAmount,
+      status: 'Completed',
+      description: `Receivable payment for ${selectedItem?.invoice}`,
+      attachments: 0,
+      type: 'Deposit',
+      bank: bankName,
+    }
+
+    updateState({
+      receivables: updatedReceivables,
+      banks: updatedBanks,
+      bankTxns: [bankTxn, ...state.bankTxns],
+    })
+    addAuditLog('PAYMENT', 'RECEIVABLES', selectedItem?.id || 'AR-000', 'Customer payment posted to accounts receivable.')
+    triggerAppToast('Payment Posted', `Posted ${formatCurrency(paymentAmount)} for ${selectedItem?.invoice}`)
   }
 
   const totalOutstanding = filteredReceivables.reduce((sum, item) => sum + item.balance, 0)
@@ -123,12 +133,12 @@ export default function ReceivablesPage() {
             <div className="pg-subtitle">Track customer outstanding balances, due invoices, and incoming payments.</div>
           </div>
           <div className="receivables-actions">
-            <button className="receivables-btn secondary" onClick={() => handleReceivablesAction('+ Record Payment')}>+ Record Payment</button>
-            <button className="receivables-btn secondary" onClick={() => handleReceivablesAction('+ New Invoice')}>+ New Invoice</button>
-            <button className="receivables-btn secondary" onClick={() => handleReceivablesAction('Send Reminders')}>Send Reminders</button>
-            <button className="receivables-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="receivables-btn secondary" onClick={() => handleReceivablesAction('Export Excel')}>Export Excel</button>
-            <button className="receivables-btn primary" onClick={() => handleReceivablesAction('Print')}>Print</button>
+            <button type="button" className="receivables-btn secondary" onClick={() => handleReceivablesAction('+ Record Payment')}>+ Record Payment</button>
+            <button type="button" className="receivables-btn secondary" onClick={() => handleReceivablesAction('+ New Invoice')}>+ New Invoice</button>
+            <button type="button" className="receivables-btn secondary" onClick={() => handleReceivablesAction('Send Reminders')}>Send Reminders</button>
+            <button type="button" className="receivables-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
+            <button type="button" className="receivables-btn secondary" onClick={() => handleReceivablesAction('Export Excel')}>Export Excel</button>
+            <button type="button" className="receivables-btn primary" onClick={() => handleReceivablesAction('Print')}>Print</button>
           </div>
         </div>
 
@@ -296,6 +306,8 @@ export default function ReceivablesPage() {
           </div>
         </div>
       </div>
+
+      <PaymentModal open={showPayment} onClose={() => setShowPayment(false)} onConfirm={handlePostPayment} />
     </AppLayout>
   )
 }

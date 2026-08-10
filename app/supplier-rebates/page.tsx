@@ -3,6 +3,7 @@
 import AppLayout from '@/components/layout/app-layout'
 import { useMemo, useState } from 'react'
 import { formatCurrency, triggerAppToast } from '@/lib/utils'
+import { downloadExcel } from '@/lib/export-utils'
 
 const rebateSummary = [
     { label: 'Total Rebates Earned', value: formatCurrency(0), subtitle: 'This Year', tone: 'info' },
@@ -64,11 +65,11 @@ export default function SupplierRebatesPage() {
                         <div className="pg-subtitle">Manage supplier incentives, volume discounts, promotional rewards, and rebate settlements.</div>
                     </div>
                     <div className="supplier-rebates-actions">
-                        <button className="page-btn primary" onClick={() => handleAction('+ Create Rebate Agreement')}>+ Create Rebate Agreement</button>
-                        <button className="page-btn secondary" onClick={() => handleAction('+ Record Rebate Claim')}>+ Record Rebate Claim</button>
-                        <button className="page-btn secondary" onClick={() => handleAction('Calculate Rebates')}>Calculate Rebates</button>
-                        <button className="page-btn secondary" onClick={() => handleAction('Export')}>Export</button>
-                        <button className="page-btn secondary" onClick={() => handleAction('Reports')}>Reports</button>
+                        <button type="button" className="page-btn primary" onClick={() => handleAction('+ Create Rebate Agreement')}>+ Create Rebate Agreement</button>
+                        <button type="button" className="page-btn secondary" onClick={() => handleAction('+ Record Rebate Claim')}>+ Record Rebate Claim</button>
+                        <button type="button" className="page-btn secondary" onClick={() => handleAction('Calculate Rebates')}>Calculate Rebates</button>
+                        <button type="button" className="page-btn secondary" onClick={() => handleAction('Export')}>Export</button>
+                        <button type="button" className="page-btn secondary" onClick={() => handleAction('Reports')}>Reports</button>
                     </div>
                 </div>
 

@@ -84,6 +84,7 @@ export default function AssetSchedulePage() {
     )
 
     const [selectedAssetId, setSelectedAssetId] = useState<string | null>(assetRows[0]?.id ?? null)
+    const [assetMode, setAssetMode] = useState<'view' | 'add' | 'transfer' | 'dispose' | 'depreciation'>('view')
 
     useEffect(() => {
         if (!selectedAssetId && assetRows.length > 0) {
@@ -135,12 +136,13 @@ export default function AssetSchedulePage() {
                         <div className="pg-subtitle">Manage fixed assets, depreciation, maintenance, and asset lifecycle.</div>
                     </div>
                     <div className="page-actions">
-                        <button className="action-btn primary" onClick={() => { setAssetMode('add'); handleAction('+ Add Asset') }}>+ Add Asset</button>
-                        <button className="action-btn secondary" onClick={() => { setAssetMode('transfer'); handleAction('Transfer Asset') }}>Transfer Asset</button>
-                        <button className="action-btn secondary" onClick={() => { setAssetMode('dispose'); handleAction('Dispose Asset') }}>Dispose Asset</button>
-                        <button className="action-btn secondary" onClick={() => { setAssetMode('depreciation'); handleAction('Run Depreciation') }}>Run Depreciation</button>
-                        <button className="action-btn secondary" onClick={() => handleAction('Export Register')}>Export Register</button>
+                        <button className="action-btn primary" type="button" onClick={() => { setAssetMode('add'); handleAction('+ Add Asset') }}>+ Add Asset</button>
+                        <button className="action-btn secondary" type="button" onClick={() => { setAssetMode('transfer'); handleAction('Transfer Asset') }}>Transfer Asset</button>
+                        <button className="action-btn secondary" type="button" onClick={() => { setAssetMode('dispose'); handleAction('Dispose Asset') }}>Dispose Asset</button>
+                        <button className="action-btn secondary" type="button" onClick={() => { setAssetMode('depreciation'); handleAction('Run Depreciation') }}>Run Depreciation</button>
+                        <button className="action-btn secondary" type="button" onClick={() => handleAction('Export Register')}>Export Register</button>
                     </div>
+                    <div className="asset-mode-banner">Current workflow mode: {assetMode}</div>
                 </div>
 
                 <div className="report-grid report-summary-grid">

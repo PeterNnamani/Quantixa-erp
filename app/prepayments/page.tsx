@@ -3,7 +3,8 @@
 import AppLayout from '@/components/layout/app-layout'
 import { useMemo, useState } from 'react'
 import { useAccounting } from '@/lib/context'
-import { formatCurrency, formatNumber } from '@/lib/utils'
+import { formatCurrency, formatNumber, triggerAppToast } from '@/lib/utils'
+import { downloadExcel } from '@/lib/export-utils'
 
 const summaryCards = [
   { label: 'Total Prepaid Amount', value: formatCurrency(0), subtitle: 'No prepayments yet', tone: 'info' },
@@ -65,6 +66,16 @@ export default function PrepaymentsPage() {
     { period: 'No records', amount: '—' },
   ]
 
+  const handlePrepaymentAction = (action: string) => {
+    triggerAppToast(action, 'The prepayment workflow has been queued.')
+    if (action === 'Export') {
+      downloadExcel('prepayments-export.xlsx', filteredPrepayments)
+    }
+    if (action === 'Reports') {
+      triggerAppToast('Reports', 'Prepayment reports are being prepared.')
+    }
+  }
+
   return (
     <AppLayout>
       <div className="prepayments-shell">
@@ -74,12 +85,12 @@ export default function PrepaymentsPage() {
             <div className="pg-subtitle">Manage advance payments, prepaid expenses, supplier advances, and automatic expense recognition.</div>
           </div>
           <div className="prepayments-actions">
-            <button className="page-btn primary">+ New Prepayment</button>
-            <button className="page-btn secondary">+ Record Adjustment</button>
-            <button className="page-btn secondary">Create Schedule</button>
-            <button className="page-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="page-btn secondary">Export</button>
-            <button className="page-btn secondary">Reports</button>
+            <button type="button" className="page-btn primary" onClick={() => handlePrepaymentAction('+ New Prepayment')}>+ New Prepayment</button>
+            <button type="button" className="page-btn secondary" onClick={() => handlePrepaymentAction('+ Record Adjustment')}>+ Record Adjustment</button>
+            <button type="button" className="page-btn secondary" onClick={() => handlePrepaymentAction('Create Schedule')}>Create Schedule</button>
+            <button type="button" className="page-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
+            <button type="button" className="page-btn secondary" onClick={() => handlePrepaymentAction('Export')}>Export</button>
+            <button type="button" className="page-btn secondary" onClick={() => handlePrepaymentAction('Reports')}>Reports</button>
           </div>
         </div>
 

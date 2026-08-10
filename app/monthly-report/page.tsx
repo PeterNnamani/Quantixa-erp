@@ -101,7 +101,7 @@ export default function MonthlyReportPage() {
                             </div>
                             <div className="segmented-control">
                                 {(['Daily', 'Weekly', 'Monthly'] as const).map((range) => (
-                                    <button key={range} className={`seg-chip ${activeRange === range ? 'active' : ''}`} onClick={() => { setActiveRange(range); setStatusMessage(`${range} view selected.`) }}>{range}</button>
+                                    <button key={range} type="button" className={`seg-chip ${activeRange === range ? 'active' : ''}`} onClick={() => { setActiveRange(range); setStatusMessage(`${range} view selected.`) }}>{range}</button>
                                 ))}
                             </div>
                         </div>

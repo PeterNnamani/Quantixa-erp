@@ -5,6 +5,7 @@ import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, triggerAppToast, makeID } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
+import PaymentModal from '@/components/modals/PaymentModal'
 
 
 export default function PayablesPage() {
@@ -67,36 +68,43 @@ export default function PayablesPage() {
       downloadExcel('payables-export.xlsx', filteredPayables)
     }
     if (action === '+ Record Payment') {
-      const paymentAmount = 250000
-      const nextBalance = Math.max(0, (selectedItem?.balance || 0) - paymentAmount)
-      const bankName = Object.keys(state.banks)[0] || 'Access Bank'
-      const updatedPayables = state.payables.map((p) =>
-        p.id === selectedItem?.id ? { ...p, balanceDue: nextBalance, amountPaid: (p.amountPaid || p.paid || 0) + paymentAmount } : p
-      )
-      const updatedBanks = { ...state.banks }
-      updatedBanks[bankName] = Math.max(0, (updatedBanks[bankName] ?? 0) - paymentAmount)
-
-      const bankTxn = {
-        id: makeID('TXN'),
-        date: new Date().toISOString().slice(0, 10),
-        name: selectedItem?.supplier || 'Supplier payment',
-        activity: 'Supplier payment',
-        method: 'Bank Transfer',
-        amount: -paymentAmount,
-        status: 'Completed',
-        description: `Payable payment for ${selectedItem?.id}`,
-        attachments: 0,
-        type: 'Withdrawal',
-        bank: bankName,
-      }
-
-      updateState({
-        payables: updatedPayables,
-        banks: updatedBanks,
-        bankTxns: [bankTxn, ...state.bankTxns],
-      })
-      addAuditLog('PAYMENT', 'PAYABLES', selectedItem?.id || 'BILL-000', 'Supplier payment posted to accounts payable.')
+      setShowPayment(true)
     }
+  }
+
+  const [showPayment, setShowPayment] = useState(false)
+
+  const handlePostPayment = (amount: number) => {
+    const paymentAmount = amount || 250000
+    const nextBalance = Math.max(0, (selectedItem?.balance || 0) - paymentAmount)
+    const bankName = Object.keys(state.banks)[0] || 'Access Bank'
+    const updatedPayables = state.payables.map((p) =>
+      p.id === selectedItem?.id ? { ...p, balanceDue: nextBalance, amountPaid: (p.amountPaid || p.paid || 0) + paymentAmount } : p
+    )
+    const updatedBanks = { ...state.banks }
+    updatedBanks[bankName] = Math.max(0, (updatedBanks[bankName] ?? 0) - paymentAmount)
+
+    const bankTxn = {
+      id: makeID('TXN'),
+      date: new Date().toISOString().slice(0, 10),
+      name: selectedItem?.supplier || 'Supplier payment',
+      activity: 'Supplier payment',
+      method: 'Bank Transfer',
+      amount: -paymentAmount,
+      status: 'Completed',
+      description: `Payable payment for ${selectedItem?.id}`,
+      attachments: 0,
+      type: 'Withdrawal',
+      bank: bankName,
+    }
+
+    updateState({
+      payables: updatedPayables,
+      banks: updatedBanks,
+      bankTxns: [bankTxn, ...state.bankTxns],
+    })
+    addAuditLog('PAYMENT', 'PAYABLES', selectedItem?.id || 'BILL-000', 'Supplier payment posted to accounts payable.')
+    triggerAppToast('Payment Posted', `Posted ${formatCurrency(paymentAmount)} for ${selectedItem?.id}`)
   }
 
   const totalOutstanding = filteredPayables.reduce((sum, item) => sum + item.balance, 0)
@@ -122,12 +130,12 @@ export default function PayablesPage() {
             <div className="pg-subtitle">Manage supplier invoices, outstanding bills, due payments, and vendor balances.</div>
           </div>
           <div className="payables-actions">
-            <button className="payables-btn secondary" onClick={() => handlePayablesAction('+ Record Payment')}>+ Record Payment</button>
-            <button className="payables-btn secondary" onClick={() => handlePayablesAction('+ New Supplier Bill')}>+ New Supplier Bill</button>
-            <button className="payables-btn secondary" onClick={() => handlePayablesAction('Schedule Payment')}>Schedule Payment</button>
-            <button className="payables-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="payables-btn secondary" onClick={() => handlePayablesAction('Export Excel')}>Export Excel</button>
-            <button className="payables-btn primary" onClick={() => handlePayablesAction('Print')}>Print</button>
+            <button type="button" className="payables-btn secondary" onClick={() => handlePayablesAction('+ Record Payment')}>+ Record Payment</button>
+            <button type="button" className="payables-btn secondary" onClick={() => handlePayablesAction('+ New Supplier Bill')}>+ New Supplier Bill</button>
+            <button type="button" className="payables-btn secondary" onClick={() => handlePayablesAction('Schedule Payment')}>Schedule Payment</button>
+            <button type="button" className="payables-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
+            <button type="button" className="payables-btn secondary" onClick={() => handlePayablesAction('Export Excel')}>Export Excel</button>
+            <button type="button" className="payables-btn primary" onClick={() => handlePayablesAction('Print')}>Print</button>
           </div>
         </div>
 
@@ -297,6 +305,8 @@ export default function PayablesPage() {
           </div>
         </div>
       </div>
+
+      <PaymentModal open={showPayment} onClose={() => setShowPayment(false)} onConfirm={handlePostPayment} />
     </AppLayout>
   )
 }

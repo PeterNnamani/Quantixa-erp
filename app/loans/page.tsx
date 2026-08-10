@@ -5,6 +5,8 @@ import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, triggerAppToast } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
+import PaymentModal from '@/components/modals/PaymentModal'
+import AddLoanModal from '@/components/modals/AddLoanModal'
 
 const loanSummaryCards = [
     { label: 'Total Outstanding Debt', value: formatCurrency(0), subtitle: 'No loan records yet', tone: 'info' },
@@ -68,10 +70,30 @@ export default function LoansPage() {
             downloadExcel('loans-export.xlsx', filteredLoans)
         }
         if (action === '+ Record Repayment') {
-            const updatedLoans = loans.map((loan) => loan.id === selectedLoan?.id ? { ...loan, balance: Math.max(0, loan.balance - 2000000) } : loan)
-            updateState({ loans: updatedLoans })
-            addAuditLog('PAYMENT', 'LOAN', selectedLoan?.id || 'LN-000', 'Loan repayment posted successfully.')
+            setShowPayment(true)
+            return
         }
+        if (action === '+ Add New Loan') {
+            setShowAddLoan(true)
+            return
+        }
+    }
+
+    const [showPayment, setShowPayment] = useState(false)
+    const [showAddLoan, setShowAddLoan] = useState(false)
+
+    const handlePostRepayment = (amount: number) => {
+        const repayment = amount || 2000000
+        const updatedLoans = loans.map((loan) => loan.id === selectedLoan?.id ? { ...loan, balance: Math.max(0, loan.balance - repayment) } : loan)
+        updateState({ loans: updatedLoans })
+        addAuditLog('PAYMENT', 'LOAN', selectedLoan?.id || 'LN-000', 'Loan repayment posted successfully.')
+        triggerAppToast('Repayment Posted', `Posted ${formatCurrency(repayment)} to ${selectedLoan?.id}`)
+    }
+
+    const handleCreateLoan = (loan: any) => {
+        updateState({ loans: [...state.loans, loan] })
+        addAuditLog('CREATE', 'LOAN', loan.id, 'New loan created')
+        triggerAppToast('Loan Created', `Loan ${loan.id} added`)
     }
 
     return (
@@ -83,12 +105,12 @@ export default function LoansPage() {
                         <div className="pg-subtitle">Manage business borrowing, repayment schedules, interest, lenders, and debt obligations.</div>
                     </div>
                     <div className="page-actions loans-actions">
-                        <button className="action-btn primary" onClick={() => handleLoanAction('+ Add New Loan')}>+ Add New Loan</button>
-                        <button className="action-btn secondary" onClick={() => handleLoanAction('+ Record Repayment')}>+ Record Repayment</button>
-                        <button className="action-btn secondary" onClick={() => handleLoanAction('Early Settlement')}>Early Settlement</button>
-                        <button className="action-btn secondary" onClick={() => handleLoanAction('Export')}>Export</button>
-                        <button className="action-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-                        <button className="action-btn secondary" onClick={() => handleLoanAction('Reports')}>Reports</button>
+                        <button type="button" className="action-btn primary" onClick={() => handleLoanAction('+ Add New Loan')}>+ Add New Loan</button>
+                        <button type="button" className="action-btn secondary" onClick={() => handleLoanAction('+ Record Repayment')}>+ Record Repayment</button>
+                        <button type="button" className="action-btn secondary" onClick={() => handleLoanAction('Early Settlement')}>Early Settlement</button>
+                        <button type="button" className="action-btn secondary" onClick={() => handleLoanAction('Export')}>Export</button>
+                        <button type="button" className="action-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
+                        <button type="button" className="action-btn secondary" onClick={() => handleLoanAction('Reports')}>Reports</button>
                     </div>
                 </div>
 
@@ -163,6 +185,9 @@ export default function LoansPage() {
                         </div>
                     </div>
                 )}
+
+                <PaymentModal open={showPayment} onClose={() => setShowPayment(false)} onConfirm={handlePostRepayment} />
+                <AddLoanModal open={showAddLoan} onClose={() => setShowAddLoan(false)} onCreate={handleCreateLoan} />
 
                 <div className="loans-main-grid">
                     <div className="loans-table-panel">

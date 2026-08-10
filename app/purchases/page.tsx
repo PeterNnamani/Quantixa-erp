@@ -1,10 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { Purchase } from '@/lib/context'
-import { formatCurrency, makeID, getCurrentDate, PAYMENT_TERMS, canEdit, getStatusBadgeClass } from '@/lib/utils'
+import { formatCurrency, makeID, getCurrentDate, PAYMENT_TERMS, canEdit, getStatusBadgeClass, parseNumeric } from '@/lib/utils'
+import { downloadExcel } from '@/lib/export-utils'
+import { parseExcelFile } from '@/lib/import-utils'
 
 const branchOptions = ['All Branches', 'Head Office', 'Warehouse 01', 'Warehouse 02', 'Retail Outlet']
 const paymentMethods = ['All', 'Cash', 'Bank Transfer', 'Card', 'Cheque', 'Mobile Money', 'Multiple']
@@ -61,6 +63,10 @@ export default function PurchasesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importRows, setImportRows] = useState<Record<string, unknown>[]>([])
+  const [importFileName, setImportFileName] = useState('')
+  const [importError, setImportError] = useState('')
   const [selectedPurchaseId, setSelectedPurchaseId] = useState(state.purchases[0]?.id ?? '')
   const itemsPerPage = 10
 
@@ -246,6 +252,169 @@ export default function PurchasesPage() {
     })
   }
 
+  const handleExportPurchases = () => {
+    downloadExcel('purchases-report.xlsx', filteredPurchases)
+    addAuditLog('EXPORT', 'PURCHASE', 'ALL', 'Purchases exported.')
+  }
+
+  const handleRefreshPurchases = () => {
+    setSearchTerm('')
+    setSelectedSupplier('All Suppliers')
+    setSelectedStatus('All')
+    setSelectedPaymentMethod('All')
+    setSelectedBranch('All Branches')
+    setSelectedCategory('All Categories')
+    setSelectedDateRange('This Month')
+    setCustomFrom(getCurrentDate())
+    setCustomTo(getCurrentDate())
+    setCurrentPage(1)
+    setShowFilters(false)
+    alert('Purchase list refreshed.')
+  }
+
+  const handleNewPurchase = () => {
+    setShowForm((prev) => !prev)
+  }
+
+  const handlePurchaseFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    if (!file.name.match(/\.xls(x)?$/i)) {
+      setImportError('Please upload a valid Excel file (.xls or .xlsx).')
+      setImportRows([])
+      setImportFileName('')
+      return
+    }
+
+    try {
+      const rows = await parseExcelFile(file)
+      if (rows.length === 0) {
+        setImportError('The Excel file contains no rows.')
+        setImportRows([])
+        setImportFileName(file.name)
+        return
+      }
+      setImportRows(rows)
+      setImportFileName(file.name)
+      setImportError('')
+    } catch (error) {
+      setImportError('Unable to parse the Excel file. Verify the format and try again.')
+      setImportRows([])
+      setImportFileName(file.name)
+    }
+  }
+
+  const processPurchaseImport = () => {
+    if (importRows.length === 0) {
+      setImportError('No rows are ready for import.')
+      return
+    }
+
+    const importedPurchases: Purchase[] = []
+    const suppliers = new Set(state.supplierList)
+    const inventoryUpdates = [...state.inventory]
+
+    importRows.forEach((row, index) => {
+      const supplier = String(row['Supplier'] || row['vendor'] || row['supplier'] || 'Unknown Supplier').trim()
+      const product = String(row['Product'] || row['Item'] || row['Description'] || '').trim()
+      const invoiceNumber = String(row['Invoice Number'] || row['InvoiceNo'] || row['Invoice'] || `IMP-${Date.now()}-${index}`).trim()
+      const purchaseOrder = String(row['Purchase Order'] || row['PO'] || row['Order Number'] || '').trim()
+      const date = String(row['Date'] || row['date'] || getCurrentDate()).trim()
+      const category = String(row['Category'] || row['Dept'] || row['Department'] || 'Inventory').trim() || 'Inventory'
+      const branch = String(row['Branch'] || row['Location'] || 'Head Office').trim() || 'Head Office'
+      const paymentMethod = String(row['Payment Method'] || row['Bank'] || 'Cash').trim() || 'Cash'
+      const paymentStatus = String(row['Payment Status'] || row['Status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
+      const qty = Math.max(0, parseNumeric(row['Quantity'] || row['Qty'] || row['quantity'] || 1))
+      const unitPrice = Math.max(0, parseNumeric(row['Unit Price'] || row['UnitPrice'] || row['Price'] || 0))
+      const discount = Math.max(0, parseNumeric(row['Discount'] || 0))
+      const tax = Math.max(0, parseNumeric(row['Tax'] || 0))
+      const shipping = Math.max(0, parseNumeric(row['Shipping'] || row['Freight'] || 0))
+      const amountPaid = Math.max(0, parseNumeric(row['Amount Paid'] || row['Paid'] || (paymentStatus === 'PAID' ? (qty * unitPrice - discount + tax + shipping) : 0)))
+      const dueDate = String(row['Due Date'] || row['dueDate'] || row['Due'] || getCurrentDate()).trim()
+      const notes = String(row['Notes'] || row['Memo'] || row['Description'] || '').trim()
+
+      const subtotal = qty * unitPrice
+      const total = subtotal - discount + tax + shipping
+      const balance = Math.max(0, total - amountPaid)
+      const status = paymentStatus === 'CREDIT' || paymentStatus === 'OVERDUE' ? 'Pending' : 'Completed'
+
+      const purchase: Purchase = {
+        id: makeID('PUR'),
+        date: date || getCurrentDate(),
+        dept: category,
+        product,
+        qty,
+        unitPrice,
+        transCost: shipping,
+        discount,
+        total,
+        supplier,
+        bank: paymentMethod,
+        paymentStatus,
+        dueDate: dueDate || getCurrentDate(),
+        notes,
+        status,
+        enteredBy: user?.name || 'System',
+        invoiceNumber,
+        purchaseOrder,
+        branch,
+        category,
+        paymentMethod,
+        amountPaid,
+        balance,
+        items: [
+          {
+            product,
+            sku: String(row['SKU'] || row['sku'] || ''),
+            qty,
+            unitPrice,
+            discount,
+            tax,
+            total: subtotal - discount + tax,
+          },
+        ],
+      }
+
+      importedPurchases.push(purchase)
+      suppliers.add(supplier)
+
+      const inventoryIndex = inventoryUpdates.findIndex((item) => item.product?.toLowerCase() === product.toLowerCase())
+      if (inventoryIndex >= 0) {
+        const existing = inventoryUpdates[inventoryIndex]
+        inventoryUpdates[inventoryIndex] = {
+          ...existing,
+          purchased: (existing.purchased || 0) + qty,
+          closing: (existing.closing || 0) + qty,
+        }
+      } else if (product) {
+        inventoryUpdates.push({
+          product,
+          dept: category,
+          openQty: qty,
+          purchased: qty,
+          sold: 0,
+          unitCost: unitPrice,
+          closing: qty,
+        })
+      }
+    })
+
+    updateState({
+      purchases: [...state.purchases, ...importedPurchases],
+      supplierList: Array.from(suppliers),
+      inventory: inventoryUpdates,
+    })
+
+    addAuditLog('IMPORT', 'PURCHASE', 'BULK', `Imported ${importedPurchases.length} purchase rows from ${importFileName}`)
+    setShowImportModal(false)
+    setImportRows([])
+    setImportFileName('')
+    setImportError('')
+  }
+
   const handleCancelPurchase = (purchaseId: string) => {
     updateState({
       purchases: state.purchases.map((purchase) =>
@@ -368,6 +537,35 @@ export default function PurchasesPage() {
           </div>
         )}
 
+        {showImportModal && (
+          <div className="modal-overlay">
+            <div className="modal-card">
+              <div className="card-hd">
+                <div>
+                  <div className="card-title">Import Purchases</div>
+                  <div className="section-subtitle">Upload an Excel file to import purchase history.</div>
+                </div>
+                <button className="btn btn-secondary btn-sm" type="button" onClick={() => setShowImportModal(false)}>Close</button>
+              </div>
+              <div className="form-grid" style={{ gap: '16px' }}>
+                <div className="fg">
+                  <label>Excel file</label>
+                  <input type="file" accept=".xlsx,.xls" onChange={handlePurchaseFileChange} />
+                </div>
+                {importFileName && <div className="import-summary">Selected file: {importFileName}</div>}
+                {importError && <div className="error-text">{importError}</div>}
+                {importRows.length > 0 && (
+                  <div className="import-summary">{importRows.length} purchase rows ready to import.</div>
+                )}
+              </div>
+              <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
+                <button className="btn btn-primary" type="button" disabled={importRows.length === 0} onClick={processPurchaseImport}>Import {importRows.length} rows</button>
+                <button className="btn btn-secondary" type="button" onClick={() => setShowImportModal(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="module-header">
           <div>
             <div className="module-title">Purchases</div>
@@ -377,11 +575,10 @@ export default function PurchasesPage() {
             <button className="btn btn-secondary" onClick={() => setShowFilters((prev) => !prev)}>
               {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>
-            <button className="btn btn-secondary">Export</button>
-            <button className="btn btn-secondary">Refresh</button>
-            {canEdit(user?.role || '') && (
-              <button className="btn btn-primary" onClick={() => setShowForm((prev) => !prev)}>{showForm ? 'Close Form' : '+ New Purchase'}</button>
-            )}
+            <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>Import</button>
+            <button className="btn btn-secondary" onClick={handleExportPurchases}>Export</button>
+            <button className="btn btn-secondary" onClick={handleRefreshPurchases}>Refresh</button>
+            <button className="btn btn-primary" onClick={handleNewPurchase}>{showForm ? 'Close Form' : '+ New Purchase'}</button>
           </div>
         </div>
 

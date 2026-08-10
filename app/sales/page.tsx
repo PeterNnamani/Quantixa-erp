@@ -1,10 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { Sale } from '@/lib/context'
-import { formatCurrency, makeID, getCurrentDate, PRODUCTS, PAYMENT_TERMS, canEdit } from '@/lib/utils'
+import { formatCurrency, makeID, getCurrentDate, PRODUCTS, PAYMENT_TERMS, canEdit, parseNumeric } from '@/lib/utils'
+import { downloadExcel } from '@/lib/export-utils'
+import { parseExcelFile } from '@/lib/import-utils'
 
 const branchOptions = ['All Branches', 'Head Office', 'Retail Outlet', 'Warehouse 01', 'Warehouse 02']
 const paymentMethods = ['All Payment Methods', 'Cash', 'Transfer', 'Cheque', 'Mobile Money', 'POS', 'Credit']
@@ -14,6 +16,10 @@ const categories = ['All Categories', 'Retail', 'Wholesale', 'Services', 'Genera
 export default function SalesPage() {
   const { state, updateState, user, addAuditLog } = useAccounting()
   const [showForm, setShowForm] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importRows, setImportRows] = useState<Record<string, unknown>[]>([])
+  const [importFileName, setImportFileName] = useState('')
+  const [importError, setImportError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('All')
   const [selectedBranch, setSelectedBranch] = useState('All Branches')
@@ -26,6 +32,7 @@ export default function SalesPage() {
   const [selectedSaleId, setSelectedSaleId] = useState(state.sales[0]?.id ?? '')
   const [showFilters, setShowFilters] = useState(false)
   const itemsPerPage = 10
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
 
   const sales = useMemo(() => state.sales.filter((sale) => sale.status !== 'VOID'), [state.sales])
 
@@ -179,6 +186,151 @@ export default function SalesPage() {
     })
   }
 
+  const handleNewInvoice = () => {
+    setShowForm(true)
+    setShowMoreMenu(false)
+    setFormData((prev) => ({
+      ...prev,
+      paymentMethod: 'Transfer',
+      paymentStatus: 'CREDIT',
+      notes: 'Invoice created from sales dashboard',
+    }))
+  }
+
+  const handlePosSale = () => {
+    setShowForm(true)
+    setShowMoreMenu(false)
+    setFormData((prev) => ({
+      ...prev,
+      paymentMethod: 'POS',
+      paymentStatus: 'PAID',
+      notes: 'POS sale transaction',
+    }))
+  }
+
+  const handleSaleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.match(/\.xls(x)?$/i)) {
+      setImportError('Please upload a valid Excel file (.xls or .xlsx).')
+      setImportRows([])
+      setImportFileName('')
+      return
+    }
+
+    try {
+      const rows = await parseExcelFile(file)
+      if (rows.length === 0) {
+        setImportError('The Excel file contains no rows.')
+        setImportRows([])
+        setImportFileName(file.name)
+        return
+      }
+      setImportRows(rows)
+      setImportFileName(file.name)
+      setImportError('')
+    } catch (error) {
+      setImportError('Unable to parse the Excel file. Verify the format and try again.')
+      setImportRows([])
+      setImportFileName(file.name)
+    }
+  }
+
+  const processSaleImport = () => {
+    if (importRows.length === 0) {
+      setImportError('No rows are ready for import.')
+      return
+    }
+
+    const importedSales: Sale[] = []
+    const inventoryUpdates = [...state.inventory]
+
+    importRows.forEach((row, index) => {
+      const customer = String(row['Customer'] || row['customer'] || row['Client'] || 'Walk-in Customer').trim()
+      const paymentMethod = String(row['Payment Method'] || row['paymentMethod'] || row['Method'] || 'Transfer').trim() || 'Transfer'
+      const paymentStatus = String(row['Payment Status'] || row['paymentStatus'] || row['Status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
+      const date = String(row['Date'] || row['date'] || getCurrentDate()).trim() || getCurrentDate()
+      const notes = String(row['Notes'] || row['Memo'] || row['Description'] || '').trim()
+      const branch = String(row['Branch'] || row['branch'] || 'Head Office').trim() || 'Head Office'
+      const salesRep = String(row['Sales Rep'] || row['SalesRep'] || row['Entered By'] || user?.name || 'System').trim()
+
+      const itemProduct = String(row['Product'] || row['Item'] || row['Description'] || '').trim()
+      const itemDept = String(row['Category'] || row['Dept'] || row['Department'] || 'Retail').trim() || 'Retail'
+      const qty = Math.max(0, parseNumeric(row['Quantity'] || row['Qty'] || row['quantity'] || 1))
+      const unitPrice = Math.max(0, parseNumeric(row['Unit Price'] || row['UnitPrice'] || row['Price'] || 0))
+      const subtotal = qty * unitPrice
+      const totalAmount = subtotal
+      const sale: Sale = {
+        id: makeID('INV'),
+        date,
+        customer,
+        items: [{ product: itemProduct, dept: itemDept, qty, unitPrice, total: subtotal }],
+        totalAmount,
+        paymentMethod,
+        paymentStatus,
+        notes,
+        status: paymentStatus === 'CREDIT' || paymentStatus === 'OVERDUE' ? 'PENDING' : 'ACTIVE',
+        enteredBy: salesRep,
+      }
+
+      importedSales.push(sale)
+
+      const inventoryIndex = inventoryUpdates.findIndex((item) => item.product?.toLowerCase() === itemProduct.toLowerCase())
+      if (inventoryIndex >= 0) {
+        const existing = inventoryUpdates[inventoryIndex]
+        inventoryUpdates[inventoryIndex] = {
+          ...existing,
+          sold: (existing.sold || 0) + qty,
+          closing: Math.max(0, (existing.closing || 0) - qty),
+        }
+      } else if (itemProduct) {
+        inventoryUpdates.push({
+          product: itemProduct,
+          dept: itemDept,
+          openQty: 0,
+          purchased: 0,
+          sold: qty,
+          unitCost: unitPrice,
+          closing: Math.max(0, -qty),
+        })
+      }
+    })
+
+    updateState({
+      sales: [...state.sales, ...importedSales],
+      inventory: inventoryUpdates,
+    })
+    addAuditLog('IMPORT', 'SALE', 'BULK', `Imported ${importedSales.length} sales rows from ${importFileName}`)
+    setShowImportModal(false)
+    setImportRows([])
+    setImportFileName('')
+    setImportError('')
+  }
+
+  const handleExportSales = () => {
+    downloadExcel('sales-report.xlsx', salesWithMetadata)
+    addAuditLog('EXPORT', 'SALE', 'ALL', 'Sales report exported.')
+  }
+
+  const handlePrintSales = () => {
+    if (typeof window !== 'undefined') {
+      addAuditLog('PRINT', 'SALE', 'ALL', 'Sales report printed.')
+      window.print()
+    }
+  }
+
+  const handleViewSale = (saleId: string) => {
+    setSelectedSaleId(saleId)
+    setShowForm(false)
+    setShowMoreMenu(false)
+  }
+
+  const handleMoreSaleAction = () => {
+    setShowMoreMenu(false)
+    alert('More sales actions are available in future releases.')
+  }
+
   const handleVoidSale = (saleId: string) => {
     const updatedSales = state.sales.map((sale) => (sale.id === saleId ? { ...sale, status: 'VOID' } : sale))
     updateState({ sales: updatedSales })
@@ -188,6 +340,33 @@ export default function SalesPage() {
   return (
     <AppLayout>
       <div className="module-shell">
+        {showImportModal && (
+          <div className="modal-overlay">
+            <div className="modal-card">
+              <div className="card-hd">
+                <div>
+                  <div className="card-title">Import Sales</div>
+                  <div className="section-subtitle">Upload an Excel file to import historic sales data.</div>
+                </div>
+                <button className="btn btn-secondary btn-sm" type="button" onClick={() => setShowImportModal(false)}>Close</button>
+              </div>
+              <div className="form-grid" style={{ gap: '16px' }}>
+                <div className="fg">
+                  <label>Excel file</label>
+                  <input type="file" accept=".xlsx,.xls" onChange={handleSaleFileChange} />
+                </div>
+                {importFileName && <div className="import-summary">Selected file: {importFileName}</div>}
+                {importError && <div className="error-text">{importError}</div>}
+                {importRows.length > 0 && <div className="import-summary">{importRows.length} sales rows ready to import.</div>}
+              </div>
+              <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
+                <button className="btn btn-primary" type="button" disabled={importRows.length === 0} onClick={processSaleImport}>Import {importRows.length} rows</button>
+                <button className="btn btn-secondary" type="button" onClick={() => setShowImportModal(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showForm && (
           <div className="card" style={{ position: 'relative', zIndex: 2 }}>
             <div className="card-hd">
@@ -262,12 +441,13 @@ export default function SalesPage() {
             <div className="module-subtitle">Create invoices, manage customer orders, monitor revenue, and track sales performance.</div>
           </div>
           <div className="module-actions">
-            {canEdit(user?.role || '') && <button className="btn btn-primary" onClick={() => setShowForm((prev) => !prev)}>{showForm ? 'Close' : '+ New Sale'}</button>}
-            <button className="btn btn-secondary">+ New Invoice</button>
-            <button className="btn btn-secondary">+ POS Sale</button>
-            <button className="btn btn-secondary">Export</button>
-            <button className="btn btn-secondary">Print</button>
-            <button className="btn btn-secondary">More ▾</button>
+            <button className="btn btn-primary" type="button" onClick={() => setShowForm((prev) => !prev)}>{showForm ? 'Close' : '+ New Sale'}</button>
+            <button className="btn btn-secondary" type="button" onClick={() => setShowImportModal(true)}>Import</button>
+            <button className="btn btn-secondary" type="button" onClick={handleNewInvoice}>+ New Invoice</button>
+            <button className="btn btn-secondary" type="button" onClick={handlePosSale}>+ POS Sale</button>
+            <button className="btn btn-secondary" type="button" onClick={handleExportSales}>Export</button>
+            <button className="btn btn-secondary" type="button" onClick={handlePrintSales}>Print</button>
+            <button className="btn btn-secondary" type="button" onClick={handleMoreSaleAction}>More ▾</button>
             <button
               className="btn btn-secondary"
               type="button"

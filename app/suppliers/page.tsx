@@ -48,9 +48,9 @@ export default function SuppliersPage() {
                         <p className="page-subtitle">Manage supplier relationships, purchase history, balances, and supply performance in one calm workspace.</p>
                     </div>
                     <div className="page-actions">
-                        <button className="action-btn primary" onClick={() => handleAction('+ New Supplier')}>+ New Supplier</button>
-                        <button className="action-btn" onClick={() => handleAction('Import')}>Import</button>
-                        <button className="action-btn" onClick={() => handleAction('Export')}>Export</button>
+                        <button className="action-btn primary" type="button" onClick={() => handleAction('+ New Supplier')}>+ New Supplier</button>
+                        <button className="action-btn" type="button" onClick={() => handleAction('Import')}>Import</button>
+                        <button className="action-btn" type="button" onClick={() => handleAction('Export')}>Export</button>
                     </div>
                 </div>
 

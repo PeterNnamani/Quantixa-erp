@@ -32,7 +32,7 @@ export default function AuditPage() {
     return sourceLogs.map((log, idx) => {
       const ts = new Date(log.timestamp)
       const actionName = log.action || 'Activity'
-      const moduleName = log.module || (actionName.toLowerCase().includes('invoice') ? 'Sales' : 'Accounting')
+      const moduleName = (log as any).module || (actionName.toLowerCase().includes('invoice') ? 'Sales' : 'Accounting')
       const severity = actionName.toLowerCase().includes('failed') || actionName.toLowerCase().includes('delete') || actionName.toLowerCase().includes('critical')
         ? 'Critical'
         : actionName.toLowerCase().includes('approve') || actionName.toLowerCase().includes('export')
@@ -122,11 +122,11 @@ export default function AuditPage() {
             <div className="pg-subtitle">Monitor all system activities and user actions across the organization.</div>
           </div>
           <div className="audit-actions">
-            <button className="audit-btn secondary" onClick={() => handleAction('Export PDF')}>Export PDF</button>
-            <button className="audit-btn secondary" onClick={() => handleAction('Export Excel')}>Export Excel</button>
-            <button className="audit-btn secondary" onClick={() => handleAction('Print')}>Print</button>
+            <button className="audit-btn secondary" type="button" onClick={() => handleAction('Export PDF')}>Export PDF</button>
+            <button className="audit-btn secondary" type="button" onClick={() => handleAction('Export Excel')}>Export Excel</button>
+            <button className="audit-btn secondary" type="button" onClick={() => handleAction('Print')}>Print</button>
             <button className="audit-btn secondary" type="button" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="audit-btn primary" onClick={() => handleAction('Archive Logs')}>Archive Logs</button>
+            <button className="audit-btn primary" type="button" onClick={() => handleAction('Archive Logs')}>Archive Logs</button>
           </div>
         </div>
 

@@ -29,6 +29,18 @@ export function formatNumberOrZero(value?: number | null): string {
   return formatNumber(v)
 }
 
+export function parseNumeric(value: unknown): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0
+  }
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.-]/g, '')
+    const parsed = Number(cleaned)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
+}
+
 export function makeID(prefix: string): string {
   const timestamp = Date.now().toString().slice(-8)
   const random = Math.floor(Math.random() * 10000)

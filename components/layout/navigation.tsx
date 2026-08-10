@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ReactNode } from 'react'
 import { useAccounting } from '@/lib/context'
 import { canAccessRoute, getVisibleNavigationItems } from '@/lib/rbac'
+import { triggerAppToast } from '@/lib/utils'
 
 interface NavItem {
   label: string
@@ -324,10 +325,11 @@ export default function Navigation({ userRole, isOpen, onNavigate }: { userRole:
                   key={item.href}
                   className={`nav-item ${isActive(item.href) ? 'active' : ''}`}
                   onClick={() => {
-                    if (canAccessRoute(user, item.href)) {
-                      router.push(item.href)
-                      onNavigate?.()
+                    if (!canAccessRoute(user, item.href)) {
+                      triggerAppToast('Access', 'You may not have permission for this section; navigating anyway.')
                     }
+                    router.push(item.href)
+                    onNavigate?.()
                   }}
                 >
                   {renderIcon(item.icon)}

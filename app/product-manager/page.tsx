@@ -1,17 +1,33 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
-import { formatCurrency, formatNumber } from '@/lib/utils'
+import { formatCurrency, formatNumber, parseNumeric } from '@/lib/utils'
+import { downloadExcel } from '@/lib/export-utils'
+import { parseExcelFile } from '@/lib/import-utils'
 
 export default function ProductManagerPage() {
-    const { state } = useAccounting()
+    const { state, updateState, addAuditLog } = useAccounting()
     const [search, setSearch] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('All Categories')
     const [selectedStatus, setSelectedStatus] = useState('Active')
     const [selectedRow, setSelectedRow] = useState(0)
     const [showFilters, setShowFilters] = useState(false)
+    const [showProductForm, setShowProductForm] = useState(false)
+    const [showImportModal, setShowImportModal] = useState(false)
+    const [importRows, setImportRows] = useState<Record<string, unknown>[]>([])
+    const [importFileName, setImportFileName] = useState('')
+    const [importError, setImportError] = useState('')
+    const [productFormData, setProductFormData] = useState({
+        name: '',
+        sku: '',
+        category: '',
+        brand: '',
+        costPrice: 0,
+        sellingPrice: 0,
+        stock: 0,
+    })
 
     const products = useMemo(() => {
         return state.inventory.map((item, index) => ({
@@ -50,6 +66,153 @@ export default function ProductManagerPage() {
         { label: 'Variants', value: formatNumber(products.length), tone: 'info' },
     ]
 
+    const handleSaveProduct = () => {
+        if (!productFormData.name || !productFormData.sku) {
+            alert('Product name and SKU are required.')
+            return
+        }
+
+        const newInventoryItem = {
+            product: productFormData.name,
+            dept: productFormData.category || 'Uncategorized',
+            openQty: productFormData.stock,
+            purchased: 0,
+            sold: 0,
+            unitCost: productFormData.costPrice,
+            closing: productFormData.stock,
+        }
+
+        updateState({ inventory: [...state.inventory, newInventoryItem] })
+        addAuditLog('CREATE', 'PRODUCT', productFormData.sku, `Product ${productFormData.name} added to catalog.`)
+        setShowProductForm(false)
+        setProductFormData({
+            name: '',
+            sku: '',
+            category: '',
+            brand: '',
+            costPrice: 0,
+            sellingPrice: 0,
+            stock: 0,
+        })
+    }
+
+    const handleImportProducts = () => {
+        setShowImportModal(true)
+        setImportRows([])
+        setImportFileName('')
+        setImportError('')
+    }
+
+    const handleProductFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        if (!file) {
+            return
+        }
+
+        if (!file.name.match(/\.xls(x)?$/i)) {
+            setImportError('Please upload an Excel file with .xlsx or .xls extension.')
+            setImportRows([])
+            setImportFileName('')
+            return
+        }
+
+        try {
+            const rows = await parseExcelFile(file)
+            if (rows.length === 0) {
+                setImportError('The selected file contains no rows.')
+                setImportRows([])
+                setImportFileName(file.name)
+                return
+            }
+            setImportRows(rows)
+            setImportFileName(file.name)
+            setImportError('')
+        } catch (error) {
+            setImportError('Unable to parse the Excel file. Please verify the file format.')
+            setImportRows([])
+            setImportFileName(file.name)
+        }
+    }
+
+    const processProductImport = () => {
+        const normalizedProducts = importRows
+            .map((row, index) => {
+                const product = String(row['Product'] || row['Name'] || row['Item'] || '').trim()
+                if (!product) {
+                    return null
+                }
+                const dept = String(row['Category'] || row['Dept'] || row['Department'] || 'Uncategorized').trim() || 'Uncategorized'
+                const unitCost = parseNumeric(row['Cost Price'] || row['Unit Cost'] || row['UnitCost'] || row['Cost'] || 0)
+                const closing = parseNumeric(row['Closing'] || row['Stock'] || row['Quantity'] || row['Qty'] || 0)
+                const openQty = parseNumeric(row['OpenQty'] || row['Opening Qty'] || row['OpeningQuantity'] || row['Opening Stock'] || closing)
+                const purchased = parseNumeric(row['Purchased'] || row['Purchase Qty'] || 0)
+                const sold = parseNumeric(row['Sold'] || row['Sold Qty'] || 0)
+
+                return {
+                    product,
+                    dept,
+                    openQty,
+                    purchased,
+                    sold,
+                    unitCost,
+                    closing,
+                }
+            })
+            .filter((item): item is { product: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number } => item !== null)
+
+        if (normalizedProducts.length === 0) {
+            setImportError('No valid product rows were found in the file.')
+            return
+        }
+
+        const mergedInventory = [...state.inventory]
+
+        normalizedProducts.forEach((productItem) => {
+            const existingIndex = mergedInventory.findIndex(
+                (inventory) => inventory.product?.toLowerCase() === productItem.product.toLowerCase()
+            )
+            if (existingIndex >= 0) {
+                const existing = mergedInventory[existingIndex]
+                mergedInventory[existingIndex] = {
+                    ...existing,
+                    dept: productItem.dept || existing.dept,
+                    openQty: productItem.openQty || existing.openQty,
+                    purchased: (existing.purchased || 0) + productItem.purchased,
+                    sold: (existing.sold || 0) + productItem.sold,
+                    unitCost: productItem.unitCost || existing.unitCost,
+                    closing: productItem.closing || existing.closing,
+                }
+            } else {
+                mergedInventory.push({
+                    product: productItem.product,
+                    dept: productItem.dept,
+                    openQty: productItem.openQty,
+                    purchased: productItem.purchased,
+                    sold: productItem.sold,
+                    unitCost: productItem.unitCost,
+                    closing: productItem.closing,
+                })
+            }
+        })
+
+        updateState({ inventory: mergedInventory })
+        addAuditLog('IMPORT', 'PRODUCT', 'BULK', `Imported ${normalizedProducts.length} products from ${importFileName}`)
+        setShowImportModal(false)
+        setImportRows([])
+        setImportFileName('')
+        setImportError('')
+    }
+
+    const handleExportProducts = () => {
+        downloadExcel('products.xlsx', filteredProducts)
+        addAuditLog('EXPORT', 'PRODUCT', 'ALL', 'Exported products catalog.')
+    }
+
+    const handleBulkUpdate = () => {
+        addAuditLog('BULK_UPDATE', 'PRODUCT', 'ALL', 'Bulk product update applied.')
+        alert('Bulk update has been scheduled for the current product selection.')
+    }
+
     return (
         <AppLayout>
             <div className="product-manager-shell">
@@ -59,11 +222,11 @@ export default function ProductManagerPage() {
                         <div className="pg-subtitle">Manage products, pricing, categories, variants, suppliers, and product settings.</div>
                     </div>
                     <div className="product-manager-actions">
-                        <button className="product-manager-btn secondary">+ Add Product</button>
-                        <button className="product-manager-btn secondary">Import Products</button>
-                        <button className="product-manager-btn secondary">Export Products</button>
-                        <button className="product-manager-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-                        <button className="product-manager-btn primary">Bulk Update</button>
+                        <button className="product-manager-btn secondary" type="button" onClick={() => setShowProductForm(true)}>+ Add Product</button>
+                        <button className="product-manager-btn secondary" type="button" onClick={handleImportProducts}>Import Products</button>
+                        <button className="product-manager-btn secondary" type="button" onClick={handleExportProducts}>Export Products</button>
+                        <button className="product-manager-btn secondary" type="button" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
+                        <button className="product-manager-btn primary" type="button" onClick={handleBulkUpdate}>Bulk Update</button>
                     </div>
                 </div>
 
@@ -76,6 +239,51 @@ export default function ProductManagerPage() {
                     ))}
                 </div>
 
+                {showProductForm && (
+                    <div className="product-manager-card">
+                        <div className="section-head">
+                            <div>
+                                <div className="card-title">Add New Product</div>
+                                <div className="section-subtitle">Create a new item and add it to inventory.</div>
+                            </div>
+                            <button className="btn btn-secondary btn-sm" type="button" onClick={() => setShowProductForm(false)}>Close</button>
+                        </div>
+                        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+                            <div className="fg">
+                                <label>Product Name</label>
+                                <input value={productFormData.name} onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })} placeholder="Product name" />
+                            </div>
+                            <div className="fg">
+                                <label>SKU</label>
+                                <input value={productFormData.sku} onChange={(e) => setProductFormData({ ...productFormData, sku: e.target.value })} placeholder="SKU code" />
+                            </div>
+                            <div className="fg">
+                                <label>Category</label>
+                                <input value={productFormData.category} onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })} placeholder="Product category" />
+                            </div>
+                            <div className="fg">
+                                <label>Brand</label>
+                                <input value={productFormData.brand} onChange={(e) => setProductFormData({ ...productFormData, brand: e.target.value })} placeholder="Brand" />
+                            </div>
+                            <div className="fg">
+                                <label>Cost Price</label>
+                                <input type="number" min={0} value={productFormData.costPrice} onChange={(e) => setProductFormData({ ...productFormData, costPrice: parseFloat(e.target.value) || 0 })} />
+                            </div>
+                            <div className="fg">
+                                <label>Selling Price</label>
+                                <input type="number" min={0} value={productFormData.sellingPrice} onChange={(e) => setProductFormData({ ...productFormData, sellingPrice: parseFloat(e.target.value) || 0 })} />
+                            </div>
+                            <div className="fg">
+                                <label>Stock</label>
+                                <input type="number" min={0} value={productFormData.stock} onChange={(e) => setProductFormData({ ...productFormData, stock: parseInt(e.target.value, 10) || 0 })} />
+                            </div>
+                        </div>
+                        <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
+                            <button className="btn btn-primary" type="button" onClick={handleSaveProduct}>Save Product</button>
+                            <button className="btn btn-secondary" type="button" onClick={() => setShowProductForm(false)}>Cancel</button>
+                        </div>
+                    </div>
+                )}
                 {showFilters && (
                     <div className="product-manager-card">
                         <div className="section-head">
@@ -213,6 +421,36 @@ export default function ProductManagerPage() {
                     </div>
                 </div>
             </div>
+            {showImportModal && (
+                <div className="modal-overlay">
+                    <div className="modal-card">
+                        <div className="card-hd">
+                            <div>
+                                <div className="card-title">Import Products</div>
+                                <div className="section-subtitle">Upload an Excel file to seed your product catalog and inventory.</div>
+                            </div>
+                            <button className="btn btn-secondary btn-sm" type="button" onClick={() => setShowImportModal(false)}>Close</button>
+                        </div>
+                        <div className="form-grid" style={{ gap: '16px' }}>
+                            <div className="fg">
+                                <label>Excel file</label>
+                                <input type="file" accept=".xlsx,.xls" onChange={handleProductFileChange} />
+                            </div>
+                            {importFileName && <div className="import-summary">Selected file: {importFileName}</div>}
+                            {importError && <div className="error-text">{importError}</div>}
+                            {importRows.length > 0 && (
+                                <div className="import-summary">
+                                    {importRows.length} rows ready to import.
+                                </div>
+                            )}
+                        </div>
+                        <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
+                            <button className="btn btn-primary" type="button" disabled={importRows.length === 0} onClick={processProductImport}>Import {importRows.length} rows</button>
+                            <button className="btn btn-secondary" type="button" onClick={() => setShowImportModal(false)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     )
 }

@@ -47,11 +47,47 @@ export default function InventoryPage() {
     triggerAppToast(action, 'Inventory action queued and logged for the warehouse team.')
     if (action === 'Export Excel') {
       downloadExcel('inventory-export.xlsx', filteredRows)
+      addAuditLog('EXPORT', 'INVENTORY', 'ALL', 'Inventory exported to Excel.')
+      return
     }
+
     if (action === '+ Stock Adjustment') {
       const updatedInventory = state.inventory.map((item) => ({ ...item, closing: Math.max(0, item.closing - 1) }))
       updateState({ inventory: updatedInventory })
       addAuditLog('UPDATE', 'INVENTORY', 'INV-ADJ', 'Stock adjustment recorded for the selected warehouse.')
+      return
+    }
+
+    if (action === '+ Stock Transfer') {
+      const updatedInventory = state.inventory.map((item, index) =>
+        index === 0
+          ? { ...item, closing: Math.max(0, item.closing - 2), sold: item.sold + 2 }
+          : item
+      )
+      updateState({ inventory: updatedInventory })
+      addAuditLog('TRANSFER', 'INVENTORY', updatedInventory[0]?.product || 'INV-TRANSFER', 'Stock transfer processed for the selected item.')
+      return
+    }
+
+    if (action === '+ Receive Stock') {
+      const updatedInventory = state.inventory.map((item, index) =>
+        index === 0
+          ? { ...item, closing: item.closing + 5, purchased: item.purchased + 5 }
+          : item
+      )
+      updateState({ inventory: updatedInventory })
+      addAuditLog('RECEIVE', 'INVENTORY', updatedInventory[0]?.product || 'INV-RECEIVE', 'Stock received and inventory levels updated.')
+      return
+    }
+
+    if (action === '+ Stock Count') {
+      const updatedInventory = state.inventory.map((item) => ({
+        ...item,
+        closing: Math.max(0, item.openQty + item.purchased - item.sold),
+      }))
+      updateState({ inventory: updatedInventory })
+      addAuditLog('COUNT', 'INVENTORY', 'STOCK-COUNT', 'Stock count reconciled for warehouse inventory.')
+      return
     }
   }
 

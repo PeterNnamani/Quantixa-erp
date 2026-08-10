@@ -1,0 +1,389 @@
+import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase.server'
+
+type GenericImportPayload = {
+    sales?: any[]
+    purchases?: any[]
+    products?: any[]
+    staff?: any[]
+    contacts?: any[]
+}
+
+type ContactMap = Record<string, string>
+
+function normalizeContactType(value: string | undefined): string {
+    const type = (value || '').toString().trim().toLowerCase()
+    if (type.includes('supplier')) return 'supplier'
+    if (type.includes('vendor')) return 'vendor'
+    return 'customer'
+}
+
+async function findOrCreateContact(contact: any): Promise<string | null> {
+    if (!supabaseAdmin) return null
+    const type = normalizeContactType(contact.type || contact.contact_type || contact[''] || '')
+    const name = String(contact.name || contact.full_name || contact.customer || contact.supplier || '').trim()
+    if (!name) return null
+
+    const { data: existing, error: existingErr } = await supabaseAdmin
+        .from('contacts')
+        .select('id')
+        .eq('type', type)
+        .eq('name', name)
+        .limit(1)
+
+    if (existingErr) {
+        throw existingErr
+    }
+
+    if (existing && existing.length > 0) {
+        return existing[0].id
+    }
+
+    const insertData = {
+        type,
+        name,
+        email: contact.email || null,
+        phone: contact.phone || null,
+        address: contact.address || null,
+        credit_limit: contact.credit_limit || contact.creditLimit || 0,
+        opening_balance: contact.opening_balance || contact.openingBalance || 0,
+        is_related_party: false,
+        status: contact.status || 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }
+
+    const { data: inserted, error: insertErr } = await supabaseAdmin
+        .from('contacts')
+        .insert(insertData)
+        .select('id')
+        .limit(1)
+
+    if (insertErr) {
+        throw insertErr
+    }
+
+    return inserted?.[0]?.id || null
+}
+
+async function buildContactMap(contacts: any[]): Promise<ContactMap> {
+    const map: ContactMap = {}
+    for (const item of contacts) {
+        const type = normalizeContactType(item.type || item.contact_type || item[''] || '')
+        const name = String(item.name || item.full_name || item.customer || item.supplier || '').trim()
+        if (!name) continue
+        const key = `${type}:${name}`
+        if (map[key]) continue
+        const id = await findOrCreateContact(item)
+        if (id) map[key] = id
+    }
+    return map
+}
+
+async function findOrCreateProduct(product: any): Promise<string | null> {
+    if (!supabaseAdmin) return null
+    const sku = String(product.sku || product.product_code || product.item_code || product.name || '').trim()
+    const name = String(product.name || product.product || product.item || '').trim()
+    if (!sku || !name) return null
+
+    const { data: existing, error: existingErr } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .eq('sku', sku)
+        .limit(1)
+
+    if (existingErr) {
+        throw existingErr
+    }
+
+    const insertData = {
+        sku,
+        name,
+        category: product.category || product.dept || product.department || 'General',
+        unit_cost: product.unit_cost || product.unitCost || 0,
+        unit_price: product.unit_price || product.unitPrice || 0,
+        stock_qty: product.stock_qty || product.openQty || product.closing || 0,
+        reorder_level: product.reorder_level || product.reorderLevel || 0,
+        warehouse: product.warehouse || null,
+        branch: product.branch || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }
+
+    if (existing && existing.length > 0) {
+        const { data: updated, error: updateErr } = await supabaseAdmin
+            .from('products')
+            .update(insertData)
+            .eq('id', existing[0].id)
+            .select('id')
+            .limit(1)
+
+        if (updateErr) {
+            throw updateErr
+        }
+        return updated?.[0]?.id || existing[0].id
+    }
+
+    const { data: inserted, error: insertErr } = await supabaseAdmin
+        .from('products')
+        .insert(insertData)
+        .select('id')
+        .limit(1)
+
+    if (insertErr) {
+        throw insertErr
+    }
+
+    return inserted?.[0]?.id || null
+}
+
+async function findOrCreateStaff(staff: any): Promise<string | null> {
+    if (!supabaseAdmin) return null
+    const staffId = String(staff.staffId || staff.employeeId || staff.employee_id || '').trim()
+    const username = String(staff.username || '').trim()
+    const fullName = String(staff.name || staff.full_name || '').trim() || username || staffId
+    if (!fullName) return null
+
+    const query = supabaseAdmin.from('users').select('id').or(
+        [
+            staffId ? `staff_id.eq.${staffId}` : undefined,
+            username ? `username.eq.${username}` : undefined,
+        ]
+            .filter(Boolean)
+            .join(',')
+    )
+
+    const { data: existing, error: existingErr } = await query.limit(1)
+    if (existingErr) {
+        throw existingErr
+    }
+
+    const insertData = {
+        staff_id: staffId || null,
+        username: username || null,
+        email: staff.email || `${username || staffId || 'imported'}@local`,
+        full_name: fullName,
+        role: String(staff.roleId || staff.role || 'staff'),
+        phone: staff.phone || null,
+        status: staff.status || 'active',
+        branch: staff.branch || null,
+        department: staff.department || null,
+        position: staff.position || null,
+        employee_id: staff.employeeId || staff.employee_id || null,
+        pin: staff.pin || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }
+
+    if (existing && existing.length > 0) {
+        const { data: updated, error: updateErr } = await supabaseAdmin
+            .from('users')
+            .update(insertData)
+            .eq('id', existing[0].id)
+            .select('id')
+            .limit(1)
+
+        if (updateErr) {
+            throw updateErr
+        }
+        return updated?.[0]?.id || existing[0].id
+    }
+
+    const { data: inserted, error: insertErr } = await supabaseAdmin
+        .from('users')
+        .insert(insertData)
+        .select('id')
+        .limit(1)
+
+    if (insertErr) {
+        throw insertErr
+    }
+
+    return inserted?.[0]?.id || null
+}
+
+async function insertSaleRecords(sales: any[], contactMap: ContactMap): Promise<void> {
+    if (!supabaseAdmin || sales.length === 0) return
+
+    const saleRows = sales.map((sale) => ({
+        reference: String(sale.reference || sale.id || '').trim() || `S-${Date.now()}`,
+        sale_date: sale.sale_date || sale.date || new Date().toISOString().slice(0, 10),
+        customer_id: contactMap[`customer:${String(sale.customer || 'Unknown Customer').trim()}`] || null,
+        branch: sale.branch || null,
+        sales_rep: sale.sales_rep || sale.enteredBy || null,
+        payment_method: sale.paymentMethod || sale.payment_method || 'Transfer',
+        payment_status: sale.paymentStatus || sale.payment_status || 'PAID',
+        status: sale.status || 'active',
+        notes: sale.notes || null,
+        subtotal: sale.subtotal || 0,
+        tax: sale.tax || 0,
+        discount: sale.discount || 0,
+        shipping: sale.shipping || 0,
+        total_amount: sale.totalAmount || sale.total_amount || 0,
+        amount_paid: sale.amountPaid || sale.amount_paid || 0,
+        balance: sale.balance || 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }))
+
+    const { error: salesErr } = await supabaseAdmin.from('sales').upsert(saleRows, { onConflict: 'reference' })
+    if (salesErr) {
+        throw salesErr
+    }
+
+    const references = saleRows.map((row) => row.reference)
+    const { data: storedSales, error: storedSalesErr } = await supabaseAdmin.from('sales').select('id,reference').in('reference', references)
+    if (storedSalesErr) throw storedSalesErr
+
+    const salesByRef = new Map((storedSales || []).map((item: any) => [item.reference, item.id]))
+    const saleItems: any[] = []
+
+    sales.forEach((sale) => {
+        const reference = String(sale.reference || sale.id || '').trim() || ''
+        const saleId = salesByRef.get(reference)
+        if (!saleId) return
+
+        const item = sale.items?.[0]
+        if (!item) return
+
+        saleItems.push({
+            sale_id: saleId,
+            product_id: item.product_id || null,
+            product_name: String(item.product || item.product_name || item.name || 'Imported Item').trim(),
+            department: item.dept || item.department || null,
+            qty: item.qty || item.quantity || 0,
+            unit_price: item.unitPrice || item.unit_price || 0,
+            discount: item.discount || 0,
+            tax: item.tax || 0,
+            total: item.total || 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        })
+    })
+
+    if (saleItems.length > 0) {
+        const { error: saleItemsErr } = await supabaseAdmin.from('sale_items').insert(saleItems)
+        if (saleItemsErr) {
+            throw saleItemsErr
+        }
+    }
+}
+
+async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap): Promise<void> {
+    if (!supabaseAdmin || purchases.length === 0) return
+
+    const purchaseRows = purchases.map((purchase) => ({
+        reference: String(purchase.reference || purchase.id || '').trim() || `P-${Date.now()}`,
+        purchase_date: purchase.purchase_date || purchase.date || new Date().toISOString().slice(0, 10),
+        supplier_id: contactMap[`supplier:${String(purchase.supplier || 'Unknown Supplier').trim()}`] || null,
+        branch: purchase.branch || null,
+        invoice_number: purchase.invoiceNumber || purchase.invoice_number || null,
+        purchase_order: purchase.purchaseOrder || purchase.purchase_order || null,
+        payment_method: purchase.paymentMethod || purchase.payment_method || 'Cash',
+        payment_status: purchase.paymentStatus || purchase.payment_status || 'PAID',
+        status: purchase.status || 'active',
+        notes: purchase.notes || null,
+        subtotal: purchase.subtotal || 0,
+        tax: purchase.tax || 0,
+        discount: purchase.discount || 0,
+        shipping: purchase.shipping || 0,
+        total: purchase.total || 0,
+        amount_paid: purchase.amountPaid || purchase.amount_paid || 0,
+        balance: purchase.balance || 0,
+        due_date: purchase.dueDate || purchase.due_date || null,
+        created_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }))
+
+    const { error: purchasesErr } = await supabaseAdmin.from('purchases').upsert(purchaseRows, { onConflict: 'reference' })
+    if (purchasesErr) {
+        throw purchasesErr
+    }
+
+    const references = purchaseRows.map((row) => row.reference)
+    const { data: storedPurchases, error: storedPurchasesErr } = await supabaseAdmin.from('purchases').select('id,reference').in('reference', references)
+    if (storedPurchasesErr) throw storedPurchasesErr
+
+    const purchasesByRef = new Map((storedPurchases || []).map((item: any) => [item.reference, item.id]))
+    const purchaseItems = []
+
+    purchases.forEach((purchase) => {
+        const reference = String(purchase.reference || purchase.id || '').trim() || ''
+        const purchaseId = purchasesByRef.get(reference)
+        if (!purchaseId) return
+
+        const item = purchase.items?.[0]
+        if (!item) return
+
+        purchaseItems.push({
+            purchase_id: purchaseId,
+            product_id: item.product_id || null,
+            product_name: String(item.product || item.product_name || item.name || 'Imported Item').trim(),
+            department: item.dept || item.department || null,
+            qty: item.qty || item.quantity || 0,
+            unit_price: item.unitPrice || item.unit_price || 0,
+            discount: item.discount || 0,
+            tax: item.tax || 0,
+            total: item.total || 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        })
+    })
+
+    if (purchaseItems.length > 0) {
+        const { error: purchaseItemsErr } = await supabaseAdmin.from('purchase_items').insert(purchaseItems)
+        if (purchaseItemsErr) {
+            throw purchaseItemsErr
+        }
+    }
+}
+
+export async function POST(request: Request) {
+    try {
+        if (!supabaseAdmin) {
+            return NextResponse.json({ success: false, error: 'Supabase admin client is not configured' }, { status: 500 })
+        }
+
+        const payload = (await request.json()) as GenericImportPayload
+        const contacts = Array.isArray(payload.contacts) ? payload.contacts : []
+        const sales = Array.isArray(payload.sales) ? payload.sales : []
+        const purchases = Array.isArray(payload.purchases) ? payload.purchases : []
+        const products = Array.isArray(payload.products) ? payload.products : []
+        const staff = Array.isArray(payload.staff) ? payload.staff : []
+
+        const contactMap = await buildContactMap(contacts)
+
+        for (const sale of sales) {
+            const name = String(sale.customer || sale.customer_name || sale.client || sale.name || 'Unknown Customer').trim()
+            if (name) {
+                const id = await findOrCreateContact({ type: 'customer', name })
+                if (id) contactMap[`customer:${name}`] = id
+            }
+        }
+
+        for (const purchase of purchases) {
+            const name = String(purchase.supplier || purchase.supplier_name || purchase.vendor || purchase.name || 'Unknown Supplier').trim()
+            if (name) {
+                const id = await findOrCreateContact({ type: 'supplier', name })
+                if (id) contactMap[`supplier:${name}`] = id
+            }
+        }
+
+        for (const product of products) {
+            await findOrCreateProduct(product)
+        }
+
+        for (const staffRow of staff) {
+            await findOrCreateStaff(staffRow)
+        }
+
+        await insertSaleRecords(sales, contactMap)
+        await insertPurchaseRecords(purchases, contactMap)
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return NextResponse.json({ success: false, error: message }, { status: 500 })
+    }
+}

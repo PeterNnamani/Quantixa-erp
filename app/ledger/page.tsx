@@ -3,8 +3,11 @@
 import { useMemo, useState } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
-import { formatCurrency, formatNumber } from '@/lib/utils'
+import { formatCurrency, formatNumber, triggerAppToast, makeID } from '@/lib/utils'
+import { downloadExcel, downloadPdf } from '@/lib/export-utils'
 import { calculateBalanceSheet } from '@/lib/accounting/balance-sheet'
+import ManualJournalModal from '@/components/modals/ManualJournalModal'
+import TrialBalanceModal from '@/components/modals/TrialBalanceModal'
 
 function buildLedgerEntries(state: ReturnType<typeof useAccounting>['state']) {
   const accountMap = new Map(state.chartOfAccounts.map((account) => [account.id, account]))
@@ -39,7 +42,7 @@ const typeOptions = ['Assets', 'Liabilities', 'Equity', 'Revenue', 'Expense']
 const branchOptions = ['All Branches', 'Lagos', 'Abuja', 'Enugu', 'Port Harcourt']
 
 export default function LedgerPage() {
-  const { state } = useAccounting()
+  const { state, updateState, addAuditLog } = useAccounting()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedAccount, setSelectedAccount] = useState('All Accounts')
   const [selectedType, setSelectedType] = useState('All Types')
@@ -47,7 +50,9 @@ export default function LedgerPage() {
   const [selectedSource, setSelectedSource] = useState('All Sources')
   const [selectedStatus, setSelectedStatus] = useState('Posted')
   const [selectedSort, setSelectedSort] = useState('Newest')
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters] = useState(true)
+  const [showManualModal, setShowManualModal] = useState(false)
+  const [showTrialModal, setShowTrialModal] = useState(false)
   const [selectedEntryIndex, setSelectedEntryIndex] = useState<number>(0)
 
   const journalEntries = useMemo(() => buildLedgerEntries(state), [state])
@@ -101,6 +106,43 @@ export default function LedgerPage() {
     { label: 'Current Accounting Period', value: periodLabel, tone: 'info' },
   ]
 
+  const handleLedgerAction = (action: string) => {
+    triggerAppToast(action, 'The ledger workflow has been queued.')
+    if (action === 'Export Excel') {
+      downloadExcel('general-ledger.xlsx', filteredEntries)
+      return
+    }
+    if (action === 'Export PDF') {
+      downloadPdf('general-ledger.pdf', 'General Ledger', filteredEntries.map((e) => ({ id: e.id, account: e.account, date: e.date, debit: e.debit, credit: e.credit })))
+      return
+    }
+    if (action === 'Print') {
+      triggerAppToast('Print', 'Preparing print preview...')
+      return
+    }
+    if (action === '+ Manual Journal') {
+      setShowManualModal(true)
+      return
+    }
+    if (action === 'Trial Balance') {
+      setShowTrialModal(true)
+      return
+    }
+  }
+
+  const handleCreateManualJournal = (entry: any) => {
+    const newEntry = {
+      id: entry.id,
+      entryDate: entry.entryDate || todaysDate,
+      description: entry.description || 'Manual journal',
+      sourceModule: 'MANUAL',
+      status: 'POSTED',
+    }
+    updateState({ journalEntries: [newEntry, ...state.journalEntries] })
+    addAuditLog('CREATE', 'JOURNAL', newEntry.id, 'Manual journal entry created')
+    triggerAppToast('Manual Journal', 'Manual journal saved')
+  }
+
   return (
     <AppLayout>
       <div className="ledger-shell">
@@ -110,12 +152,12 @@ export default function LedgerPage() {
             <div className="pg-subtitle">View all journal entries, account balances, and financial transactions posted across the organization.</div>
           </div>
           <div className="ledger-actions">
-            <button className="ledger-btn secondary">+ Manual Journal</button>
-            <button className="ledger-btn secondary">Trial Balance</button>
-            <button className="ledger-btn secondary">Export Excel</button>
-            <button className="ledger-btn secondary" type="button" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="ledger-btn secondary">Export PDF</button>
-            <button className="ledger-btn primary">Print</button>
+            <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('+ Manual Journal')}>+ Manual Journal</button>
+            <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('Trial Balance')}>Trial Balance</button>
+            <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('Export Excel')}>Export Excel</button>
+            <button className="ledger-btn secondary" disabled>Filters Visible</button>
+            <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('Export PDF')}>Export PDF</button>
+            <button className="ledger-btn primary" type="button" onClick={() => handleLedgerAction('Print')}>Print</button>
           </div>
         </div>
 
@@ -293,7 +335,12 @@ export default function LedgerPage() {
             </div>
           </>
         )}
+        <ManualJournalModal open={showManualModal} onClose={() => setShowManualModal(false)} onCreate={handleCreateManualJournal} />
+        <TrialBalanceModal open={showTrialModal} onClose={() => setShowTrialModal(false)} rows={filteredEntries.map((e) => ({ account: e.account, debit: e.debit, credit: e.credit }))} />
       </div>
     </AppLayout>
   )
 }
+
+// Render modals at module level export
+
