@@ -6,6 +6,8 @@ import { getDefaultRoles, type PermissionKey, type RoleDefinition } from '@/lib/
 import { createSeedLedgerData, postJournalEntry, findAccountByName } from '@/lib/ledger'
 
 export interface User {
+  companyId?: string
+  companyName?: string
   name: string
   role: string
   roleId?: string
@@ -404,17 +406,18 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     let mounted = true
 
     async function loadRemoteData() {
-      if (!supabase) return
+      if (!supabase || !user?.companyId) return
+      const companyId = user.companyId
       try {
         const [{ data: salesData, error: salesErr }, { data: purchasesData, error: purchasesErr }, { data: expensesData, error: expensesErr }, { data: inventoryData, error: inventoryErr }, { data: prepaymentsData, error: prepaymentsErr }, { data: contactsData, error: contactsErr }, { data: banksData, error: banksErr }, { data: txnsData, error: txnsErr }] = await Promise.all([
-          supabase.from('sales').select('*').order('sale_date', { ascending: false }).limit(200),
-          supabase.from('purchases').select('*').order('purchase_date', { ascending: false }).limit(200),
-          supabase.from('expenses').select('*').order('expense_date', { ascending: false }).limit(200),
-          supabase.from('products').select('*').order('updated_at', { ascending: false }).limit(200),
-          supabase.from('prepayments').select('*, prepayment_schedules(*)').order('created_at', { ascending: false }).limit(200),
-          supabase.from('contacts').select('*').order('created_at', { ascending: false }).limit(200),
-          supabase.from('bank_accounts').select('id,name,balance').order('created_at', { ascending: false }).limit(100),
-          supabase.from('bank_transactions').select('*').order('created_at', { ascending: false }).limit(200),
+          supabase.from('sales').select('*').eq('company_id', companyId).order('sale_date', { ascending: false }).limit(200),
+          supabase.from('purchases').select('*').eq('company_id', companyId).order('purchase_date', { ascending: false }).limit(200),
+          supabase.from('expenses').select('*').eq('company_id', companyId).order('expense_date', { ascending: false }).limit(200),
+          supabase.from('products').select('*').eq('company_id', companyId).order('updated_at', { ascending: false }).limit(200),
+          supabase.from('prepayments').select('*, prepayment_schedules(*)').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
+          supabase.from('contacts').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
+          supabase.from('bank_accounts').select('id,name,balance').eq('company_id', companyId).order('created_at', { ascending: false }).limit(100),
+          supabase.from('bank_transactions').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
         ])
 
         if (salesErr) console.error('Error loading sales from Supabase', salesErr)
@@ -489,7 +492,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     loadRemoteData()
 
     return () => { mounted = false }
-  }, [])
+  }, [user?.companyId])
 
   useEffect(() => {
     // Intentionally do not seed demo ledger data on first load.
@@ -504,7 +507,9 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   // Load from localStorage or sessionStorage on mount
   useEffect(() => {
     const savedUser = localStorage.getItem(AUTH_KEY) ?? sessionStorage.getItem(AUTH_KEY)
-    const savedState = localStorage.getItem(STORAGE_KEY)
+    const savedState = user?.companyId
+      ? localStorage.getItem(`${STORAGE_KEY}:${user.companyId}`)
+      : null
 
     if (savedUser) {
       setUser(JSON.parse(savedUser))
@@ -519,86 +524,91 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       })
     }
     setIsLoading(false)
-  }, [])
+  }, [user?.companyId])
 
   const updateState = (updates: Partial<AppState>) => {
+    const companyId = user?.companyId
     setState((prev) => {
       const newState = { ...prev, ...updates }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState))
-        // Persist banks and bank transactions to Supabase where possible
-        ; (async () => {
-          if (!supabase) return
+      if (companyId) {
+        localStorage.setItem(`${STORAGE_KEY}:${companyId}`, JSON.stringify(newState))
+      }
+      // Persist banks and bank transactions to Supabase where possible
+      ; (async () => {
+        if (!supabase || !companyId) return
 
-          try {
-            if (updates.prepayments) {
-              const prepayments = updates.prepayments as Prepayment[]
-              const prepaymentRows = prepayments.map((p) => ({
-                id: p.id || undefined,
-                reference: p.reference,
-                prepayment_type: p.type,
-                supplier: p.supplier,
-                original_amount: p.originalAmount,
-                used_amount: p.usedAmount,
-                remaining_amount: p.remainingAmount,
-                start_date: p.startDate || null,
-                end_date: p.endDate || null,
-                payment_method: p.paymentMethod,
-                bank_account: p.bankAccount,
-                reference_no: p.referenceNo,
-                recorded_by: p.recordedBy,
-                recognition_status: p.recognitionStatus,
-                recognition_progress: p.recognitionProgress,
-                status: p.status,
-                notes: p.notes,
-                updated_at: new Date().toISOString(),
-              }))
+        try {
+          if (updates.prepayments) {
+            const prepayments = updates.prepayments as Prepayment[]
+            const prepaymentRows = prepayments.map((p) => ({
+              company_id: companyId,
+              id: p.id || undefined,
+              reference: p.reference,
+              prepayment_type: p.type,
+              supplier: p.supplier,
+              original_amount: p.originalAmount,
+              used_amount: p.usedAmount,
+              remaining_amount: p.remainingAmount,
+              start_date: p.startDate || null,
+              end_date: p.endDate || null,
+              payment_method: p.paymentMethod,
+              bank_account: p.bankAccount,
+              reference_no: p.referenceNo,
+              recorded_by: p.recordedBy,
+              recognition_status: p.recognitionStatus,
+              recognition_progress: p.recognitionProgress,
+              status: p.status,
+              notes: p.notes,
+              updated_at: new Date().toISOString(),
+            }))
 
-              const { error: prepaymentsPersistErr } = await supabase.from('prepayments').upsert(prepaymentRows, { onConflict: 'reference' })
-              if (prepaymentsPersistErr) {
-                if (prepaymentsPersistErr.code === 'PGRST205') {
-                  console.warn('Supabase prepayments table not found. Skipping prepayments persistence.')
-                } else {
-                  throw prepaymentsPersistErr
-                }
-              }
-              const scheduleInserts = scheduleRows.filter((row) => !row.id && row.prepayment_id)
-
-              if (scheduleUpserts.length > 0) {
-                await supabase.from('prepayment_schedules').upsert(scheduleUpserts, { onConflict: 'id' })
-              }
-              if (scheduleInserts.length > 0) {
-                await supabase.from('prepayment_schedules').insert(scheduleInserts)
+            const { error: prepaymentsPersistErr } = await supabase.from('prepayments').upsert(prepaymentRows, { onConflict: 'reference' })
+            if (prepaymentsPersistErr) {
+              if (prepaymentsPersistErr.code === 'PGRST205') {
+                console.warn('Supabase prepayments table not found. Skipping prepayments persistence.')
+              } else {
+                throw prepaymentsPersistErr
               }
             }
+            const scheduleInserts = scheduleRows.filter((row) => !row.id && row.prepayment_id)
 
-            if (updates.banks) {
-              const banksArray = Object.entries(updates.banks).map(([name, balance]) => ({ name, institution: name, balance }))
-              await supabase.from('bank_accounts').upsert(banksArray, { onConflict: 'name' })
+            if (scheduleUpserts.length > 0) {
+              await supabase.from('prepayment_schedules').upsert(scheduleUpserts, { onConflict: 'id' })
             }
-
-            if (updates.bankTxns) {
-              // Fetch bank accounts to get IDs by name
-              const { data: accounts } = await supabase.from('bank_accounts').select('id,name')
-              const nameToId: Record<string, string> = {}
-                ; (accounts || []).forEach((a: any) => { nameToId[a.name] = a.id })
-
-              const txnsToInsert = (updates.bankTxns as any[]).map((t: any) => ({
-                id: t.id?.startsWith('TXN-') ? undefined : t.id,
-                bank_account_id: nameToId[t.bank] ?? null,
-                txn_date: t.date ?? new Date().toISOString().slice(0, 10),
-                description: t.description ?? t.name ?? '',
-                amount: t.amount ?? 0,
-                is_reconciled: t.status === 'Completed',
-              })).filter((x) => x.bank_account_id)
-
-              if (txnsToInsert.length > 0) {
-                await supabase.from('bank_transactions').insert(txnsToInsert)
-              }
+            if (scheduleInserts.length > 0) {
+              await supabase.from('prepayment_schedules').insert(scheduleInserts)
             }
-          } catch (err) {
-            console.error('Error persisting accounting updates to Supabase', err)
           }
-        })()
+
+          if (updates.banks) {
+            const banksArray = Object.entries(updates.banks).map(([name, balance]) => ({ company_id: companyId, name, institution: name, balance }))
+            await supabase.from('bank_accounts').upsert(banksArray, { onConflict: 'name' })
+          }
+
+          if (updates.bankTxns) {
+            // Fetch bank accounts to get IDs by name
+            const { data: accounts } = await supabase.from('bank_accounts').select('id,name').eq('company_id', companyId)
+            const nameToId: Record<string, string> = {}
+              ; (accounts || []).forEach((a: any) => { nameToId[a.name] = a.id })
+
+            const txnsToInsert = (updates.bankTxns as any[]).map((t: any) => ({
+              company_id: companyId,
+              id: t.id?.startsWith('TXN-') ? undefined : t.id,
+              bank_account_id: nameToId[t.bank] ?? null,
+              txn_date: t.date ?? new Date().toISOString().slice(0, 10),
+              description: t.description ?? t.name ?? '',
+              amount: t.amount ?? 0,
+              is_reconciled: t.status === 'Completed',
+            })).filter((x) => x.bank_account_id)
+
+            if (txnsToInsert.length > 0) {
+              await supabase.from('bank_transactions').insert(txnsToInsert)
+            }
+          }
+        } catch (err) {
+          console.error('Error persisting accounting updates to Supabase', err)
+        }
+      })()
 
       return newState
     })

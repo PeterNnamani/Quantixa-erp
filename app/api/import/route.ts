@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase.server'
 
 type GenericImportPayload = {
+    companyId?: string
     sales?: any[]
     purchases?: any[]
     products?: any[]
@@ -18,7 +19,7 @@ function normalizeContactType(value: string | undefined): string {
     return 'customer'
 }
 
-async function findOrCreateContact(contact: any): Promise<string | null> {
+async function findOrCreateContact(contact: any, companyId: string): Promise<string | null> {
     if (!supabaseAdmin) return null
     const type = normalizeContactType(contact.type || contact.contact_type || contact[''] || '')
     const name = String(contact.name || contact.full_name || contact.customer || contact.supplier || '').trim()
@@ -27,6 +28,7 @@ async function findOrCreateContact(contact: any): Promise<string | null> {
     const { data: existing, error: existingErr } = await supabaseAdmin
         .from('contacts')
         .select('id')
+        .eq('company_id', companyId)
         .eq('type', type)
         .eq('name', name)
         .limit(1)
@@ -40,6 +42,7 @@ async function findOrCreateContact(contact: any): Promise<string | null> {
     }
 
     const insertData = {
+        company_id: companyId,
         type,
         name,
         email: contact.email || null,
@@ -66,7 +69,7 @@ async function findOrCreateContact(contact: any): Promise<string | null> {
     return inserted?.[0]?.id || null
 }
 
-async function buildContactMap(contacts: any[]): Promise<ContactMap> {
+async function buildContactMap(contacts: any[], companyId: string): Promise<ContactMap> {
     const map: ContactMap = {}
     for (const item of contacts) {
         const type = normalizeContactType(item.type || item.contact_type || item[''] || '')
@@ -74,13 +77,13 @@ async function buildContactMap(contacts: any[]): Promise<ContactMap> {
         if (!name) continue
         const key = `${type}:${name}`
         if (map[key]) continue
-        const id = await findOrCreateContact(item)
+        const id = await findOrCreateContact(item, companyId)
         if (id) map[key] = id
     }
     return map
 }
 
-async function findOrCreateProduct(product: any): Promise<string | null> {
+async function findOrCreateProduct(product: any, companyId: string): Promise<string | null> {
     if (!supabaseAdmin) return null
     const sku = String(product.sku || product.product_code || product.item_code || product.name || '').trim()
     const name = String(product.name || product.product || product.item || '').trim()
@@ -89,6 +92,7 @@ async function findOrCreateProduct(product: any): Promise<string | null> {
     const { data: existing, error: existingErr } = await supabaseAdmin
         .from('products')
         .select('id')
+        .eq('company_id', companyId)
         .eq('sku', sku)
         .limit(1)
 
@@ -97,6 +101,7 @@ async function findOrCreateProduct(product: any): Promise<string | null> {
     }
 
     const insertData = {
+        company_id: companyId,
         sku,
         name,
         category: product.category || product.dept || product.department || 'General',
@@ -137,7 +142,7 @@ async function findOrCreateProduct(product: any): Promise<string | null> {
     return inserted?.[0]?.id || null
 }
 
-async function findOrCreateStaff(staff: any): Promise<string | null> {
+async function findOrCreateStaff(staff: any, companyId: string): Promise<string | null> {
     if (!supabaseAdmin) return null
     const staffId = String(staff.staffId || staff.employeeId || staff.employee_id || '').trim()
     const username = String(staff.username || '').trim()
@@ -153,12 +158,13 @@ async function findOrCreateStaff(staff: any): Promise<string | null> {
             .join(',')
     )
 
-    const { data: existing, error: existingErr } = await query.limit(1)
+    const { data: existing, error: existingErr } = await query.eq('company_id', companyId).limit(1)
     if (existingErr) {
         throw existingErr
     }
 
     const insertData = {
+        company_id: companyId,
         staff_id: staffId || null,
         username: username || null,
         email: staff.email || `${username || staffId || 'imported'}@local`,
@@ -202,10 +208,11 @@ async function findOrCreateStaff(staff: any): Promise<string | null> {
     return inserted?.[0]?.id || null
 }
 
-async function insertSaleRecords(sales: any[], contactMap: ContactMap): Promise<void> {
+async function insertSaleRecords(sales: any[], contactMap: ContactMap, companyId: string): Promise<void> {
     if (!supabaseAdmin || sales.length === 0) return
 
     const saleRows = sales.map((sale) => ({
+        company_id: companyId,
         reference: String(sale.reference || sale.id || '').trim() || `S-${Date.now()}`,
         sale_date: sale.sale_date || sale.date || new Date().toISOString().slice(0, 10),
         customer_id: contactMap[`customer:${String(sale.customer || 'Unknown Customer').trim()}`] || null,
@@ -232,7 +239,7 @@ async function insertSaleRecords(sales: any[], contactMap: ContactMap): Promise<
     }
 
     const references = saleRows.map((row) => row.reference)
-    const { data: storedSales, error: storedSalesErr } = await supabaseAdmin.from('sales').select('id,reference').in('reference', references)
+    const { data: storedSales, error: storedSalesErr } = await supabaseAdmin.from('sales').select('id,reference').eq('company_id', companyId).in('reference', references)
     if (storedSalesErr) throw storedSalesErr
 
     const salesByRef = new Map((storedSales || []).map((item: any) => [item.reference, item.id]))
@@ -247,6 +254,7 @@ async function insertSaleRecords(sales: any[], contactMap: ContactMap): Promise<
         if (!item) return
 
         saleItems.push({
+            company_id: companyId,
             sale_id: saleId,
             product_id: item.product_id || null,
             product_name: String(item.product || item.product_name || item.name || 'Imported Item').trim(),
@@ -269,10 +277,11 @@ async function insertSaleRecords(sales: any[], contactMap: ContactMap): Promise<
     }
 }
 
-async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap): Promise<void> {
+async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap, companyId: string): Promise<void> {
     if (!supabaseAdmin || purchases.length === 0) return
 
     const purchaseRows = purchases.map((purchase) => ({
+        company_id: companyId,
         reference: String(purchase.reference || purchase.id || '').trim() || `P-${Date.now()}`,
         purchase_date: purchase.purchase_date || purchase.date || new Date().toISOString().slice(0, 10),
         supplier_id: contactMap[`supplier:${String(purchase.supplier || 'Unknown Supplier').trim()}`] || null,
@@ -302,11 +311,11 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap): 
     }
 
     const references = purchaseRows.map((row) => row.reference)
-    const { data: storedPurchases, error: storedPurchasesErr } = await supabaseAdmin.from('purchases').select('id,reference').in('reference', references)
+    const { data: storedPurchases, error: storedPurchasesErr } = await supabaseAdmin.from('purchases').select('id,reference').eq('company_id', companyId).in('reference', references)
     if (storedPurchasesErr) throw storedPurchasesErr
 
     const purchasesByRef = new Map((storedPurchases || []).map((item: any) => [item.reference, item.id]))
-    const purchaseItems = []
+    const purchaseItems: any[] = []
 
     purchases.forEach((purchase) => {
         const reference = String(purchase.reference || purchase.id || '').trim() || ''
@@ -317,6 +326,7 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap): 
         if (!item) return
 
         purchaseItems.push({
+            company_id: companyId,
             purchase_id: purchaseId,
             product_id: item.product_id || null,
             product_name: String(item.product || item.product_name || item.name || 'Imported Item').trim(),
@@ -363,18 +373,22 @@ export async function POST(request: Request) {
         }
 
         const payload = (await request.json()) as GenericImportPayload
+        const companyId = String(payload.companyId || '').trim()
+        if (!companyId) {
+            return NextResponse.json({ success: false, error: 'A company is required for import' }, { status: 400 })
+        }
         const contacts = Array.isArray(payload.contacts) ? payload.contacts : []
         const sales = Array.isArray(payload.sales) ? payload.sales : []
         const purchases = Array.isArray(payload.purchases) ? payload.purchases : []
         const products = Array.isArray(payload.products) ? payload.products : []
         const staff = Array.isArray(payload.staff) ? payload.staff : []
 
-        const contactMap = await buildContactMap(contacts)
+        const contactMap = await buildContactMap(contacts, companyId)
 
         for (const sale of sales) {
             const name = String(sale.customer || sale.customer_name || sale.client || sale.name || 'Unknown Customer').trim()
             if (name) {
-                const id = await findOrCreateContact({ type: 'customer', name })
+                const id = await findOrCreateContact({ type: 'customer', name }, companyId)
                 if (id) contactMap[`customer:${name}`] = id
             }
         }
@@ -382,21 +396,21 @@ export async function POST(request: Request) {
         for (const purchase of purchases) {
             const name = String(purchase.supplier || purchase.supplier_name || purchase.vendor || purchase.name || 'Unknown Supplier').trim()
             if (name) {
-                const id = await findOrCreateContact({ type: 'supplier', name })
+                const id = await findOrCreateContact({ type: 'supplier', name }, companyId)
                 if (id) contactMap[`supplier:${name}`] = id
             }
         }
 
         for (const product of products) {
-            await findOrCreateProduct(product)
+            await findOrCreateProduct(product, companyId)
         }
 
         for (const staffRow of staff) {
-            await findOrCreateStaff(staffRow)
+            await findOrCreateStaff(staffRow, companyId)
         }
 
-        await insertSaleRecords(sales, contactMap)
-        await insertPurchaseRecords(purchases, contactMap)
+        await insertSaleRecords(sales, contactMap, companyId)
+        await insertPurchaseRecords(purchases, contactMap, companyId)
 
         return NextResponse.json({ success: true })
     } catch (error) {

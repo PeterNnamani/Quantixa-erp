@@ -216,6 +216,7 @@ export default function StaffManagementPage() {
       updateState({ staffMembers: nextStaff })
 
       const saveResult = await saveUserToDatabase({
+        companyId: user?.companyId || '',
         staffId: activeStaff.staffId || generatedStaffId,
         username: username || generatedStaffId,
         pin: generatedPin,
@@ -274,6 +275,7 @@ export default function StaffManagementPage() {
     updateState({ staffMembers: nextStaff })
 
     const saveResult = await saveUserToDatabase({
+      companyId: user?.companyId || '',
       staffId: generatedStaffId,
       username: username || generatedStaffId,
       pin: generatedPin,

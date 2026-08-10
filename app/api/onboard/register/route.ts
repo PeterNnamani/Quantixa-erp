@@ -18,8 +18,19 @@ export async function POST(request: Request) {
         // Generate a staff ID if not provided
         const generatedStaffId = staffId && String(staffId).trim().length > 0 ? String(staffId).trim() : `STF-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 9000 + 1000)}`
 
+        const { data: company, error: companyErr } = await supabaseAdmin
+            .from('companies')
+            .insert({ name: String(companyName).trim(), created_at: now, updated_at: now })
+            .select('id,name')
+            .single()
+
+        if (companyErr || !company) {
+            return NextResponse.json({ ok: false, error: companyErr?.message || 'Unable to create company' }, { status: 500 })
+        }
+
         // Insert the super-admin user
         const { error: userErr } = await supabaseAdmin.from('users').insert({
+            company_id: company.id,
             staff_id: generatedStaffId,
             username: username,
             pin: pin,
@@ -46,6 +57,7 @@ export async function POST(request: Request) {
                 is_control_account: Boolean(a.isControlAccount),
                 is_active: a.isActive !== false,
                 currency: a.currency || 'NGN',
+                company_id: company.id,
                 created_at: now,
                 updated_at: now,
             }))
@@ -64,6 +76,7 @@ export async function POST(request: Request) {
                 start_date: p.startDate || p.start_date,
                 end_date: p.endDate || p.end_date,
                 status: p.status || 'OPEN',
+                company_id: company.id,
                 created_at: now,
                 updated_at: now,
             }))
@@ -75,7 +88,7 @@ export async function POST(request: Request) {
 
         // Optionally create a bank_accounts placeholder
         try {
-            await supabaseAdmin.from('bank_accounts').insert([{ name: `${companyName} - Cash`, institution: companyName ?? 'Company', balance: 0, currency: 'NGN', status: 'active', created_at: now, updated_at: now }])
+            await supabaseAdmin.from('bank_accounts').insert([{ company_id: company.id, name: `${companyName} - Cash`, institution: companyName ?? 'Company', balance: 0, currency: 'NGN', status: 'active', created_at: now, updated_at: now }])
         } catch (e) {
             console.warn('Unable to create default bank account', e)
         }

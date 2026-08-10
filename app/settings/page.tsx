@@ -17,7 +17,7 @@ const sidebarSections = [
 ]
 
 export default function SettingsPage() {
-  const { state, updateState, addAuditLog } = useAccounting()
+  const { state, updateState, addAuditLog, user } = useAccounting()
   const [openingCapital, setOpeningCapital] = useState(state.openingCapital)
   const [activeSection, setActiveSection] = useState('company')
   const [roles, setRoles] = useState<RoleDefinition[]>(state.roles || getDefaultRoles())
@@ -142,7 +142,7 @@ export default function SettingsPage() {
       const { payload, summary } = prepareGenericImportPayload(importRows)
       setImportSummary(summary)
 
-      const result = await postJsonWithProgress('/api/import', payload, (percent) => {
+      const result = await postJsonWithProgress('/api/import', { ...payload, companyId: user?.companyId }, (percent) => {
         setImportProgress(percent)
       })
 
@@ -200,8 +200,8 @@ export default function SettingsPage() {
       }))]
 
       updateState({
-        sales: [...state.sales, ...(payload.sales || [])],
-        purchases: [...state.purchases, ...(payload.purchases || [])],
+        sales: [...state.sales, ...((payload.sales || []) as any[])],
+        purchases: [...state.purchases, ...((payload.purchases || []) as any[])],
         inventory: nextInventory,
         supplierList: nextSupplierList,
         customerList: nextCustomerList,

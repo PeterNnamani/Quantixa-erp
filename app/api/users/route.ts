@@ -10,6 +10,7 @@ export async function POST(request: Request) {
 
         const now = new Date().toISOString()
         const insertData = {
+            company_id: payload.companyId,
             staff_id: payload.staffId,
             username: payload.username,
             pin: payload.pin,
@@ -23,8 +24,8 @@ export async function POST(request: Request) {
         }
 
         // If the user already exists by username or staff ID, update instead of relying on ON CONFLICT.
-        const { data: existingByUsername } = await supabaseAdmin.from('users').select('id').eq('username', payload.username).limit(1)
-        const { data: existingByStaffId } = await supabaseAdmin.from('users').select('id').eq('staff_id', payload.staffId).limit(1)
+        const { data: existingByUsername } = await supabaseAdmin.from('users').select('id').eq('company_id', payload.companyId).eq('username', payload.username).limit(1)
+        const { data: existingByStaffId } = await supabaseAdmin.from('users').select('id').eq('company_id', payload.companyId).eq('staff_id', payload.staffId).limit(1)
 
         let error = null
         if ((existingByUsername && existingByUsername.length > 0) || (existingByStaffId && existingByStaffId.length > 0)) {

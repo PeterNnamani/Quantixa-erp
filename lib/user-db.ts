@@ -4,6 +4,8 @@ import type { User } from '@/lib/context'
 
 export interface DatabaseUserRecord {
     id?: string
+    company_id?: string | null
+    company_name?: string | null
     staff_id?: string | null
     username?: string | null
     pin?: string | null
@@ -50,12 +52,14 @@ export async function findUserInDatabase(
         return (staffId === normalizedId || username === normalizedId) && String(row.pin ?? '').trim() === normalizedPin
     })
 
-    if (!match) return null
+    if (!match || !match.company_id) return null
 
     const roleId = String(match.role || 'cashier')
     const roleDefinition = roles.find((role) => role.id === roleId)
 
     return {
+        companyId: String(match.company_id || ''),
+        companyName: match.company_name ? String(match.company_name) : undefined,
         name: String(match.full_name || match.username || match.staff_id || 'Staff User'),
         role: roleId,
         roleId,
@@ -66,6 +70,7 @@ export async function findUserInDatabase(
 }
 
 export async function saveUserToDatabase(payload: {
+    companyId: string
     staffId: string
     username: string
     pin: string

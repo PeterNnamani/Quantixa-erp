@@ -1,9 +1,18 @@
 -- Initial Supabase/PostgreSQL schema for H&amp;W Solutions Accounting
 -- Create all core tables and indexes needed for the accounting app.
 
+-- Company tenancy. Every business record is owned by exactly one company.
+CREATE TABLE IF NOT EXISTS companies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+
 -- Users and roles
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid REFERENCES companies(id) ON DELETE CASCADE,
   email text NOT NULL UNIQUE,
   full_name text NOT NULL,
   role text NOT NULL,
@@ -615,6 +624,30 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_event_time ON audit_logs(event_time);
+
+-- Add tenancy to existing installations as well as fresh installs. Existing
+-- rows are kept together in one legacy company and can be reassigned later.
+DO $$
+DECLARE
+  legacy_company_id uuid;
+  table_name text;
+BEGIN
+  INSERT INTO companies (name)
+  SELECT 'Legacy company'
+  WHERE NOT EXISTS (SELECT 1 FROM companies);
+
+  SELECT id INTO legacy_company_id FROM companies ORDER BY created_at LIMIT 1;
+
+  FOR table_name IN
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public' AND tablename <> 'companies'
+  LOOP
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES companies(id) ON DELETE CASCADE', table_name);
+    EXECUTE format('UPDATE %I SET company_id = $1 WHERE company_id IS NULL', table_name) USING legacy_company_id;
+    EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I(company_id)', 'idx_' || table_name || '_company_id', table_name);
+  END LOOP;
+END $$;
 
 -- Trigger helper for updated_at fields
 CREATE OR REPLACE FUNCTION update_updated_at_column()
