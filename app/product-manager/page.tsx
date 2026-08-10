@@ -51,7 +51,7 @@ export default function ProductManagerPage() {
                 category: item.dept || 'Uncategorized',
                 brand: '—',
                 costPrice: item.unitCost,
-                sellingPrice: item.unitCost * 1.35,
+                sellingPrice: item.sellingPrice ?? item.unitCost,
                 stockStatus: item.closing <= 0 ? 'Out of Stock' : item.closing <= 10 ? 'Low Stock' : 'In Stock',
                 status: 'Active',
                 supplier: '—',
@@ -101,6 +101,7 @@ export default function ProductManagerPage() {
             purchased: 0,
             sold: 0,
             unitCost: productFormData.costPrice,
+            sellingPrice: productFormData.sellingPrice,
             closing: productFormData.stock,
             expiryDate: productFormData.expiryDate,
             damagedExpired: productFormData.damagedExpired,
@@ -171,6 +172,7 @@ export default function ProductManagerPage() {
                 }
                 const dept = String(row['Category'] || row['Dept'] || row['Department'] || 'Uncategorized').trim() || 'Uncategorized'
                 const unitCost = parseNumeric(row['Cost Price'] || row['Unit Cost'] || row['UnitCost'] || row['Cost'] || 0)
+                const sellingPrice = parseNumeric(row['Selling Price'] || row['SellingPrice'] || row['Unit Price'] || row['Price'] || 0)
                 const closing = parseNumeric(row['Closing'] || row['Stock'] || row['Quantity'] || row['Qty'] || 0)
                 const openQty = parseNumeric(row['OpenQty'] || row['Opening Qty'] || row['OpeningQuantity'] || row['Opening Stock'] || closing)
                 const purchased = parseNumeric(row['Purchased'] || row['Purchase Qty'] || 0)
@@ -191,12 +193,13 @@ export default function ProductManagerPage() {
                     purchased,
                     sold,
                     unitCost,
+                    sellingPrice,
                     closing,
                     expiryDate,
                     damagedExpired,
                 }
             })
-            .filter((item): item is { product: string; sku: string; description: string; branch: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number; expiryDate: string; damagedExpired: number } => item !== null)
+            .filter((item): item is { product: string; sku: string; description: string; branch: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; sellingPrice: number; closing: number; expiryDate: string; damagedExpired: number } => item !== null)
 
         if (normalizedProducts.length === 0) {
             setImportError('No valid product rows were found in the file.')
@@ -221,6 +224,7 @@ export default function ProductManagerPage() {
                     purchased: (existing.purchased || 0) + productItem.purchased,
                     sold: (existing.sold || 0) + productItem.sold,
                     unitCost: productItem.unitCost || existing.unitCost,
+                    sellingPrice: productItem.sellingPrice || existing.sellingPrice || productItem.unitCost || existing.unitCost,
                     closing: productItem.closing || existing.closing,
                     expiryDate: productItem.expiryDate || existing.expiryDate,
                     damagedExpired: productItem.damagedExpired || existing.damagedExpired,
@@ -236,6 +240,7 @@ export default function ProductManagerPage() {
                     purchased: productItem.purchased,
                     sold: productItem.sold,
                     unitCost: productItem.unitCost,
+                    sellingPrice: productItem.sellingPrice || productItem.unitCost,
                     closing: productItem.closing,
                     expiryDate: productItem.expiryDate,
                     damagedExpired: productItem.damagedExpired,

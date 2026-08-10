@@ -4,7 +4,7 @@ import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { Sale } from '@/lib/context'
-import { formatCurrency, makeID, getCurrentDate, PRODUCTS, PAYMENT_TERMS, canEdit, parseNumeric } from '@/lib/utils'
+import { formatCurrency, makeID, getCurrentDate, PAYMENT_TERMS, canEdit, parseNumeric } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
 import { parseExcelFile } from '@/lib/import-utils'
 
@@ -120,14 +120,14 @@ export default function SalesPage() {
   const handleAddItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { product: '', dept: 'BEVERAGES', qty: 1, unitPrice: 0, total: 0 }],
+      items: [...formData.items, { product: '', dept: '', qty: 1, unitPrice: 0, total: 0 }],
     })
   }
 
   const [formData, setFormData] = useState({
     date: getCurrentDate(),
     customer: '',
-    items: [{ product: '', dept: 'BEVERAGES', qty: 1, unitPrice: 0, total: 0 }],
+    items: [{ product: '', dept: '', qty: 1, unitPrice: 0, total: 0 }],
     paymentMethod: 'Transfer',
     paymentStatus: 'PAID',
     notes: '',
@@ -136,6 +136,19 @@ export default function SalesPage() {
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items]
     newItems[index] = { ...newItems[index], [field]: value }
+
+    if (field === 'product') {
+      const inventoryItem = state.inventory.find((item) => item.product.toLowerCase() === String(value).toLowerCase())
+      newItems[index] = {
+        ...newItems[index],
+        dept: inventoryItem?.dept || '',
+        unitPrice: inventoryItem?.sellingPrice ?? inventoryItem?.unitCost ?? 0,
+      }
+    }
+
+    if (field === 'dept') {
+      newItems[index] = { ...newItems[index], product: '', unitPrice: 0, total: 0 }
+    }
 
     if (field === 'qty' || field === 'unitPrice') {
       const qty = parseFloat(newItems[index].qty as any) || 0
@@ -159,6 +172,26 @@ export default function SalesPage() {
       return
     }
 
+    const inventoryUpdates = [...state.inventory]
+    for (const item of formData.items) {
+      const inventoryIndex = inventoryUpdates.findIndex((inventoryItem) => inventoryItem.product.toLowerCase() === item.product.toLowerCase())
+      if (inventoryIndex < 0) {
+        alert(`Product ${item.product} is not available in inventory.`)
+        return
+      }
+      const inventoryItem = inventoryUpdates[inventoryIndex]
+      if (item.qty > inventoryItem.closing) {
+        alert(`Only ${inventoryItem.closing} unit(s) of ${inventoryItem.product} are available.`)
+        return
+      }
+      inventoryUpdates[inventoryIndex] = {
+        ...inventoryItem,
+        sold: inventoryItem.sold + item.qty,
+        closing: inventoryItem.closing - item.qty,
+        lastSaleDate: formData.date,
+      }
+    }
+
     const totalAmount = formData.items.reduce((sum, item) => sum + item.total, 0)
     const sale: Sale = {
       id: makeID('INV'),
@@ -173,13 +206,13 @@ export default function SalesPage() {
       enteredBy: user?.name || 'System',
     }
 
-    updateState({ sales: [...state.sales, sale] })
+    updateState({ sales: [...state.sales, sale], inventory: inventoryUpdates })
     addAuditLog('CREATE', 'SALE', sale.id, `Sale created for ${sale.customer}: ${formatCurrency(totalAmount)}`)
     setShowForm(false)
     setFormData({
       date: getCurrentDate(),
       customer: '',
-      items: [{ product: '', dept: 'BEVERAGES', qty: 1, unitPrice: 0, total: 0 }],
+      items: [{ product: '', dept: '', qty: 1, unitPrice: 0, total: 0 }],
       paymentMethod: 'Transfer',
       paymentStatus: 'PAID',
       notes: '',
@@ -245,8 +278,9 @@ export default function SalesPage() {
 
     const importedSales: Sale[] = []
     const inventoryUpdates = [...state.inventory]
+    const importErrors: string[] = []
 
-    importRows.forEach((row, index) => {
+    importRows.forEach((row) => {
       const customer = String(row['Customer'] || row['customer'] || row['Client'] || 'Walk-in Customer').trim()
       const paymentMethod = String(row['Payment Method'] || row['paymentMethod'] || row['Method'] || 'Transfer').trim() || 'Transfer'
       const paymentStatus = String(row['Payment Status'] || row['paymentStatus'] || row['Status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
@@ -256,9 +290,21 @@ export default function SalesPage() {
       const salesRep = String(row['Sales Rep'] || row['SalesRep'] || row['Entered By'] || user?.name || 'System').trim()
 
       const itemProduct = String(row['Product'] || row['Item'] || row['Description'] || '').trim()
-      const itemDept = String(row['Category'] || row['Dept'] || row['Department'] || 'Retail').trim() || 'Retail'
+      const requestedDept = String(row['Category'] || row['Dept'] || row['Department'] || '').trim()
       const qty = Math.max(0, parseNumeric(row['Quantity'] || row['Qty'] || row['quantity'] || 1))
-      const unitPrice = Math.max(0, parseNumeric(row['Unit Price'] || row['UnitPrice'] || row['Price'] || 0))
+      const inventoryIndex = inventoryUpdates.findIndex((item) => item.product?.toLowerCase() === itemProduct.toLowerCase())
+      const inventoryItem = inventoryIndex >= 0 ? inventoryUpdates[inventoryIndex] : undefined
+      if (!inventoryItem) {
+        importErrors.push(`${itemProduct || 'Blank product'} is not in inventory`)
+        return
+      }
+      if (qty > inventoryItem.closing) {
+        importErrors.push(`${inventoryItem.product} has only ${inventoryItem.closing} unit(s) available`)
+        return
+      }
+      const itemDept = inventoryItem.dept || requestedDept || 'General'
+      const importedUnitPrice = parseNumeric(row['Unit Price'] || row['UnitPrice'] || row['Price'] || 0)
+      const unitPrice = Math.max(0, importedUnitPrice || inventoryItem.sellingPrice || inventoryItem.unitCost || 0)
       const subtotal = qty * unitPrice
       const totalAmount = subtotal
       const sale: Sale = {
@@ -276,26 +322,18 @@ export default function SalesPage() {
 
       importedSales.push(sale)
 
-      const inventoryIndex = inventoryUpdates.findIndex((item) => item.product?.toLowerCase() === itemProduct.toLowerCase())
-      if (inventoryIndex >= 0) {
-        const existing = inventoryUpdates[inventoryIndex]
-        inventoryUpdates[inventoryIndex] = {
-          ...existing,
-          sold: (existing.sold || 0) + qty,
-          closing: Math.max(0, (existing.closing || 0) - qty),
-        }
-      } else if (itemProduct) {
-        inventoryUpdates.push({
-          product: itemProduct,
-          dept: itemDept,
-          openQty: 0,
-          purchased: 0,
-          sold: qty,
-          unitCost: unitPrice,
-          closing: Math.max(0, -qty),
-        })
+      inventoryUpdates[inventoryIndex] = {
+        ...inventoryItem,
+        sold: inventoryItem.sold + qty,
+        closing: inventoryItem.closing - qty,
+        lastSaleDate: date,
       }
     })
+
+    if (importErrors.length > 0) {
+      setImportError(importErrors.join('. '))
+      return
+    }
 
     updateState({
       sales: [...state.sales, ...importedSales],
@@ -404,18 +442,19 @@ export default function SalesPage() {
                 {formData.items.map((item, idx) => (
                   <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '8px', marginBottom: '10px' }}>
                     <select value={item.dept} onChange={(e) => handleItemChange(idx, 'dept', e.target.value)}>
-                      {Object.keys(PRODUCTS).map((dept) => (
+                      <option value="">Select category</option>
+                      {Array.from(new Set(state.inventory.map((inventoryItem) => inventoryItem.dept))).map((dept) => (
                         <option key={dept} value={dept}>{dept}</option>
                       ))}
                     </select>
                     <select value={item.product} onChange={(e) => handleItemChange(idx, 'product', e.target.value)}>
                       <option value="">Select product</option>
-                      {PRODUCTS[item.dept].map((product) => (
-                        <option key={product} value={product}>{product}</option>
+                      {state.inventory.filter((inventoryItem) => !item.dept || inventoryItem.dept === item.dept).map((inventoryItem) => (
+                        <option key={inventoryItem.sku || inventoryItem.product} value={inventoryItem.product} disabled={inventoryItem.closing <= 0}>{inventoryItem.product} ({inventoryItem.closing} available)</option>
                       ))}
                     </select>
                     <input type="number" min={1} value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', parseInt(e.target.value, 10) || 0)} placeholder="Qty" />
-                    <input type="number" min={0} value={item.unitPrice} onChange={(e) => handleItemChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)} placeholder="Price" />
+                    <input type="number" min={0} value={item.unitPrice} onChange={(e) => handleItemChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)} placeholder="Selling price" aria-label="Selling price" />
                     <button className="btn btn-sm btn-danger" type="button" onClick={() => handleRemoveItem(idx)}>?</button>
                   </div>
                 ))}
