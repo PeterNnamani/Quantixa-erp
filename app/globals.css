@@ -3228,6 +3228,86 @@ html[data-theme='dark'] .topbar {
   background: #f6f9ff;
 }
 
+/* Responsive tweaks for the signin / auth hero layout
+   — Preserve desktop styling but make the signin card fit small screens */
+@media (max-width: 1024px) {
+  .auth-hero {
+    padding: 28px;
+    gap: 18px;
+  }
+
+  .auth-hero .hero-left {
+    min-height: 520px;
+    padding: 36px;
+  }
+
+  .auth-hero .auth-card {
+    flex: 0 0 440px;
+    max-width: 440px;
+    padding: 36px;
+  }
+
+  .auth-hero .auth-card .panel-title {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-hero {
+    padding: 18px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* On small screens hide the large hero panel to prioritise the signin card */
+  .auth-hero .hero-left {
+    display: none;
+  }
+
+  .auth-hero .auth-card {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 520px;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .auth-hero .auth-card .panel-header {
+    align-items: center;
+    text-align: center;
+  }
+
+  .auth-hero .auth-card .panel-title {
+    font-size: 22px;
+  }
+
+  .auth-hero .auth-card .panel-copy {
+    font-size: 14px;
+    max-width: 100%;
+  }
+
+  .auth-hero .auth-card .fg input {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .auth-hero .auth-card .btn-primary {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .auth-hero .login-mark {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  .panel-eyebrow {
+    font-size: 12px;
+  }
+}
+
 /* ── LAYOUT ─────────────────────────────────────────────── */
 .layout {
   display: flex;
