@@ -233,6 +233,23 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS expiry_date date;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS damaged_expired integer NOT NULL DEFAULT 0;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS description text;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS branch text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS brand text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS uom text NOT NULL DEFAULT 'Unit';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS pack_size text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS base_unit text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS conversion_factor numeric(18,6) NOT NULL DEFAULT 1;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS reserved_qty integer NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS average_cost numeric(18,2) NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS reorder_quantity integer NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS maximum_stock_level integer NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS batch_number text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS manufacturing_date date;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS last_purchase_date date;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS last_sale_date date;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS remarks text;
 
 DO $$
 BEGIN
@@ -369,6 +386,34 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
 );
 
 CREATE INDEX IF NOT EXISTS idx_inventory_movements_product_id ON inventory_movements(product_id);
+
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS transaction_id text;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS reference_number text;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS from_location text;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS to_location text;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS supplier_customer text;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS staff text;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS batch_number text;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS expiry_date date;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS remarks text;
+
+CREATE TABLE IF NOT EXISTS stock_counts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  count_date date NOT NULL,
+  product_id uuid NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  book_stock integer NOT NULL DEFAULT 0,
+  physical_stock integer NOT NULL DEFAULT 0,
+  variance integer NOT NULL DEFAULT 0,
+  unit_cost numeric(18,2) NOT NULL DEFAULT 0,
+  variance_value numeric(18,2) NOT NULL DEFAULT 0,
+  reason text,
+  verified_by text,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_counts_product_id ON stock_counts(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_counts_date ON stock_counts(count_date);
 
 -- Subledger tables for sales, receipts, and reconciliation
 CREATE TABLE IF NOT EXISTS customers (

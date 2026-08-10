@@ -7,6 +7,7 @@ import { formatCurrency, formatNumber, parseNumeric } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
 import { parseExcelFile } from '@/lib/import-utils'
 import { generateSku } from '@/lib/sku'
+import InventorySheetTable, { type InventorySheet } from '@/components/inventory/inventory-sheet-table'
 
 export default function ProductManagerPage() {
     const { state, updateState, addAuditLog } = useAccounting()
@@ -14,6 +15,7 @@ export default function ProductManagerPage() {
     const [selectedCategory, setSelectedCategory] = useState('All Categories')
     const [selectedStatus, setSelectedStatus] = useState('Active')
     const [selectedRow, setSelectedRow] = useState(0)
+    const [selectedSheet, setSelectedSheet] = useState<InventorySheet>('product-master')
     const [showFilters, setShowFilters] = useState(false)
     const [showProductForm, setShowProductForm] = useState(false)
     const [showImportModal, setShowImportModal] = useState(false)
@@ -407,6 +409,17 @@ export default function ProductManagerPage() {
                         </div>
                     </div>
                 )}
+
+                <InventorySheetTable
+                    sheet={selectedSheet}
+                    onSheetChange={setSelectedSheet}
+                    inventory={state.inventory}
+                    purchases={state.purchases}
+                    sales={state.sales}
+                    auditLogs={state.auditLogs}
+                    supplierList={state.supplierList}
+                    search={search}
+                />
 
                 <div className="product-manager-content-grid">
                     <div className="product-manager-card">

@@ -5,6 +5,7 @@ import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, triggerAppToast } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
+import InventorySheetTable, { type InventorySheet } from '@/components/inventory/inventory-sheet-table'
 
 export default function InventoryPage() {
   const { state, updateState, addAuditLog } = useAccounting()
@@ -12,7 +13,7 @@ export default function InventoryPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState('Main Warehouse')
   const [selectedCategory, setSelectedCategory] = useState('All Categories')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
-  const [selectedRow, setSelectedRow] = useState(0)
+  const [selectedSheet, setSelectedSheet] = useState<InventorySheet>('product-master')
   const [showFilters, setShowFilters] = useState(false)
 
   const inventoryRows = useMemo(() => {
@@ -41,8 +42,6 @@ export default function InventoryPage() {
       return matchesQuery && matchesWarehouse && matchesCategory && matchesStatus
     })
   }, [inventoryRows, search, selectedCategory, selectedStatus, selectedWarehouse])
-
-  const selectedItem = filteredRows[selectedRow] || filteredRows[0]
 
   const handleInventoryAction = (action: string) => {
     triggerAppToast(action, 'Inventory action queued and logged for the warehouse team.')
@@ -198,89 +197,16 @@ export default function InventoryPage() {
           </div>
         )}
 
-        <div className="inventory-content-grid">
-          <div className="inventory-card">
-            <div className="section-head">
-              <div>
-                <div className="card-title">Inventory Table</div>
-                <div className="section-subtitle">Showing {filteredRows.length} stock records.</div>
-              </div>
-            </div>
-            <div className="inventory-table-wrap">
-              <table className="inventory-table">
-                <thead>
-                  <tr>
-                    <th>SKU</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Warehouse</th>
-                    <th>Available</th>
-                    <th>Expiry Date</th>
-                    <th>Damaged/Expired</th>
-                    <th>Reorder</th>
-                    <th>Unit Cost</th>
-                    <th>Stock Value</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.map((row, index) => (
-                    <tr key={row.id} onClick={() => setSelectedRow(index)} className={selectedItem?.id === row.id ? 'selected' : ''}>
-                      <td>{row.id}</td>
-                      <td>{row.product}</td>
-                      <td>{row.category}</td>
-                      <td>{row.warehouse}</td>
-                      <td>{row.available}</td>
-                      <td>{row.expiryDate || '—'}</td>
-                      <td>{row.damagedExpired}</td>
-                      <td>{row.reorderLevel}</td>
-                      <td>{formatCurrency(row.unitCost)}</td>
-                      <td>{formatCurrency(row.stockValue)}</td>
-                      <td>
-                        <span className={`inventory-pill ${row.status === 'Out of Stock' ? 'danger' : row.status === 'Low Stock' ? 'warning' : 'success'}`}>
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="inventory-side-stack">
-            <div className="inventory-card">
-              <div className="section-head">
-                <div>
-                  <div className="card-title">Stock Summary</div>
-                  <div className="section-subtitle">Selected item movement overview.</div>
-                </div>
-              </div>
-              <div className="inventory-detail-panel">
-                <div className="inventory-detail-row"><span>Available Quantity</span><strong>{selectedItem?.available || 0}</strong></div>
-                <div className="inventory-detail-row"><span>Damaged/Expired</span><strong>{selectedItem?.damagedExpired || 0}</strong></div>
-                <div className="inventory-detail-row"><span>Committed</span><strong>{Math.max(0, Math.floor((selectedItem?.available || 0) * 0.05))}</strong></div>
-                <div className="inventory-detail-row"><span>Damaged</span><strong>0</strong></div>
-                <div className="inventory-detail-row"><span>In Transit</span><strong>0</strong></div>
-                <div className="inventory-detail-row"><span>On Order</span><strong>0</strong></div>
-              </div>
-            </div>
-
-            <div className="inventory-card">
-              <div className="section-head">
-                <div>
-                  <div className="card-title">Inventory Alerts</div>
-                  <div className="section-subtitle">Operational exceptions needing attention.</div>
-                </div>
-              </div>
-              <div className="inventory-alert-list">
-                <div className="inventory-alert warning">Low stock on selected items.</div>
-                <div className="inventory-alert danger">Negative stock detected in one location.</div>
-                <div className="inventory-alert success">Pending transfer ready for approval.</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <InventorySheetTable
+          sheet={selectedSheet}
+          onSheetChange={setSelectedSheet}
+          inventory={state.inventory}
+          purchases={state.purchases}
+          sales={state.sales}
+          auditLogs={state.auditLogs}
+          supplierList={state.supplierList}
+          search={search}
+        />
       </div>
     </AppLayout>
   )

@@ -113,15 +113,35 @@ export interface Expense {
 export interface InventoryItem {
   product: string
   sku?: string
+  barcode?: string
   description?: string
   branch?: string
   dept: string
+  subCategory?: string
+  brand?: string
+  uom?: string
+  packSize?: string
+  baseUnit?: string
+  conversionFactor?: number
   openQty: number
   purchased: number
   sold: number
+  reserved?: number
   unitCost: number
+  averageCost?: number
+  sellingPrice?: number
   closing: number
+  reorderLevel?: number
+  reorderQuantity?: number
+  maximumStockLevel?: number
+  supplier?: string
+  batchNumber?: string
   expiryDate?: string
+  manufacturingDate?: string
+  lastPurchaseDate?: string
+  lastSaleDate?: string
+  active?: boolean
+  remarks?: string
   damagedExpired?: number
 }
 
@@ -343,15 +363,35 @@ function normalizeRemoteInventory(data: any[]): AppState['inventory'] {
   return (data || []).map((item: any) => ({
     product: item.name || item.sku || item.id,
     sku: item.sku || '',
+    barcode: item.barcode || '',
     description: item.description || '',
     branch: item.branch || '',
     dept: item.category || item.branch || 'General',
+    subCategory: item.sub_category || '',
+    brand: item.brand || '',
+    uom: item.uom || 'Unit',
+    packSize: item.pack_size || '',
+    baseUnit: item.base_unit || '',
+    conversionFactor: Number(item.conversion_factor || 1),
     openQty: Number(item.stock_qty || 0),
     purchased: 0,
     sold: 0,
+    reserved: Number(item.reserved_qty || 0),
     unitCost: Number(item.unit_cost || 0),
+    averageCost: Number(item.average_cost || item.unit_cost || 0),
+    sellingPrice: Number(item.unit_price || 0),
     closing: Number(item.stock_qty || 0),
+    reorderLevel: Number(item.reorder_level || 0),
+    reorderQuantity: Number(item.reorder_quantity || 0),
+    maximumStockLevel: Number(item.maximum_stock_level || 0),
+    supplier: item.supplier || '',
+    batchNumber: item.batch_number || '',
     expiryDate: item.expiry_date || '',
+    manufacturingDate: item.manufacturing_date || '',
+    lastPurchaseDate: item.last_purchase_date || '',
+    lastSaleDate: item.last_sale_date || '',
+    active: item.status !== 'inactive',
+    remarks: item.remarks || '',
     damagedExpired: Number(item.damaged_expired || 0),
   }))
 }
