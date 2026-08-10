@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from './supabase.browser'
 import { getDefaultRoles, type PermissionKey, type RoleDefinition } from '@/lib/rbac'
 import { createSeedLedgerData, postJournalEntry, findAccountByName } from '@/lib/ledger'
+import { generateSku } from '@/lib/sku'
 
 export interface User {
   companyId?: string
@@ -396,6 +397,16 @@ function normalizeRemoteInventory(data: any[]): AppState['inventory'] {
   }))
 }
 
+function normalizeInventorySkus(inventory: InventoryItem[]): InventoryItem[] {
+  const usedSkus = inventory.map((item) => item.sku).filter((sku): sku is string => Boolean(sku))
+  return inventory.map((item) => {
+    if (item.sku) return item
+    const sku = generateSku(item.product, usedSkus)
+    usedSkus.push(sku)
+    return { ...item, sku }
+  })
+}
+
 function normalizeRemotePrepayments(data: any[]): AppState['prepayments'] {
   return (data || []).map((item: any) => ({
     id: item.id,
@@ -569,6 +580,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       setState({
         ...defaultState,
         ...parsedState,
+        inventory: Array.isArray(parsedState.inventory) ? normalizeInventorySkus(parsedState.inventory) : defaultState.inventory,
         roles: Array.isArray(parsedState.roles) && parsedState.roles.length > 0 ? parsedState.roles : defaultState.roles,
         staffMembers: Array.isArray(parsedState.staffMembers) ? parsedState.staffMembers : defaultState.staffMembers,
       })
@@ -579,7 +591,10 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   const updateState = (updates: Partial<AppState>) => {
     const companyId = user?.companyId
     setState((prev) => {
-      const newState = { ...prev, ...updates }
+      const normalizedUpdates = updates.inventory
+        ? { ...updates, inventory: normalizeInventorySkus(updates.inventory) }
+        : updates
+      const newState = { ...prev, ...normalizedUpdates }
       if (companyId) {
         localStorage.setItem(`${STORAGE_KEY}:${companyId}`, JSON.stringify(newState))
       }
@@ -630,18 +645,42 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          if (updates.banks) {
-            const banksArray = Object.entries(updates.banks).map(([name, balance]) => ({ company_id: companyId, name, institution: name, balance }))
+          if (normalizedUpdates.inventory) {
+            const inventoryRows = (normalizedUpdates.inventory as InventoryItem[]).map((item) => ({
+              company_id: companyId,
+              sku: item.sku,
+              name: item.product,
+              description: item.description || null,
+              category: item.dept || 'General',
+              unit_cost: item.unitCost || 0,
+              average_cost: item.averageCost ?? item.unitCost ?? 0,
+              unit_price: item.sellingPrice ?? item.unitCost ?? 0,
+              stock_qty: item.closing || 0,
+              reserved_qty: item.reserved || 0,
+              expiry_date: item.expiryDate || null,
+              damaged_expired: item.damagedExpired || 0,
+              reorder_level: item.reorderLevel || 0,
+              reorder_quantity: item.reorderQuantity || 0,
+              maximum_stock_level: item.maximumStockLevel || 0,
+              branch: item.branch || null,
+              updated_at: new Date().toISOString(),
+            }))
+            const { error: inventoryPersistErr } = await supabase.from('products').upsert(inventoryRows, { onConflict: 'sku' })
+            if (inventoryPersistErr) throw inventoryPersistErr
+          }
+
+          if (normalizedUpdates.banks) {
+            const banksArray = Object.entries(normalizedUpdates.banks).map(([name, balance]) => ({ company_id: companyId, name, institution: name, balance }))
             await supabase.from('bank_accounts').upsert(banksArray, { onConflict: 'name' })
           }
 
-          if (updates.bankTxns) {
+          if (normalizedUpdates.bankTxns) {
             // Fetch bank accounts to get IDs by name
             const { data: accounts } = await supabase.from('bank_accounts').select('id,name').eq('company_id', companyId)
             const nameToId: Record<string, string> = {}
               ; (accounts || []).forEach((a: any) => { nameToId[a.name] = a.id })
 
-            const txnsToInsert = (updates.bankTxns as any[]).map((t: any) => ({
+            const txnsToInsert = (normalizedUpdates.bankTxns as any[]).map((t: any) => ({
               company_id: companyId,
               id: t.id?.startsWith('TXN-') ? undefined : t.id,
               bank_account_id: nameToId[t.bank] ?? null,
