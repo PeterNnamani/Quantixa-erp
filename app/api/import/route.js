@@ -428,6 +428,23 @@ function insertPurchaseRecords(purchases, contactMap) {
         });
     });
 }
+function formatErrorMessage(error) {
+    if (!error) return 'Unknown server error';
+    if (error instanceof Error) return error.message;
+    if (typeof error === 'string') return error;
+    if (typeof error === 'object') {
+        if ('message' in error && typeof error.message === 'string') {
+            return error.message;
+        }
+        try {
+            return JSON.stringify(error);
+        }
+        catch (_a) {
+            return String(error);
+        }
+    }
+    return String(error);
+}
 function POST(request) {
     return __awaiter(this, void 0, void 0, function () {
         var payload, contacts, sales, purchases, products, staff, contactMap, _i, sales_1, sale, name_2, id, _a, purchases_1, purchase, name_3, id, _b, products_1, product, _c, staff_1, staffRow, error_1, message;
@@ -517,7 +534,7 @@ function POST(request) {
                     return [2 /*return*/, server_1.NextResponse.json({ success: true })];
                 case 21:
                     error_1 = _d.sent();
-                    message = error_1 instanceof Error ? error_1.message : String(error_1);
+                    message = formatErrorMessage(error_1);
                     return [2 /*return*/, server_1.NextResponse.json({ success: false, error: message }, { status: 500 })];
                 case 22: return [2 /*return*/];
             }

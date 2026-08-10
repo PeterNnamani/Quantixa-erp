@@ -339,6 +339,23 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap): 
     }
 }
 
+function formatErrorMessage(error: unknown): string {
+    if (!error) return 'Unknown server error'
+    if (error instanceof Error) return error.message
+    if (typeof error === 'string') return error
+    if (typeof error === 'object') {
+        if ('message' in error && typeof (error as any).message === 'string') {
+            return (error as any).message
+        }
+        try {
+            return JSON.stringify(error)
+        } catch {
+            return String(error)
+        }
+    }
+    return String(error)
+}
+
 export async function POST(request: Request) {
     try {
         if (!supabaseAdmin) {
@@ -383,7 +400,6 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true })
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        return NextResponse.json({ success: false, error: message }, { status: 500 })
+        return NextResponse.json({ success: false, error: formatErrorMessage(error) }, { status: 500 })
     }
 }
