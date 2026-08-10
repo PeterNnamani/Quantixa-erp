@@ -220,12 +220,17 @@ CREATE TABLE IF NOT EXISTS products (
   unit_cost numeric(18,2) NOT NULL DEFAULT 0,
   unit_price numeric(18,2) NOT NULL DEFAULT 0,
   stock_qty integer NOT NULL DEFAULT 0,
+  expiry_date date,
+  damaged_expired integer NOT NULL DEFAULT 0,
   reorder_level integer NOT NULL DEFAULT 0,
   warehouse text,
   branch text,
   created_at timestamptz NOT NULL DEFAULT NOW(),
   updated_at timestamptz NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS expiry_date date;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS damaged_expired integer NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 

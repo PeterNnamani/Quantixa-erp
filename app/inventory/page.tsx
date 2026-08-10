@@ -22,7 +22,8 @@ export default function InventoryPage() {
       category: item.dept || 'Uncategorized',
       warehouse: 'Main Warehouse',
       available: item.closing,
-      reserved: Math.max(0, Math.floor(item.closing * 0.08)),
+      expiryDate: item.expiryDate || '',
+      damagedExpired: item.damagedExpired || 0,
       reorderLevel: Math.max(5, Math.floor((item.closing || 0) * 0.2)),
       unitCost: item.unitCost,
       stockValue: item.closing * item.unitCost,
@@ -214,7 +215,8 @@ export default function InventoryPage() {
                     <th>Category</th>
                     <th>Warehouse</th>
                     <th>Available</th>
-                    <th>Reserved</th>
+                    <th>Expiry Date</th>
+                    <th>Damaged/Expired</th>
                     <th>Reorder</th>
                     <th>Unit Cost</th>
                     <th>Stock Value</th>
@@ -229,7 +231,8 @@ export default function InventoryPage() {
                       <td>{row.category}</td>
                       <td>{row.warehouse}</td>
                       <td>{row.available}</td>
-                      <td>{row.reserved}</td>
+                      <td>{row.expiryDate || '—'}</td>
+                      <td>{row.damagedExpired}</td>
                       <td>{row.reorderLevel}</td>
                       <td>{formatCurrency(row.unitCost)}</td>
                       <td>{formatCurrency(row.stockValue)}</td>
@@ -255,7 +258,7 @@ export default function InventoryPage() {
               </div>
               <div className="inventory-detail-panel">
                 <div className="inventory-detail-row"><span>Available Quantity</span><strong>{selectedItem?.available || 0}</strong></div>
-                <div className="inventory-detail-row"><span>Reserved</span><strong>{selectedItem?.reserved || 0}</strong></div>
+                <div className="inventory-detail-row"><span>Damaged/Expired</span><strong>{selectedItem?.damagedExpired || 0}</strong></div>
                 <div className="inventory-detail-row"><span>Committed</span><strong>{Math.max(0, Math.floor((selectedItem?.available || 0) * 0.05))}</strong></div>
                 <div className="inventory-detail-row"><span>Damaged</span><strong>0</strong></div>
                 <div className="inventory-detail-row"><span>In Transit</span><strong>0</strong></div>

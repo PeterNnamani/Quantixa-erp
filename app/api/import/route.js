@@ -165,6 +165,8 @@ function findOrCreateProduct(product) {
                         unit_cost: product.unit_cost || product.unitCost || 0,
                         unit_price: product.unit_price || product.unitPrice || 0,
                         stock_qty: product.stock_qty || product.openQty || product.closing || 0,
+                        expiry_date: product.expiry_date || product.expiryDate || product.expiry || null,
+                        damaged_expired: product.damaged_expired || product.damagedExpired || 0,
                         reorder_level: product.reorder_level || product.reorderLevel || 0,
                         warehouse: product.warehouse || null,
                         branch: product.branch || null,

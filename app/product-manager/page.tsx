@@ -27,6 +27,8 @@ export default function ProductManagerPage() {
         costPrice: 0,
         sellingPrice: 0,
         stock: 0,
+        expiryDate: '',
+        damagedExpired: 0,
     })
 
     const products = useMemo(() => {
@@ -42,6 +44,8 @@ export default function ProductManagerPage() {
             status: 'Active',
             supplier: '—',
             stock: item.closing,
+            expiryDate: item.expiryDate || '',
+            damagedExpired: item.damagedExpired || 0,
         }))
     }, [state.inventory])
 
@@ -80,6 +84,8 @@ export default function ProductManagerPage() {
             sold: 0,
             unitCost: productFormData.costPrice,
             closing: productFormData.stock,
+            expiryDate: productFormData.expiryDate,
+            damagedExpired: productFormData.damagedExpired,
         }
 
         updateState({ inventory: [...state.inventory, newInventoryItem] })
@@ -93,6 +99,8 @@ export default function ProductManagerPage() {
             costPrice: 0,
             sellingPrice: 0,
             stock: 0,
+            expiryDate: '',
+            damagedExpired: 0,
         })
     }
 
@@ -147,6 +155,8 @@ export default function ProductManagerPage() {
                 const openQty = parseNumeric(row['OpenQty'] || row['Opening Qty'] || row['OpeningQuantity'] || row['Opening Stock'] || closing)
                 const purchased = parseNumeric(row['Purchased'] || row['Purchase Qty'] || 0)
                 const sold = parseNumeric(row['Sold'] || row['Sold Qty'] || 0)
+                const expiryDate = String(row['Expiry Date'] || row['ExpiryDate'] || row['Expiry'] || '').trim()
+                const damagedExpired = parseNumeric(row['Damaged/Expired'] || row['Damaged Expired'] || row['DamagedExpired'] || 0)
 
                 return {
                     product,
@@ -156,9 +166,11 @@ export default function ProductManagerPage() {
                     sold,
                     unitCost,
                     closing,
+                    expiryDate,
+                    damagedExpired,
                 }
             })
-            .filter((item): item is { product: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number } => item !== null)
+            .filter((item): item is { product: string; dept: string; openQty: number; purchased: number; sold: number; unitCost: number; closing: number; expiryDate: string; damagedExpired: number } => item !== null)
 
         if (normalizedProducts.length === 0) {
             setImportError('No valid product rows were found in the file.')
@@ -181,6 +193,8 @@ export default function ProductManagerPage() {
                     sold: (existing.sold || 0) + productItem.sold,
                     unitCost: productItem.unitCost || existing.unitCost,
                     closing: productItem.closing || existing.closing,
+                    expiryDate: productItem.expiryDate || existing.expiryDate,
+                    damagedExpired: productItem.damagedExpired || existing.damagedExpired,
                 }
             } else {
                 mergedInventory.push({
@@ -191,6 +205,8 @@ export default function ProductManagerPage() {
                     sold: productItem.sold,
                     unitCost: productItem.unitCost,
                     closing: productItem.closing,
+                    expiryDate: productItem.expiryDate,
+                    damagedExpired: productItem.damagedExpired,
                 })
             }
         })
@@ -276,6 +292,14 @@ export default function ProductManagerPage() {
                             <div className="fg">
                                 <label>Stock</label>
                                 <input type="number" min={0} value={productFormData.stock} onChange={(e) => setProductFormData({ ...productFormData, stock: parseInt(e.target.value, 10) || 0 })} />
+                            </div>
+                            <div className="fg">
+                                <label>Expiry Date</label>
+                                <input type="date" value={productFormData.expiryDate} onChange={(e) => setProductFormData({ ...productFormData, expiryDate: e.target.value })} />
+                            </div>
+                            <div className="fg">
+                                <label>Damaged/Expired</label>
+                                <input type="number" min={0} value={productFormData.damagedExpired} onChange={(e) => setProductFormData({ ...productFormData, damagedExpired: parseInt(e.target.value, 10) || 0 })} />
                             </div>
                         </div>
                         <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
@@ -365,6 +389,8 @@ export default function ProductManagerPage() {
                                         <th>Cost Price</th>
                                         <th>Selling Price</th>
                                         <th>Stock</th>
+                                        <th>Expiry Date</th>
+                                        <th>Damaged/Expired</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -378,6 +404,8 @@ export default function ProductManagerPage() {
                                             <td>{formatCurrency(product.costPrice)}</td>
                                             <td>{formatCurrency(product.sellingPrice)}</td>
                                             <td>{product.stock}</td>
+                                            <td>{product.expiryDate || '—'}</td>
+                                            <td>{product.damagedExpired}</td>
                                             <td><span className={`product-manager-pill ${product.stockStatus === 'Out of Stock' ? 'danger' : product.stockStatus === 'Low Stock' ? 'warning' : 'success'}`}>{product.stockStatus}</span></td>
                                         </tr>
                                     ))}

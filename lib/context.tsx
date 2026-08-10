@@ -118,6 +118,8 @@ export interface InventoryItem {
   sold: number
   unitCost: number
   closing: number
+  expiryDate?: string
+  damagedExpired?: number
 }
 
 export interface PrepaymentSchedule {
@@ -343,6 +345,8 @@ function normalizeRemoteInventory(data: any[]): AppState['inventory'] {
     sold: 0,
     unitCost: Number(item.unit_cost || 0),
     closing: Number(item.stock_qty || 0),
+    expiryDate: item.expiry_date || '',
+    damagedExpired: Number(item.damaged_expired || 0),
   }))
 }
 
