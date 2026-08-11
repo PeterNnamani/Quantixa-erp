@@ -18,24 +18,28 @@ export default function InventoryPage() {
 
   const inventoryRows = useMemo(() => {
     return state.inventory.map((item, index) => ({
-      id: `SKU-${index + 1}`,
+      sku: item.sku || `SKU-${index + 1}`,
       product: item.product,
+      brand: item.brand || '-',
       category: item.dept || 'Uncategorized',
-      warehouse: 'Main Warehouse',
+      packSize: item.packSize || '-',
+      unitCost: item.unitCost,
+      sellingPrice: item.sellingPrice ?? item.unitCost * 1.35,
       available: item.closing,
+      stockValue: item.closing * item.unitCost,
       expiryDate: item.expiryDate || '',
       damagedExpired: item.damagedExpired || 0,
       reorderLevel: Math.max(5, Math.floor((item.closing || 0) * 0.2)),
-      unitCost: item.unitCost,
-      stockValue: item.closing * item.unitCost,
+      reorderQuantity: Math.max(0, Math.floor(Math.max(5, Math.floor((item.closing || 0) * 0.2)) - (item.closing || 0))),
       status: item.closing <= 0 ? 'Out of Stock' : item.closing <= 10 ? 'Low Stock' : 'In Stock',
+      warehouse: 'Main Warehouse',
     }))
   }, [state.inventory])
 
   const filteredRows = useMemo(() => {
     const query = search.toLowerCase()
     return inventoryRows.filter((row) => {
-      const matchesQuery = !query || [row.product, row.category, row.id].join(' ').toLowerCase().includes(query)
+      const matchesQuery = !query || [row.product, row.category, row.sku].join(' ').toLowerCase().includes(query)
       const matchesWarehouse = selectedWarehouse === 'All Warehouses' || row.warehouse === selectedWarehouse
       const matchesCategory = selectedCategory === 'All Categories' || row.category === selectedCategory
       const matchesStatus = selectedStatus === 'All Status' || row.status === selectedStatus

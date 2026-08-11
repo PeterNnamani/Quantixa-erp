@@ -13,12 +13,12 @@ CREATE TABLE IF NOT EXISTS companies (
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid REFERENCES companies(id) ON DELETE CASCADE,
-  email text NOT NULL UNIQUE,
+  email text NOT NULL,
   full_name text NOT NULL,
   role text NOT NULL,
   phone text,
-  staff_id text UNIQUE,
-  username text UNIQUE,
+  staff_id text,
+  username text,
   pin text,
   status text NOT NULL DEFAULT 'active',
   branch text,
@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz NOT NULL DEFAULT NOW(),
   updated_at timestamptz NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_company_email_key ON users(company_id, email);
+CREATE UNIQUE INDEX IF NOT EXISTS users_company_staff_id_key ON users(company_id, staff_id) WHERE staff_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_company_username_key ON users(company_id, username) WHERE username IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
