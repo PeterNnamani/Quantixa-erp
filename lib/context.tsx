@@ -3,6 +3,28 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { supabase } from './supabase.browser'
 import { getDefaultRoles, type PermissionKey, type RoleDefinition } from '@/lib/rbac'
+
+function enrichStoredUser(raw: any) {
+  if (!raw || typeof raw !== 'object') return raw
+  const roleId = raw.role === 'md' ? 'business-owner' : raw.role
+  const templates = getDefaultRoles()
+  let roleDef = templates.find((r) => r.id === roleId)
+  if (!roleDef) roleDef = templates.find((r) => r.id === raw.role)
+
+  const visibleMenus: PermissionKey[] = Array.isArray(raw.visibleMenus) && raw.visibleMenus.length > 0
+    ? raw.visibleMenus
+    : roleDef && Array.isArray(roleDef.visibleMenus) && roleDef.visibleMenus.length > 0
+      ? roleDef.visibleMenus
+      : roleDef && Array.isArray(roleDef.permissions)
+        ? roleDef.permissions
+        : []
+
+  return {
+    ...raw,
+    role: raw.role,
+    visibleMenus,
+  }
+}
 import { createSeedLedgerData, postJournalEntry, findAccountByName } from '@/lib/ledger'
 import { generateSku } from '@/lib/sku'
 
@@ -573,7 +595,16 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       : null
 
     if (savedUser) {
-      setUser(JSON.parse(savedUser))
+      try {
+        const parsed = JSON.parse(savedUser)
+        const enriched = enrichStoredUser(parsed)
+        setUser(enriched)
+        // persist back the enriched user so other sessions/readers get visibleMenus
+        const storage = window.localStorage.getItem(AUTH_KEY) ? localStorage : sessionStorage
+        storage.setItem(AUTH_KEY, JSON.stringify(enriched))
+      } catch (e) {
+        setUser(JSON.parse(savedUser))
+      }
     }
     if (savedState) {
       const parsedState = JSON.parse(savedState)
@@ -704,12 +735,13 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   }
 
   const login = (userData: User, remember: boolean) => {
-    setUser(userData)
+    const enriched = enrichStoredUser(userData)
+    setUser(enriched)
     localStorage.removeItem(AUTH_KEY)
     sessionStorage.removeItem(AUTH_KEY)
 
     const storage = remember ? localStorage : sessionStorage
-    storage.setItem(AUTH_KEY, JSON.stringify(userData))
+    storage.setItem(AUTH_KEY, JSON.stringify(enriched))
   }
 
   const logout = () => {
