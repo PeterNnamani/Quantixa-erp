@@ -206,7 +206,12 @@ function getRolePermissions(user: Pick<UserWithRole, 'role' | 'permissions'> | n
 export function roleHasPermission(user: Pick<UserWithRole, 'role' | 'permissions'> | null | undefined, permission: PermissionKey): boolean {
     if (!user) return false
     const rolePermissions = getRolePermissions(user)
-    return rolePermissions.includes(permission)
+    if (rolePermissions.includes(permission)) return true
+    // Check role template visibleMenus (view-only) or user-specific visibleMenus
+    const roleDef = RBAC_TEMPLATES.find((r) => r.id === user.role)
+    if (roleDef && roleDef.visibleMenus && roleDef.visibleMenus.includes(permission)) return true
+    if ((user as any).visibleMenus && Array.isArray((user as any).visibleMenus) && (user as any).visibleMenus.includes(permission)) return true
+    return false
 }
 
 export function canAccessRoute(user: Pick<UserWithRole, 'role' | 'permissions'> | null | undefined, pathname: string): boolean {
@@ -298,6 +303,7 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
     ]
 
     return allItems.filter((item) => {
+        // Primary permission checks: treat roleHasPermission as true when role has full or view-only access
         if (item.href === '/dashboard') return roleHasPermission(user, 'dashboard')
         if (['/sales'].includes(item.href)) return roleHasPermission(user, 'sales')
         if (['/inventory', '/product-manager'].includes(item.href)) return roleHasPermission(user, 'inventory')
@@ -305,7 +311,18 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
         if (['/bank-txn', '/banks', '/daily-close', '/ledger', '/receivables', '/payables', '/prepayments', '/supplier-rebates', '/loans', '/tax'].includes(item.href)) return roleHasPermission(user, 'accounting')
         if (['/monthly-report', '/annual-report', '/asset-schedule', '/reports'].includes(item.href)) return roleHasPermission(user, 'reports')
         if (['/settings', '/backup', '/subscription-and-licensing', '/audit', '/staff-management'].includes(item.href)) return roleHasPermission(user, 'admin') || roleHasPermission(user, 'settings')
-        if (item.permission && user?.visibleMenus && !user.visibleMenus.includes(item.permission)) return false
+
+        // If a role or user has an explicit visibleMenus list, enforce it: only show items included there
+        if (item.permission) {
+            const roleDef = RBAC_TEMPLATES.find((r) => r.id === user?.role)
+            if (user?.visibleMenus && Array.isArray(user.visibleMenus)) {
+                return user.visibleMenus.includes(item.permission)
+            }
+            if (roleDef && roleDef.visibleMenus && Array.isArray(roleDef.visibleMenus)) {
+                return roleDef.visibleMenus.includes(item.permission)
+            }
+        }
+
         return true
     })
 }
