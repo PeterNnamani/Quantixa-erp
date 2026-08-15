@@ -424,8 +424,13 @@ export default function StaffManagementPage() {
                       <td>{member.lastLogin || 'Never'}</td>
                       <td>
                         <div className="inline-actions" style={{ justifyContent: 'flex-start' }}>
-                          <button className="action-btn allow-readonly" type="button" title="View staff details" onClick={() => loadStaffToForm(member, 'view')}>
-                            <Eye size={18} />
+                          <button
+                            className="action-btn allow-readonly"
+                            type="button"
+                            title={revealedPins[member.id] ? 'Hide PIN' : 'Show PIN'}
+                            onClick={() => togglePinVisibility(member.id)}
+                          >
+                            {revealedPins[member.id] ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>
                           <button className="action-btn allow-readonly" type="button" title="Edit staff account" onClick={() => loadStaffToForm(member, 'edit')}>
                             <Pencil size={18} />
@@ -501,7 +506,7 @@ export default function StaffManagementPage() {
 
           <div className="panel-card">
             <div className="panel-title">Personal Information</div>
-              <div className="form-grid two-up">
+            <div className="form-grid two-up">
               <div className="fg"><label>First Name</label><input className="allow-readonly" value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
               <div className="fg"><label>Last Name</label><input className="allow-readonly" value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
               <div className="fg"><label>Phone</label><input className="allow-readonly" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
@@ -526,7 +531,7 @@ export default function StaffManagementPage() {
 
           <div className="panel-card" style={{ marginTop: 18 }}>
             <div className="panel-title">Role Assignment</div>
-              <div className="form-grid two-up">
+            <div className="form-grid two-up">
               <div className="fg">
                 <label>Role</label>
                 <select className="allow-readonly" value={roleId} onChange={(e) => setRoleId(e.target.value)}>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select>
