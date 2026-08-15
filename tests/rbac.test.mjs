@@ -2,11 +2,14 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { canAccessRoute, findStaffMemberByLogin, getVisibleNavigationItems, roleHasPermission } from '../lib/rbac.mjs'
 
-test('super admin can access every module', () => {
+test('super admin has provisioning/oversight permissions, not transactional', () => {
     const superAdmin = { role: 'super-admin' }
     assert.equal(roleHasPermission(superAdmin, 'dashboard'), true)
     assert.equal(roleHasPermission(superAdmin, 'settings'), true)
     assert.equal(canAccessRoute(superAdmin, '/backup'), true)
+    // Should NOT have transactional posting permissions
+    assert.equal(canAccessRoute(superAdmin, '/sales'), false)
+    assert.equal(canAccessRoute(superAdmin, '/ledger'), false)
 })
 
 test('cashier sees only sales and dashboard menus', () => {

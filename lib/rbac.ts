@@ -61,7 +61,8 @@ export interface StaffMemberRecord {
 }
 
 const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
-    'super-admin': ['dashboard', 'sales', 'inventory', 'purchases', 'customers', 'suppliers', 'accounting', 'reports', 'admin', 'settings'],
+    // Super Admin is a platform provisioning & oversight role — no transactional posting
+    'super-admin': ['dashboard', 'reports', 'admin', 'settings'],
     md: ['dashboard', 'sales', 'inventory', 'purchases', 'customers', 'suppliers', 'accounting', 'reports', 'admin', 'settings'],
     accountant: ['dashboard', 'sales', 'purchases', 'accounting', 'reports'],
     cashier: ['dashboard', 'sales'],
@@ -72,9 +73,9 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
     {
         id: 'super-admin',
         name: 'Super Admin',
-        description: 'Unrestricted access',
-        permissions: ['dashboard', 'sales', 'inventory', 'purchases', 'customers', 'suppliers', 'accounting', 'reports', 'admin', 'settings'],
-        visibleMenus: ['dashboard', 'sales', 'inventory', 'purchases', 'customers', 'suppliers', 'accounting', 'reports', 'admin', 'settings'],
+        description: 'Platform provisioning and oversight (no transactional posting)',
+        permissions: ['dashboard', 'reports', 'admin', 'settings'],
+        visibleMenus: ['dashboard', 'reports', 'admin', 'settings'],
         dataScope: 'all',
         template: 'Super Admin',
     },
@@ -139,7 +140,6 @@ function getRolePermissions(user: Pick<UserWithRole, 'role' | 'permissions'> | n
 
 export function roleHasPermission(user: Pick<UserWithRole, 'role' | 'permissions'> | null | undefined, permission: PermissionKey): boolean {
     if (!user) return false
-    if (user.role === 'super-admin' || user.role === 'md') return true
     const rolePermissions = getRolePermissions(user)
     return rolePermissions.includes(permission)
 }
