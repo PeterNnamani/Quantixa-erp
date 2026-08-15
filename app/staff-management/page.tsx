@@ -329,7 +329,7 @@ export default function StaffManagementPage() {
             <p className="page-subtitle">Manage people, branches, roles, and access from a single polished workspace.</p>
           </div>
           <div className="page-actions">
-            <button className="action-btn primary" onClick={() => setDrawerOpen(true)}>Add Staff</button>
+            <button className="action-btn primary allow-readonly" onClick={() => setDrawerOpen(true)}>Add Staff</button>
           </div>
         </div>
 
@@ -350,6 +350,7 @@ export default function StaffManagementPage() {
               >
                 <input
                   ref={searchInputRef}
+                  className="allow-readonly"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search staff by name, role, or branch..."
@@ -362,7 +363,7 @@ export default function StaffManagementPage() {
             ) : (
               <button
                 type="button"
-                className="staff-search-toggle"
+                className="staff-search-toggle allow-readonly"
                 onClick={() => setSearchOpen(true)}
                 aria-label="Open staff search"
               >
@@ -423,14 +424,14 @@ export default function StaffManagementPage() {
                       <td>{member.lastLogin || 'Never'}</td>
                       <td>
                         <div className="inline-actions" style={{ justifyContent: 'flex-start' }}>
-                          <button className="action-btn" type="button" title="View staff details" onClick={() => loadStaffToForm(member, 'view')}>
+                          <button className="action-btn allow-readonly" type="button" title="View staff details" onClick={() => loadStaffToForm(member, 'view')}>
                             <Eye size={18} />
                           </button>
-                          <button className="action-btn" type="button" title="Edit staff account" onClick={() => loadStaffToForm(member, 'edit')}>
+                          <button className="action-btn allow-readonly" type="button" title="Edit staff account" onClick={() => loadStaffToForm(member, 'edit')}>
                             <Pencil size={18} />
                           </button>
                           <button
-                            className="action-btn"
+                            className="action-btn allow-readonly"
                             type="button"
                             title={member.status === 'active' ? 'Suspend staff' : 'Activate staff'}
                             onClick={() => toggleStatus(member.id)}
@@ -500,61 +501,61 @@ export default function StaffManagementPage() {
 
           <div className="panel-card">
             <div className="panel-title">Personal Information</div>
-            <div className="form-grid two-up">
-              <div className="fg"><label>First Name</label><input value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
-              <div className="fg"><label>Last Name</label><input value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
-              <div className="fg"><label>Phone</label><input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-              <div className="fg"><label>Email</label><input value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-              <div className="fg"><label>Date of Birth</label><input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} /></div>
-              <div className="fg"><label>Gender</label><select value={gender} onChange={(e) => setGender(e.target.value)}>{genderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-              <div className="fg"><label>Passport Photo</label><input value={passportPhoto} onChange={(e) => setPassportPhoto(e.target.value)} placeholder="Image URL" /></div>
+              <div className="form-grid two-up">
+              <div className="fg"><label>First Name</label><input className="allow-readonly" value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
+              <div className="fg"><label>Last Name</label><input className="allow-readonly" value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
+              <div className="fg"><label>Phone</label><input className="allow-readonly" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+              <div className="fg"><label>Email</label><input className="allow-readonly" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+              <div className="fg"><label>Date of Birth</label><input className="allow-readonly" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} /></div>
+              <div className="fg"><label>Gender</label><select className="allow-readonly" value={gender} onChange={(e) => setGender(e.target.value)}>{genderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+              <div className="fg"><label>Passport Photo</label><input className="allow-readonly" value={passportPhoto} onChange={(e) => setPassportPhoto(e.target.value)} placeholder="Image URL" /></div>
             </div>
           </div>
 
           <div className="panel-card" style={{ marginTop: 18 }}>
             <div className="panel-title">Employment</div>
             <div className="form-grid two-up">
-              <div className="fg"><label>Employee ID</label><input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Auto-generated if blank" /></div>
-              <div className="fg"><label>Department</label><select value={department} onChange={(e) => setDepartment(e.target.value)}>{departmentOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-              <div className="fg"><label>Position</label><select value={position} onChange={(e) => setPosition(e.target.value)}>{positionOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-              <div className="fg"><label>Employment Date</label><input type="date" value={employmentDate} onChange={(e) => setEmploymentDate(e.target.value)} /></div>
-              <div className="fg"><label>Salary</label><input value={salary} onChange={(e) => setSalary(e.target.value)} /></div>
-              <div className="fg"><label>Branch</label><select value={branch} onChange={(e) => setBranch(e.target.value)}>{branchOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+              <div className="fg"><label>Employee ID</label><input className="allow-readonly" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Auto-generated if blank" /></div>
+              <div className="fg"><label>Department</label><select className="allow-readonly" value={department} onChange={(e) => setDepartment(e.target.value)}>{departmentOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+              <div className="fg"><label>Position</label><select className="allow-readonly" value={position} onChange={(e) => setPosition(e.target.value)}>{positionOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+              <div className="fg"><label>Employment Date</label><input className="allow-readonly" type="date" value={employmentDate} onChange={(e) => setEmploymentDate(e.target.value)} /></div>
+              <div className="fg"><label>Salary</label><input className="allow-readonly" value={salary} onChange={(e) => setSalary(e.target.value)} /></div>
+              <div className="fg"><label>Branch</label><select className="allow-readonly" value={branch} onChange={(e) => setBranch(e.target.value)}>{branchOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
             </div>
           </div>
 
           <div className="panel-card" style={{ marginTop: 18 }}>
             <div className="panel-title">Role Assignment</div>
-            <div className="form-grid two-up">
+              <div className="form-grid two-up">
               <div className="fg">
                 <label>Role</label>
-                <select value={roleId} onChange={(e) => setRoleId(e.target.value)}>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select>
+                <select className="allow-readonly" value={roleId} onChange={(e) => setRoleId(e.target.value)}>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select>
                 <div className="metric-note" style={{ marginTop: 6 }}>Choose one role. Permissions will follow it automatically.</div>
               </div>
-              <div className="fg"><label>Status</label><select value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}><option value="active">Active</option><option value="disabled">Inactive</option></select></div>
+              <div className="fg"><label>Status</label><select className="allow-readonly" value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}><option value="active">Active</option><option value="disabled">Inactive</option></select></div>
             </div>
           </div>
 
           <div className="panel-card" style={{ marginTop: 18 }}>
             <div className="panel-title">Login Credentials</div>
             <div className="form-grid two-up">
-              <div className="fg"><label>Login ID</label><input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Auto-generated if blank" /></div>
+              <div className="fg"><label>Login ID</label><input className="allow-readonly" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Auto-generated if blank" /></div>
               <div className="fg">
                 <label>Auto-generated PIN</label>
-                <input value={drawerMode === 'edit' && activeStaff?.pin ? activeStaff.pin : 'Generated on save'} readOnly />
+                <input className="allow-readonly" value={drawerMode === 'edit' && activeStaff?.pin ? activeStaff.pin : 'Generated on save'} readOnly />
                 <div className="metric-note" style={{ marginTop: 6 }}>The system creates a 4-digit PIN automatically for sign-in.</div>
               </div>
             </div>
           </div>
 
           <div className="inline-actions" style={{ marginTop: 24, justifyContent: 'space-between' }}>
-            <button className="action-btn" type="button" onClick={() => {
+            <button className="action-btn allow-readonly" type="button" onClick={() => {
               setDrawerOpen(false)
               resetForm()
             }}>
               Cancel
             </button>
-            <button className="action-btn primary" type="button" onClick={saveStaff}>
+            <button className="action-btn primary allow-readonly" type="button" onClick={saveStaff}>
               {drawerMode === 'edit' ? 'Update' : 'Save'}
             </button>
           </div>
