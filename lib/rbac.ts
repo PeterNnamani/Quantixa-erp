@@ -1,6 +1,7 @@
 export type PermissionKey =
     | 'dashboard'
     | 'sales'
+    | 'receivables'
     | 'inventory'
     | 'purchases'
     | 'customers'
@@ -68,6 +69,7 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     accountant: ['dashboard', 'sales', 'purchases', 'accounting', 'reports', 'customers', 'suppliers'],
     // Sales officer / cashier: sales-focused
     'sales-officer': ['dashboard', 'sales'],
+    'sales-manager': ['dashboard', 'sales'],
     cashier: ['dashboard', 'sales'],
     // Purchasing officer: purchases-focused
     'purchasing-officer': ['dashboard', 'purchases'],
@@ -125,6 +127,15 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         visibleMenus: ['dashboard', 'sales'],
         dataScope: 'own',
         template: 'Sales Officer',
+    },
+    {
+        id: 'sales-manager',
+        name: 'Sales Manager',
+        description: 'Manages sales team; primarily view/reporting for sales, inventory and receivables',
+        permissions: ['dashboard', 'sales'],
+        visibleMenus: ['dashboard', 'sales', 'inventory', 'receivables'],
+        dataScope: 'team',
+        template: 'Sales Manager',
     },
     {
         id: 'purchasing-officer',
@@ -224,7 +235,7 @@ export function canAccessRoute(user: Pick<UserWithRole, 'role' | 'permissions'> 
         '/suppliers': 'suppliers',
         '/ledger': 'accounting',
         '/daily-close': 'accounting',
-        '/receivables': 'accounting',
+        '/receivables': 'receivables',
         '/payables': 'accounting',
         '/prepayments': 'accounting',
         '/supplier-rebates': 'accounting',
@@ -287,7 +298,7 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
         { label: 'Daily Closing', href: '/daily-close', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'dailyClose' },
         { label: 'Audit Trail', href: '/audit', group: 'AUDIT & ADMIN', permission: 'admin' as PermissionKey, icon: 'audit' },
         { label: 'General Ledger', href: '/ledger', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'ledger' },
-        { label: 'Receivables', href: '/receivables', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'receivables' },
+        { label: 'Receivables', href: '/receivables', group: 'ACCOUNTING', permission: 'receivables' as PermissionKey, icon: 'receivables' },
         { label: 'Payables', href: '/payables', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'payables' },
         { label: 'Prepayments', href: '/prepayments', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'prepayments' },
         { label: 'Supplier Rebates', href: '/supplier-rebates', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'supplierRebates' },
@@ -308,7 +319,8 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
         if (['/sales'].includes(item.href)) return roleHasPermission(user, 'sales')
         if (['/inventory', '/product-manager'].includes(item.href)) return roleHasPermission(user, 'inventory')
         if (['/purchases'].includes(item.href)) return roleHasPermission(user, 'purchases')
-        if (['/bank-txn', '/banks', '/daily-close', '/ledger', '/receivables', '/payables', '/prepayments', '/supplier-rebates', '/loans', '/tax'].includes(item.href)) return roleHasPermission(user, 'accounting')
+        if (['/receivables'].includes(item.href)) return roleHasPermission(user, 'receivables')
+        if (['/bank-txn', '/banks', '/daily-close', '/ledger', '/payables', '/prepayments', '/supplier-rebates', '/loans', '/tax'].includes(item.href)) return roleHasPermission(user, 'accounting')
         if (['/monthly-report', '/annual-report', '/asset-schedule', '/reports'].includes(item.href)) return roleHasPermission(user, 'reports')
         if (['/settings', '/backup', '/subscription-and-licensing', '/audit', '/staff-management'].includes(item.href)) return roleHasPermission(user, 'admin') || roleHasPermission(user, 'settings')
 

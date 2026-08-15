@@ -6,7 +6,8 @@ import { getDefaultRoles, type PermissionKey, type RoleDefinition } from '@/lib/
 
 function enrichStoredUser(raw: any) {
   if (!raw || typeof raw !== 'object') return raw
-  const roleId = raw.role === 'md' ? 'business-owner' : raw.role
+  let roleId = typeof raw.role === 'string' ? raw.role.toLowerCase().replace(/\s+/g, '-') : raw.role
+  if (roleId === 'md') roleId = 'business-owner'
   const templates = getDefaultRoles()
   let roleDef = templates.find((r) => r.id === roleId)
   if (!roleDef) roleDef = templates.find((r) => r.id === raw.role)
