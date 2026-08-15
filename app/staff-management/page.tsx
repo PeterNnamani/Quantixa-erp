@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { generatePin, generateStaffId, saveRoles, type PermissionKey, type RoleDefinition, type StaffMemberRecord } from '@/lib/rbac'
 import { saveUserToDatabase } from '@/lib/user-db'
+import { getSupabaseClient } from '@/lib/supabase.browser'
 
 const branchOptions = ['Enugu', 'Onitsha', 'Lagos', 'Abuja']
 const genderOptions = ['Female', 'Male', 'Other']
@@ -139,6 +140,63 @@ export default function StaffManagementPage() {
       searchInputRef.current?.focus()
     }
   }, [searchOpen])
+
+  useEffect(() => {
+    // Fetch staff list from DB for the current company and merge into state
+    const loadFromDb = async () => {
+      try {
+        if (!user?.companyId) return
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+
+        const { data, error } = await supabase.from('users').select('*').eq('company_id', user.companyId).order('created_at', { ascending: false })
+        if (error) {
+          console.warn('Unable to fetch staff from DB', error)
+          return
+        }
+
+        const nextStaff: StaffMemberRecord[] = (data || []).map((row: any) => {
+          const roleDef = roles.find((r) => r.id === String(row.role)) || roles[0]
+          const staffId = String(row.staff_id || '')
+          const id = String(row.id || `${staffId}-${Date.parse(String(row.created_at || Date.now()))}`)
+
+          return {
+            id,
+            name: String(row.full_name || row.username || staffId || 'Staff User'),
+            staffId,
+            pin: String(row.pin || ''),
+            roleId: roleDef?.id || String(row.role || 'cashier'),
+            roleName: roleDef?.name || String(row.role || 'Custom Role'),
+            permissions: roleDef?.permissions || [],
+            visibleMenus: roleDef?.visibleMenus,
+            dataScope: roleDef?.dataScope || 'team',
+            status: row.status === 'disabled' ? 'disabled' : 'active',
+            createdAt: String(row.created_at || new Date().toISOString()),
+            branch: row.branch || undefined,
+            department: row.department || undefined,
+            position: row.position || undefined,
+            phone: row.phone || undefined,
+            email: row.email || undefined,
+            employeeId: row.employee_id || undefined,
+            username: row.username || undefined,
+            salary: row.salary || undefined,
+            employmentDate: row.employment_date || undefined,
+            lastLogin: row.last_login || undefined,
+          }
+        })
+
+        if (nextStaff.length > 0) {
+          setStaffMembers(nextStaff)
+          updateState({ staffMembers: nextStaff })
+        }
+      } catch (err) {
+        console.warn('Error loading staff from DB', err)
+      }
+    }
+
+    loadFromDb()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.companyId, roles])
 
   const handleSearchDismiss = (event: React.FocusEvent<HTMLFormElement>) => {
     const nextTarget = event.relatedTarget as HTMLElement | null
