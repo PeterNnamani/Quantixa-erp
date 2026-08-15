@@ -576,7 +576,7 @@ export default function PurchasesPage() {
               {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>
             <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>Import</button>
-            <button className="btn btn-secondary" onClick={handleExportPurchases}>Export</button>
+            <button className="btn btn-secondary allow-readonly" onClick={handleExportPurchases}>Export</button>
             <button className="btn btn-secondary" onClick={handleRefreshPurchases}>Refresh</button>
             <button className="btn btn-primary" onClick={handleNewPurchase}>{showForm ? 'Close Form' : '+ New Purchase'}</button>
           </div>

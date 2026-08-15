@@ -123,11 +123,12 @@ export const PAYMENT_TERMS = [
 ]
 
 export function canEdit(role: string): boolean {
-  return ['md', 'accountant'].includes(role)
+  // Only roles that should be able to create/edit transactional records
+  return ['accountant', 'cashier'].includes(role)
 }
 
 export function canFin(role: string): boolean {
-  return ['md', 'accountant'].includes(role)
+  return ['accountant'].includes(role)
 }
 
 export function canAudit(role: string): boolean {

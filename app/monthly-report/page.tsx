@@ -76,8 +76,8 @@ export default function MonthlyReportPage() {
                     <div className="page-actions">
                         <button className="action-btn primary" onClick={() => handleAction('+ Generate Report')}>+ Generate Report</button>
                         <button className="action-btn secondary" onClick={() => handleAction('Compare Months')}>Compare Months</button>
-                        <button className="action-btn secondary" onClick={() => handleAction('Export PDF')}>Export PDF</button>
-                        <button className="action-btn secondary" onClick={() => handleAction('Export Excel')}>Export Excel</button>
+                        <button className="action-btn secondary allow-readonly" onClick={() => handleAction('Export PDF')}>Export PDF</button>
+                        <button className="action-btn secondary allow-readonly" onClick={() => handleAction('Export Excel')}>Export Excel</button>
                         <button className="action-btn secondary" onClick={() => handleAction('Schedule Report')}>Schedule Report</button>
                     </div>
                 </div>

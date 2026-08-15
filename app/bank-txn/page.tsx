@@ -327,15 +327,15 @@ export default function BankTxnPage() {
               <CheckCircle2 size={16} style={{ marginRight: 6 }} /> Reconcile
             </button>
             <div className="export-dropdown" aria-expanded={showExportDropdown ? 'true' : 'false'}>
-              <button className="btn btn-primary export-toggle" type="button" title="Download transaction report" onClick={() => setShowExportDropdown((current) => !current)}>
+              <button className="btn btn-primary export-toggle allow-readonly" type="button" title="Download transaction report" onClick={() => setShowExportDropdown((current) => !current)}>
                 <Download size={16} style={{ marginRight: 6 }} /> Export <ArrowDown size={14} className="export-arrow" />
               </button>
               {showExportDropdown && (
                 <div className="dropdown-menu">
-                  <button type="button" className="dropdown-item" onClick={() => handleExportReport('pdf')}>
+                  <button type="button" className="dropdown-item allow-readonly" onClick={() => handleExportReport('pdf')}>
                     <span className="dropdown-icon">PDF</span>Export PDF
                   </button>
-                  <button type="button" className="dropdown-item" onClick={() => handleExportReport('excel')}>
+                  <button type="button" className="dropdown-item allow-readonly" onClick={() => handleExportReport('excel')}>
                     <span className="dropdown-icon">XLSX</span>Export Excel
                   </button>
                 </div>

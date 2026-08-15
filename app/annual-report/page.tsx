@@ -64,7 +64,7 @@ export default function AnnualReportPage() {
                     <div className="page-actions">
                         <button className="action-btn primary" type="button" onClick={() => { setReportMode('summary'); handleAction('Generate Annual Report') }}>Generate Annual Report</button>
                         <button className="action-btn secondary" type="button" onClick={() => { setReportMode('board'); handleAction('Board Report') }}>Board Report</button>
-                        <button className="action-btn secondary" type="button" onClick={() => handleAction('Export PDF')}>Export PDF</button>
+                        <button className="action-btn secondary allow-readonly" type="button" onClick={() => handleAction('Export PDF')}>Export PDF</button>
                         <button className="action-btn secondary" type="button" onClick={() => { setReportMode('tax'); handleAction('Tax Package') }}>Tax Package</button>
                     </div>
                 </div>

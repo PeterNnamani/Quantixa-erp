@@ -397,6 +397,33 @@ html[data-theme='dark'] .topbar {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.38);
 }
 
+/* Read-only role styling: disable interactive elements in main area for MD/Super Admin */
+.app.role-readonly .main-area button,
+.app.role-readonly .main-area input,
+.app.role-readonly .main-area select,
+.app.role-readonly .main-area textarea,
+.app.role-readonly .main-area .action-btn,
+.app.role-readonly .main-area .btn,
+.app.role-readonly .main-area .audit-btn,
+.app.role-readonly .main-area .daily-close-btn,
+.app.role-readonly .main-area .product-manager-btn,
+.app.role-readonly .main-area .inventory-btn,
+.app.role-readonly .main-area .ledger-btn,
+.app.role-readonly .main-area .payables-btn,
+.app.role-readonly .main-area .receivables-btn,
+.app.role-readonly .main-area .page-btn {
+  pointer-events: none !important;
+  opacity: 0.65;
+  filter: grayscale(10%);
+}
+
+/* Allow specific export/print actions to remain interactive when explicitly marked */
+.app.role-readonly .main-area .allow-readonly {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
 .daily-close-shell {
   display: flex;
   flex-direction: column;

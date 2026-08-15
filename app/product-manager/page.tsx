@@ -277,7 +277,7 @@ export default function ProductManagerPage() {
                     <div className="product-manager-actions">
                         <button className="product-manager-btn secondary" type="button" onClick={() => setShowProductForm(true)}>+ Add Product</button>
                         <button className="product-manager-btn secondary" type="button" onClick={handleImportProducts}>Import Products</button>
-                        <button className="product-manager-btn secondary" type="button" onClick={handleExportProducts}>Export Products</button>
+                        <button className="product-manager-btn secondary allow-readonly" type="button" onClick={handleExportProducts}>Export Products</button>
                         <button className="product-manager-btn secondary" type="button" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
                         <button className="product-manager-btn primary" type="button" onClick={handleBulkUpdate}>Bulk Update</button>
                     </div>

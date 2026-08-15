@@ -154,9 +154,9 @@ export default function LedgerPage() {
           <div className="ledger-actions">
             <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('+ Manual Journal')}>+ Manual Journal</button>
             <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('Trial Balance')}>Trial Balance</button>
-            <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('Export Excel')}>Export Excel</button>
+            <button className="ledger-btn secondary allow-readonly" type="button" onClick={() => handleLedgerAction('Export Excel')}>Export Excel</button>
             <button className="ledger-btn secondary" disabled>Filters Visible</button>
-            <button className="ledger-btn secondary" type="button" onClick={() => handleLedgerAction('Export PDF')}>Export PDF</button>
+            <button className="ledger-btn secondary allow-readonly" type="button" onClick={() => handleLedgerAction('Export PDF')}>Export PDF</button>
             <button className="ledger-btn primary" type="button" onClick={() => handleLedgerAction('Print')}>Print</button>
           </div>
         </div>

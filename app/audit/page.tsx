@@ -122,8 +122,8 @@ export default function AuditPage() {
             <div className="pg-subtitle">Monitor all system activities and user actions across the organization.</div>
           </div>
           <div className="audit-actions">
-            <button className="audit-btn secondary" type="button" onClick={() => handleAction('Export PDF')}>Export PDF</button>
-            <button className="audit-btn secondary" type="button" onClick={() => handleAction('Export Excel')}>Export Excel</button>
+            <button className="audit-btn secondary allow-readonly" type="button" onClick={() => handleAction('Export PDF')}>Export PDF</button>
+            <button className="audit-btn secondary allow-readonly" type="button" onClick={() => handleAction('Export Excel')}>Export Excel</button>
             <button className="audit-btn secondary" type="button" onClick={() => handleAction('Print')}>Print</button>
             <button className="audit-btn secondary" type="button" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
             <button className="audit-btn primary" type="button" onClick={() => handleAction('Archive Logs')}>Archive Logs</button>

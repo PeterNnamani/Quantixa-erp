@@ -161,7 +161,7 @@ export default function DailyClosePage() {
 
           <div className="daily-close-actions">
             <button className="daily-close-btn secondary" onClick={() => handleAction('Preview Report')}>Preview Report</button>
-            <button className="daily-close-btn secondary" onClick={() => handleAction('Export PDF')}>Export PDF</button>
+            <button className="daily-close-btn secondary allow-readonly" onClick={() => handleAction('Export PDF')}>Export PDF</button>
             <button className="daily-close-btn primary" onClick={() => handleAction('Close Day')}>Close Day</button>
           </div>
         </div>

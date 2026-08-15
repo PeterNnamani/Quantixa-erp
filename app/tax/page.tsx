@@ -131,7 +131,7 @@ export default function TaxPage() {
             <button className="action-btn primary" onClick={() => handleTaxAction('+ New Tax Calculation')}>+ New Tax Calculation</button>
             <button className="action-btn secondary" onClick={() => handleTaxAction('Generate Tax Report')}>Generate Tax Report</button>
             <button className="action-btn secondary" onClick={() => handleTaxAction('Tax Settings')}>Tax Settings</button>
-            <button className="action-btn secondary" onClick={() => handleTaxAction('Export PDF')}>Export PDF</button>
+            <button className="action-btn secondary allow-readonly" onClick={() => handleTaxAction('Export PDF')}>Export PDF</button>
             <button className="action-btn secondary" onClick={() => handleTaxAction('Compliance Calendar')}>Compliance Calendar</button>
           </div>
         </div>

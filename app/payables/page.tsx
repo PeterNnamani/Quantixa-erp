@@ -134,7 +134,7 @@ export default function PayablesPage() {
             <button type="button" className="payables-btn secondary" onClick={() => handlePayablesAction('+ New Supplier Bill')}>+ New Supplier Bill</button>
             <button type="button" className="payables-btn secondary" onClick={() => handlePayablesAction('Schedule Payment')}>Schedule Payment</button>
             <button type="button" className="payables-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button type="button" className="payables-btn secondary" onClick={() => handlePayablesAction('Export Excel')}>Export Excel</button>
+            <button type="button" className="payables-btn secondary allow-readonly" onClick={() => handlePayablesAction('Export Excel')}>Export Excel</button>
             <button type="button" className="payables-btn primary" onClick={() => handlePayablesAction('Print')}>Print</button>
           </div>
         </div>

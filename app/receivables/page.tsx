@@ -137,7 +137,7 @@ export default function ReceivablesPage() {
             <button type="button" className="receivables-btn secondary" onClick={() => handleReceivablesAction('+ New Invoice')}>+ New Invoice</button>
             <button type="button" className="receivables-btn secondary" onClick={() => handleReceivablesAction('Send Reminders')}>Send Reminders</button>
             <button type="button" className="receivables-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button type="button" className="receivables-btn secondary" onClick={() => handleReceivablesAction('Export Excel')}>Export Excel</button>
+            <button type="button" className="receivables-btn secondary allow-readonly" onClick={() => handleReceivablesAction('Export Excel')}>Export Excel</button>
             <button type="button" className="receivables-btn primary" onClick={() => handleReceivablesAction('Print')}>Print</button>
           </div>
         </div>

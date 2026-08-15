@@ -277,19 +277,19 @@ export default function BanksPage() {
               <Filter size={16} style={{ marginRight: 6 }} /> Filters
             </button>
             <div className="export-dropdown" aria-expanded={showExportDropdown ? 'true' : 'false'}>
-              <button className="btn btn-secondary export-toggle" type="button" title="Export bank account data" onClick={() => handleBankAction('Export')}>
+              <button className="btn btn-secondary export-toggle allow-readonly" type="button" title="Export bank account data" onClick={() => handleBankAction('Export')}>
                 <Download size={16} style={{ marginRight: 6 }} /> Export <ArrowDown size={14} className="export-arrow" />
               </button>
               {showExportDropdown && (
                 <div className="dropdown-menu">
-                  <button type="button" className="dropdown-item" onClick={() => {
+                  <button type="button" className="dropdown-item allow-readonly" onClick={() => {
                     downloadPdf('banks-report.pdf', 'Bank Balances', Object.entries(state.banks).map(([bank, balance]) => ({ bank, balance })), 'QUANTIXA')
                     setShowExportDropdown(false)
                     triggerAppToast('Export PDF', 'Bank balances PDF downloaded successfully.')
                   }}>
                     <span className="dropdown-icon">PDF</span>Export PDF
                   </button>
-                  <button type="button" className="dropdown-item" onClick={() => {
+                  <button type="button" className="dropdown-item allow-readonly" onClick={() => {
                     downloadExcel('banks-report.xlsx', Object.entries(state.banks).map(([bank, balance]) => ({ bank, balance })))
                     setShowExportDropdown(false)
                     triggerAppToast('Export Excel', 'Bank balances Excel downloaded successfully.')

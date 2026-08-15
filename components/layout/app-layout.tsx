@@ -133,9 +133,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     )
   }
 
+  const roleReadOnly = user.role === 'md' || user.role === 'super-admin'
+
   return (
     <div style={{ minHeight: '100vh', overflow: 'visible' }}>
-      <div className="app">
+      <div className={`app ${roleReadOnly ? 'role-readonly' : ''}`}>
         <Topbar user={user} onLogout={logout} onToggleSidebar={() => setSidebarOpen((current) => !current)} isSidebarOpen={sidebarOpen} />
         <div className={`layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <Navigation userRole={user.role} isOpen={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />

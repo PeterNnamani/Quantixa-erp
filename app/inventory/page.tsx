@@ -118,7 +118,7 @@ export default function InventoryPage() {
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Receive Stock')}>+ Receive Stock</button>
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Stock Count')}>+ Stock Count</button>
             <button className="inventory-btn secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="inventory-btn primary" onClick={() => handleInventoryAction('Export Excel')}>Export Excel</button>
+            <button className="inventory-btn primary allow-readonly" onClick={() => handleInventoryAction('Export Excel')}>Export Excel</button>
           </div>
         </div>
 

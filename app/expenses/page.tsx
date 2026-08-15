@@ -203,7 +203,7 @@ export default function ExpensesPage() {
           </div>
           <div className="module-actions">
             <button className="btn btn-secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="btn btn-secondary">Export</button>
+            <button className="btn btn-secondary allow-readonly">Export</button>
             <button className="btn btn-secondary">Reconcile</button>
             {canEdit(user?.role || '') && <button className="btn btn-primary" onClick={() => setShowForm((prev) => !prev)}>{showForm ? 'Close Form' : '+ New Expense'}</button>}
           </div>

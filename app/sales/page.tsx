@@ -484,7 +484,7 @@ export default function SalesPage() {
             <button className="btn btn-secondary" type="button" onClick={() => setShowImportModal(true)}>Import</button>
             <button className="btn btn-secondary" type="button" onClick={handleNewInvoice}>+ New Invoice</button>
             <button className="btn btn-secondary" type="button" onClick={handlePosSale}>+ POS Sale</button>
-            <button className="btn btn-secondary" type="button" onClick={handleExportSales}>Export</button>
+            <button className="btn btn-secondary allow-readonly" type="button" onClick={handleExportSales}>Export</button>
             <button className="btn btn-secondary" type="button" onClick={handlePrintSales}>Print</button>
             <button className="btn btn-secondary" type="button" onClick={handleMoreSaleAction}>More ▾</button>
             <button
