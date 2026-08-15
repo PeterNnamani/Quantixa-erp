@@ -25,8 +25,42 @@ export default function Topbar({
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const router = useRouter()
 
-  const roleLabel = user.role === 'super-admin' ? 'MD' : user.role === 'md' ? 'MD' : user.role === 'accountant' ? 'Accountant' : user.role === 'cashier' ? 'Cashier' : 'Auditor'
-  const roleFull = user.role === 'super-admin' ? 'Managing Director' : user.role === 'md' ? 'Managing Director' : user.role === 'accountant' ? 'Accountant' : user.role === 'cashier' ? 'Cashier' : 'Auditor'
+  const roleLabel =
+    user.role === 'super-admin'
+      ? 'Super Admin'
+      : user.role === 'md' || user.role === 'business-owner'
+      ? 'Business Owner'
+      : user.role === 'accountant'
+      ? 'Accountant'
+      : user.role === 'cashier' || user.role === 'sales-officer'
+      ? 'Sales Officer'
+      : user.role === 'purchasing-officer'
+      ? 'Purchasing Officer'
+      : user.role === 'stock-manager'
+      ? 'Stock Manager'
+      : user.role === 'hr-officer'
+      ? 'HR Officer'
+      : user.role === 'treasury-officer'
+      ? 'Treasury'
+      : 'Auditor'
+  const roleFull =
+    user.role === 'super-admin'
+      ? 'Super Admin'
+      : user.role === 'md' || user.role === 'business-owner'
+      ? 'Business Owner'
+      : user.role === 'accountant'
+      ? 'Accountant'
+      : user.role === 'cashier' || user.role === 'sales-officer'
+      ? 'Sales Officer'
+      : user.role === 'purchasing-officer'
+      ? 'Purchasing Officer'
+      : user.role === 'stock-manager'
+      ? 'Stock Manager'
+      : user.role === 'hr-officer'
+      ? 'HR Officer'
+      : user.role === 'treasury-officer'
+      ? 'Treasury Officer'
+      : 'Auditor'
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem('hw-theme') as 'light' | 'dark' | null

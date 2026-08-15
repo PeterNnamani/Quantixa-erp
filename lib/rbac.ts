@@ -63,10 +63,20 @@ export interface StaffMemberRecord {
 const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // Super Admin is a platform provisioning & oversight role — no transactional posting
     'super-admin': ['dashboard', 'reports', 'admin', 'settings'],
-    // Managing Director (md) follows same platform provisioning & oversight restrictions as Super Admin
-    md: ['dashboard', 'reports', 'admin', 'settings'],
-    accountant: ['dashboard', 'sales', 'purchases', 'accounting', 'reports'],
+    // Managing Director / Business Owner: broad visibility across modules (view/reporting focus)
+    md: ['dashboard', 'sales', 'purchases', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
+    accountant: ['dashboard', 'sales', 'purchases', 'accounting', 'reports', 'customers', 'suppliers'],
+    // Sales officer / cashier: sales-focused
+    'sales-officer': ['dashboard', 'sales'],
     cashier: ['dashboard', 'sales'],
+    // Purchasing officer: purchases-focused
+    'purchasing-officer': ['dashboard', 'purchases'],
+    // Stock / Inventory manager
+    'stock-manager': ['dashboard', 'inventory'],
+    // HR officer: basic dashboard and staff management visibility
+    'hr-officer': ['dashboard'],
+    // Treasury officer: banking and accounting visibility
+    'treasury-officer': ['dashboard', 'accounting', 'reports'],
     auditor: ['dashboard', 'reports', 'admin'],
 }
 
@@ -79,6 +89,15 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         visibleMenus: ['dashboard', 'reports', 'admin', 'settings'],
         dataScope: 'all',
         template: 'Super Admin',
+    },
+    {
+        id: 'business-owner',
+        name: 'Business Owner',
+        description: 'Company owner with broad visibility across modules',
+        permissions: ['dashboard', 'sales', 'purchases', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
+        visibleMenus: ['dashboard', 'sales', 'purchases', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
+        dataScope: 'all',
+        template: 'Business Owner',
     },
     {
         id: 'cashier',
@@ -99,6 +118,33 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         template: 'Accountant',
     },
     {
+        id: 'sales-officer',
+        name: 'Sales Officer',
+        description: 'Handles sales operations',
+        permissions: ['dashboard', 'sales'],
+        visibleMenus: ['dashboard', 'sales'],
+        dataScope: 'own',
+        template: 'Sales Officer',
+    },
+    {
+        id: 'purchasing-officer',
+        name: 'Purchasing Officer',
+        description: 'Manages purchase orders and supplier interactions',
+        permissions: ['dashboard', 'purchases'],
+        visibleMenus: ['dashboard', 'purchases'],
+        dataScope: 'team',
+        template: 'Purchasing Officer',
+    },
+    {
+        id: 'stock-manager',
+        name: 'Stock Manager',
+        description: 'Manages inventory and product listings',
+        permissions: ['dashboard', 'inventory'],
+        visibleMenus: ['dashboard', 'inventory'],
+        dataScope: 'branch',
+        template: 'Stock Manager',
+    },
+    {
         id: 'auditor',
         name: 'Auditor',
         description: 'Reviews logs and reports',
@@ -106,6 +152,24 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         visibleMenus: ['dashboard', 'reports'],
         dataScope: 'all',
         template: 'Auditor',
+    },
+    {
+        id: 'hr-officer',
+        name: 'HR Officer',
+        description: 'Manages staff records and HR processes',
+        permissions: ['dashboard'],
+        visibleMenus: ['dashboard'],
+        dataScope: 'team',
+        template: 'HR Officer',
+    },
+    {
+        id: 'treasury-officer',
+        name: 'Treasury Officer',
+        description: 'Manages bank transactions and treasury operations',
+        permissions: ['dashboard', 'accounting', 'reports'],
+        visibleMenus: ['dashboard', 'accounting', 'reports'],
+        dataScope: 'team',
+        template: 'Treasury Officer',
     },
 ]
 
