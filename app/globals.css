@@ -397,7 +397,9 @@ html[data-theme='dark'] .topbar {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.38);
 }
 
-/* Read-only role styling: disable interactive elements in main area for MD/Super Admin */
+/* Read-only role styling: hide interactive controls for MD/Super Admin
+   We hide buttons/inputs for read-only roles so those users don't see actions.
+   Export/print buttons and other allowed elements should carry `allow-readonly` to remain visible. */
 .app.role-readonly .main-area button,
 .app.role-readonly .main-area input,
 .app.role-readonly .main-area select,
@@ -412,14 +414,12 @@ html[data-theme='dark'] .topbar {
 .app.role-readonly .main-area .payables-btn,
 .app.role-readonly .main-area .receivables-btn,
 .app.role-readonly .main-area .page-btn {
-  pointer-events: none !important;
-  opacity: 0.65;
-  filter: grayscale(10%);
+  display: none !important;
 }
 
-/* Allow specific export/print actions to remain interactive when explicitly marked */
+/* Allow specific export/print actions or other exceptions to remain visible when explicitly marked */
 .app.role-readonly .main-area .allow-readonly {
-  pointer-events: auto !important;
+  display: inline-block !important;
   opacity: 1 !important;
   filter: none !important;
 }
