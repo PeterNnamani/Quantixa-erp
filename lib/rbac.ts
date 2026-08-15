@@ -63,7 +63,8 @@ export interface StaffMemberRecord {
 const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // Super Admin is a platform provisioning & oversight role — no transactional posting
     'super-admin': ['dashboard', 'reports', 'admin', 'settings'],
-    md: ['dashboard', 'sales', 'inventory', 'purchases', 'customers', 'suppliers', 'accounting', 'reports', 'admin', 'settings'],
+    // Managing Director (md) follows same platform provisioning & oversight restrictions as Super Admin
+    md: ['dashboard', 'reports', 'admin', 'settings'],
     accountant: ['dashboard', 'sales', 'purchases', 'accounting', 'reports'],
     cashier: ['dashboard', 'sales'],
     auditor: ['dashboard', 'reports', 'admin'],
