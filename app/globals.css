@@ -4234,6 +4234,81 @@ html[data-theme='dark'] .sidebar-body {
   box-shadow: 0 0 0 2px var(--royal-xlight);
 }
 
+.staff-access-picker {
+  position: relative;
+  min-width: 132px;
+}
+
+.staff-access-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  color: var(--text2);
+  background: var(--bg);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staff-access-trigger.has-value {
+  color: var(--text);
+}
+
+.staff-access-trigger:focus,
+.staff-access-trigger[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--royal);
+  box-shadow: 0 0 0 2px var(--royal-xlight);
+}
+
+.staff-access-chevron {
+  color: var(--text2);
+  font-size: 16px;
+  line-height: 10px;
+}
+
+.staff-access-options {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 100%;
+  min-width: 132px;
+  padding: 5px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  background: var(--bg);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.staff-access-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: calc(var(--r) - 2px);
+  color: var(--text2);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staff-access-option:hover,
+.staff-access-option.selected {
+  color: var(--text);
+  background: var(--royal-xlight);
+}
+
 /* ── TABLES ─────────────────────────────────────────────– */
 .tbl-wrap {
   overflow-x: auto;

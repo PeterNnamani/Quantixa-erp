@@ -56,8 +56,9 @@ export default function StaffManagementPage() {
   const [branch, setBranch] = useState(branchOptions[0])
   const [username, setUsername] = useState('')
   const [roleId, setRoleId] = useState(state.roles[0]?.id || 'cashier')
-  const [roleTitle, setRoleTitle] = useState(state.roles[0]?.name || 'Staff')
-  const [accessLevels, setAccessLevels] = useState<AccessLevels>(getRoleAccessLevels(state.roles[0]))
+  const [roleTitle, setRoleTitle] = useState('')
+  const [accessLevels, setAccessLevels] = useState<AccessLevels>({})
+  const [openAccessMenu, setOpenAccessMenu] = useState<PermissionKey | null>(null)
   const [status, setStatus] = useState<StaffMemberRecord['status']>('active')
 
   const [roleName, setRoleName] = useState('New Role')
@@ -140,8 +141,9 @@ export default function StaffManagementPage() {
     setBranch(branchOptions[0])
     setUsername('')
     setRoleId(state.roles[0]?.id || 'cashier')
-    setRoleTitle(state.roles[0]?.name || 'Staff')
-    setAccessLevels(getRoleAccessLevels(state.roles[0]))
+    setRoleTitle('')
+    setAccessLevels({})
+    setOpenAccessMenu(null)
     setStatus('active')
     setActiveStaff(null)
     setDrawerMode('add')
@@ -631,23 +633,47 @@ export default function StaffManagementPage() {
                 {permissionOptions.map((permission) => (
                   <div key={permission.key} className="permission-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <span>{permission.label}</span>
-                    <select
-                      className="allow-readonly"
-                      value={accessLevels[permission.key] || 'none'}
-                      onChange={(event) => {
-                        const value = event.target.value
-                        setAccessLevels((current) => {
-                          const next = { ...current }
-                          if (value === 'none') delete next[permission.key]
-                          else next[permission.key] = value as 'view' | 'edit'
-                          return next
-                        })
-                      }}
-                    >
-                      <option value="none">No access</option>
-                      <option value="view">View only</option>
-                      <option value="edit">Edit</option>
-                    </select>
+                    <div className="staff-access-picker">
+                      <button
+                        type="button"
+                        className={`staff-access-trigger ${accessLevels[permission.key] ? 'has-value' : ''} allow-readonly`}
+                        onClick={() => setOpenAccessMenu((current) => current === permission.key ? null : permission.key)}
+                        aria-expanded={openAccessMenu === permission.key}
+                        aria-haspopup="listbox"
+                      >
+                        {accessLevels[permission.key] === 'view' ? 'View only' : accessLevels[permission.key] === 'edit' ? 'Edit' : 'Select access'}
+                        <span className="staff-access-chevron" aria-hidden="true">⌄</span>
+                      </button>
+                      {openAccessMenu === permission.key && (
+                        <div className="staff-access-options" role="listbox" aria-label={`${permission.label} access`}>
+                          {[
+                            { value: 'none', label: 'No access' },
+                            { value: 'view', label: 'View only' },
+                            { value: 'edit', label: 'Edit' },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={`staff-access-option ${(!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value ? 'selected' : ''}`}
+                              onClick={() => {
+                                setAccessLevels((current) => {
+                                  const next = { ...current }
+                                  if (option.value === 'none') delete next[permission.key]
+                                  else next[permission.key] = option.value as 'view' | 'edit'
+                                  return next
+                                })
+                                setOpenAccessMenu(null)
+                              }}
+                              role="option"
+                              aria-selected={(!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value}
+                            >
+                              <span>{option.label}</span>
+                              {((!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value) && <span aria-hidden="true">✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
