@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { useAccounting } from '@/lib/context'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatCurrencyOrZero } from '@/lib/utils'
-import { canAccessRoute } from '@/lib/rbac'
+import { canAccessRoute, canEditPermission, getRoutePermission } from '@/lib/rbac'
 import Navigation from './navigation'
 import Topbar from './topbar'
 
@@ -133,7 +133,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     )
   }
 
-  const roleReadOnly = user.role === 'md' || user.role === 'super-admin'
+  const routePermission = getRoutePermission(pathname || '/dashboard')
+  const roleReadOnly = routePermission ? !canEditPermission(user, routePermission) : false
 
   return (
     <div style={{ minHeight: '100vh', overflow: 'visible' }}>

@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
   email text NOT NULL,
   full_name text NOT NULL,
   role text NOT NULL,
+  role_title text,
+  access_levels jsonb,
   phone text,
   staff_id text,
   username text,

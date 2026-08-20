@@ -11,6 +11,9 @@ export type PermissionKey =
     | 'admin'
     | 'settings'
 
+export type AccessLevel = 'view' | 'edit'
+export type AccessLevels = Partial<Record<PermissionKey, AccessLevel>>
+
 export interface RoleDefinition {
     id: string
     name: string
@@ -28,6 +31,8 @@ export interface UserWithRole {
     roleId?: string
     permissions?: PermissionKey[]
     visibleMenus?: PermissionKey[]
+    accessLevels?: AccessLevels
+    roleName?: string
     dataScope?: RoleDefinition['dataScope']
     branchId?: string
     staffId?: string
@@ -42,6 +47,7 @@ export interface StaffMemberRecord {
     roleName: string
     permissions: PermissionKey[]
     visibleMenus?: PermissionKey[]
+    accessLevels?: AccessLevels
     dataScope: RoleDefinition['dataScope']
     status: 'active' | 'disabled'
     createdAt: string
@@ -214,51 +220,49 @@ function getRolePermissions(user: Pick<UserWithRole, 'role' | 'permissions'> | n
     return DEFAULT_ROLE_PERMISSIONS[user.role] || []
 }
 
-export function roleHasPermission(user: Pick<UserWithRole, 'role' | 'permissions'> | null | undefined, permission: PermissionKey): boolean {
-    if (!user) return false
-    const rolePermissions = getRolePermissions(user)
-    if (rolePermissions.includes(permission)) return true
-    // Check role template visibleMenus (view-only) or user-specific visibleMenus
-    const roleDef = RBAC_TEMPLATES.find((r) => r.id === user.role)
-    if (roleDef && roleDef.visibleMenus && roleDef.visibleMenus.includes(permission)) return true
-    if ((user as any).visibleMenus && Array.isArray((user as any).visibleMenus) && (user as any).visibleMenus.includes(permission)) return true
-    return false
+export function getPermissionAccessLevel(
+    user: Pick<UserWithRole, 'role' | 'permissions' | 'visibleMenus' | 'accessLevels'> | null | undefined,
+    permission: PermissionKey,
+): AccessLevel | null {
+    if (!user) return null
+    if (user.accessLevels && user.accessLevels[permission]) return user.accessLevels[permission] || null
+    if (getRolePermissions(user).includes(permission)) return 'edit'
+    if (user.visibleMenus?.includes(permission)) return 'view'
+
+    const roleDef = RBAC_TEMPLATES.find((role) => role.id === user.role)
+    if (roleDef?.permissions.includes(permission)) return 'edit'
+    if (roleDef?.visibleMenus?.includes(permission)) return 'view'
+    return null
 }
 
-export function canAccessRoute(user: Pick<UserWithRole, 'role' | 'permissions'> | null | undefined, pathname: string): boolean {
-    const routePermissions: Record<string, PermissionKey> = {
-        '/dashboard': 'dashboard',
-        '/sales': 'sales',
-        '/inventory': 'inventory',
-        '/purchases': 'purchases',
-        '/customers': 'customers',
-        '/suppliers': 'suppliers',
-        '/ledger': 'accounting',
-        '/daily-close': 'accounting',
-        '/receivables': 'receivables',
-        '/payables': 'accounting',
-        '/prepayments': 'accounting',
-        '/supplier-rebates': 'accounting',
-        '/loans': 'accounting',
-        '/reports': 'reports',
-        '/monthly-report': 'reports',
-        '/annual-report': 'reports',
-        '/asset-schedule': 'reports',
-        '/settings': 'settings',
-        '/backup': 'admin',
-        '/change-password': 'settings',
-        '/subscription-and-licensing': 'admin',
-        '/audit': 'admin',
-        '/staff-management': 'admin',
-        '/bank-txn': 'accounting',
-        '/tax': 'accounting',
-        '/product-manager': 'inventory',
-        '/user-guide': 'dashboard',
-    }
+export function roleHasPermission(user: Pick<UserWithRole, 'role' | 'permissions'> | null | undefined, permission: PermissionKey): boolean {
+    return getPermissionAccessLevel(user, permission) !== null
+}
 
-    const matchingPermission = Object.entries(routePermissions).find(([path]) => pathname.startsWith(path))
-    if (!matchingPermission) return true
-    return roleHasPermission(user, matchingPermission[1])
+export function canEditPermission(
+    user: Pick<UserWithRole, 'role' | 'permissions' | 'visibleMenus' | 'accessLevels'> | null | undefined,
+    permission: PermissionKey,
+): boolean {
+    return getPermissionAccessLevel(user, permission) === 'edit'
+}
+
+const ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
+    '/dashboard': 'dashboard', '/sales': 'sales', '/inventory': 'inventory', '/purchases': 'purchases',
+    '/customers': 'customers', '/suppliers': 'suppliers', '/ledger': 'accounting', '/daily-close': 'accounting',
+    '/receivables': 'receivables', '/payables': 'accounting', '/prepayments': 'accounting', '/supplier-rebates': 'accounting',
+    '/loans': 'accounting', '/reports': 'reports', '/monthly-report': 'reports', '/annual-report': 'reports',
+    '/asset-schedule': 'reports', '/settings': 'settings', '/backup': 'admin', '/change-password': 'settings',
+    '/subscription-and-licensing': 'admin', '/audit': 'admin', '/staff-management': 'admin', '/role-management': 'admin', '/bank-txn': 'accounting',
+    '/tax': 'accounting', '/product-manager': 'inventory', '/user-guide': 'dashboard',
+}
+
+export function getRoutePermission(pathname: string): PermissionKey | null {
+    return Object.entries(ROUTE_PERMISSIONS).find(([path]) => pathname.startsWith(path))?.[1] || null
+}
+
+export function canAccessRoute(user: Pick<UserWithRole, 'role' | 'permissions' | 'visibleMenus' | 'accessLevels'> | null | undefined, pathname: string): boolean {
+    const permission = getRoutePermission(pathname)
+    return permission ? roleHasPermission(user, permission) : true
 }
 
 export function generateStaffId(name: string): string {
@@ -313,28 +317,5 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
         { label: 'User Guide', href: '/user-guide', group: 'AUDIT & ADMIN', permission: 'dashboard' as PermissionKey, icon: 'userGuide' },
     ]
 
-    return allItems.filter((item) => {
-        // Primary permission checks: treat roleHasPermission as true when role has full or view-only access
-        if (item.href === '/dashboard') return roleHasPermission(user, 'dashboard')
-        if (['/sales'].includes(item.href)) return roleHasPermission(user, 'sales')
-        if (['/inventory', '/product-manager'].includes(item.href)) return roleHasPermission(user, 'inventory')
-        if (['/purchases'].includes(item.href)) return roleHasPermission(user, 'purchases')
-        if (['/receivables'].includes(item.href)) return roleHasPermission(user, 'receivables')
-        if (['/bank-txn', '/banks', '/daily-close', '/ledger', '/payables', '/prepayments', '/supplier-rebates', '/loans', '/tax'].includes(item.href)) return roleHasPermission(user, 'accounting')
-        if (['/monthly-report', '/annual-report', '/asset-schedule', '/reports'].includes(item.href)) return roleHasPermission(user, 'reports')
-        if (['/settings', '/backup', '/subscription-and-licensing', '/audit', '/staff-management'].includes(item.href)) return roleHasPermission(user, 'admin') || roleHasPermission(user, 'settings')
-
-        // If a role or user has an explicit visibleMenus list, enforce it: only show items included there
-        if (item.permission) {
-            const roleDef = RBAC_TEMPLATES.find((r) => r.id === user?.role)
-            if (user?.visibleMenus && Array.isArray(user.visibleMenus)) {
-                return user.visibleMenus.includes(item.permission)
-            }
-            if (roleDef && roleDef.visibleMenus && Array.isArray(roleDef.visibleMenus)) {
-                return roleDef.visibleMenus.includes(item.permission)
-            }
-        }
-
-        return true
-    })
+    return allItems.filter((item) => roleHasPermission(user, item.permission))
 }

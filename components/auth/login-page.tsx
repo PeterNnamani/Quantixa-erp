@@ -64,8 +64,11 @@ export default function LoginPage() {
         name: matchedStaff.name,
         role: matchedStaff.roleId,
         roleId: matchedStaff.roleId,
+        roleName: matchedStaff.roleName,
         staffId: matchedStaff.staffId,
         permissions: matchedStaff.permissions,
+        visibleMenus: matchedStaff.visibleMenus,
+        accessLevels: matchedStaff.accessLevels,
         dataScope: matchedStaff.dataScope,
       }, rememberMe)
       setIsLoading(false)

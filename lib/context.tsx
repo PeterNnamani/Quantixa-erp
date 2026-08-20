@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { supabase } from './supabase.browser'
-import { getDefaultRoles, type PermissionKey, type RoleDefinition } from '@/lib/rbac'
+import { getDefaultRoles, type AccessLevels, type PermissionKey, type RoleDefinition } from '@/lib/rbac'
 
 function enrichStoredUser(raw: any) {
   if (!raw || typeof raw !== 'object') return raw
@@ -24,6 +24,8 @@ function enrichStoredUser(raw: any) {
     ...raw,
     role: raw.role,
     visibleMenus,
+    accessLevels: raw.accessLevels && typeof raw.accessLevels === 'object' ? raw.accessLevels as AccessLevels : undefined,
+    roleName: typeof raw.roleName === 'string' ? raw.roleName : undefined,
   }
 }
 import { createSeedLedgerData, postJournalEntry, findAccountByName } from '@/lib/ledger'
@@ -36,6 +38,9 @@ export interface User {
   role: string
   roleId?: string
   permissions?: string[]
+  visibleMenus?: PermissionKey[]
+  accessLevels?: AccessLevels
+  roleName?: string
   dataScope?: 'own' | 'team' | 'branch' | 'all'
   branchId?: string
   staffId?: string
@@ -49,6 +54,8 @@ export interface StaffMember {
   roleId: string
   roleName: string
   permissions: PermissionKey[]
+  visibleMenus?: PermissionKey[]
+  accessLevels?: AccessLevels
   dataScope: 'own' | 'team' | 'branch' | 'all'
   status: 'active' | 'disabled'
   createdAt: string

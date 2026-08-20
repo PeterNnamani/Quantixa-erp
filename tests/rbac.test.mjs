@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { canAccessRoute, findStaffMemberByLogin, getVisibleNavigationItems, roleHasPermission } from '../lib/rbac.mjs'
+import { canAccessRoute, canEditPermission, findStaffMemberByLogin, getVisibleNavigationItems, roleHasPermission } from '../lib/rbac.mjs'
 
 test('super admin has provisioning/oversight permissions, not transactional', () => {
     const superAdmin = { role: 'super-admin' }
@@ -48,4 +48,16 @@ test('staff login can be resolved by staff id and generated pin', () => {
     const match = findStaffMemberByLogin(staffMembers, 'ADA-1001', '4821')
     assert.ok(match)
     assert.equal(match?.name, 'Ada Okafor')
+})
+
+test('custom staff access keeps view-only menus visible without edit access', () => {
+    const staff = {
+        role: 'custom-role',
+        accessLevels: { dashboard: 'view', reports: 'view', sales: 'edit' },
+    }
+
+    assert.equal(canAccessRoute(staff, '/reports'), true)
+    assert.equal(canEditPermission(staff, 'reports'), false)
+    assert.equal(canEditPermission(staff, 'sales'), true)
+    assert.ok(getVisibleNavigationItems(staff).some((item) => item.href === '/sales'))
 })

@@ -17,6 +17,8 @@ export async function POST(request: Request) {
             email: payload.email || `${payload.username}@local`,
             full_name: payload.fullName,
             role: payload.roleId,
+            role_title: payload.roleTitle || null,
+            access_levels: payload.accessLevels || null,
             phone: payload.phone || null,
             status: payload.status || 'active',
             created_at: now,

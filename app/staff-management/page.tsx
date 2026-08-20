@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users } from 'lucide-react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
-import { generatePin, generateStaffId, saveRoles, type PermissionKey, type RoleDefinition, type StaffMemberRecord } from '@/lib/rbac'
+import { generatePin, generateStaffId, saveRoles, type AccessLevels, type PermissionKey, type RoleDefinition, type StaffMemberRecord } from '@/lib/rbac'
 import { saveUserToDatabase } from '@/lib/user-db'
 import { getSupabaseClient } from '@/lib/supabase.browser'
 
@@ -24,6 +24,14 @@ const permissionOptions: { key: PermissionKey; label: string }[] = [
   { key: 'admin', label: 'Admin Tools' },
   { key: 'settings', label: 'Settings & Security' },
 ]
+
+const getRoleAccessLevels = (role: RoleDefinition | undefined): AccessLevels => {
+  if (!role) return { dashboard: 'edit' }
+  const accessLevels: AccessLevels = {}
+  role.visibleMenus?.forEach((permission) => { accessLevels[permission] = 'view' })
+  role.permissions.forEach((permission) => { accessLevels[permission] = 'edit' })
+  return accessLevels
+}
 
 export default function StaffManagementPage() {
   const { state, updateState, user } = useAccounting()
@@ -48,6 +56,8 @@ export default function StaffManagementPage() {
   const [branch, setBranch] = useState(branchOptions[0])
   const [username, setUsername] = useState('')
   const [roleId, setRoleId] = useState(state.roles[0]?.id || 'cashier')
+  const [roleTitle, setRoleTitle] = useState(state.roles[0]?.name || 'Staff')
+  const [accessLevels, setAccessLevels] = useState<AccessLevels>(getRoleAccessLevels(state.roles[0]))
   const [status, setStatus] = useState<StaffMemberRecord['status']>('active')
 
   const [roleName, setRoleName] = useState('New Role')
@@ -130,6 +140,8 @@ export default function StaffManagementPage() {
     setBranch(branchOptions[0])
     setUsername('')
     setRoleId(state.roles[0]?.id || 'cashier')
+    setRoleTitle(state.roles[0]?.name || 'Staff')
+    setAccessLevels(getRoleAccessLevels(state.roles[0]))
     setStatus('active')
     setActiveStaff(null)
     setDrawerMode('add')
@@ -157,6 +169,9 @@ export default function StaffManagementPage() {
 
         const nextStaff: StaffMemberRecord[] = (data || []).map((row: any) => {
           const roleDef = roles.find((r) => r.id === String(row.role)) || roles[0]
+          const storedAccessLevels = row.access_levels && typeof row.access_levels === 'object'
+            ? row.access_levels as AccessLevels
+            : getRoleAccessLevels(roleDef)
           const staffId = String(row.staff_id || '')
           const id = String(row.id || `${staffId}-${Date.parse(String(row.created_at || Date.now()))}`)
 
@@ -166,11 +181,12 @@ export default function StaffManagementPage() {
             staffId,
             pin: String(row.pin || ''),
             roleId: roleDef?.id || String(row.role || 'cashier'),
-            roleName: roleDef?.name || String(row.role || 'Custom Role'),
-            permissions: roleDef?.permissions || [],
-            visibleMenus: roleDef?.visibleMenus,
+            roleName: String(row.role_title || roleDef?.name || String(row.role || 'Custom Role')),
+            permissions: Object.entries(storedAccessLevels).filter(([, level]) => level === 'edit').map(([key]) => key as PermissionKey),
+            visibleMenus: Object.keys(storedAccessLevels) as PermissionKey[],
+            accessLevels: storedAccessLevels,
             dataScope: roleDef?.dataScope || 'team',
-            status: row.status === 'disabled' ? 'disabled' : 'active',
+            status: (row.status === 'disabled' ? 'disabled' : 'active') as StaffMemberRecord['status'],
             createdAt: String(row.created_at || new Date().toISOString()),
             branch: row.branch || undefined,
             department: row.department || undefined,
@@ -228,6 +244,8 @@ export default function StaffManagementPage() {
     setBranch(staff.branch || branchOptions[0])
     setUsername(staff.username || '')
     setRoleId(staff.roleId)
+    setRoleTitle(staff.roleName)
+    setAccessLevels(staff.accessLevels || getRoleAccessLevels(roles.find((role) => role.id === staff.roleId)))
     setStatus(staff.status)
     setDrawerOpen(true)
   }
@@ -240,6 +258,9 @@ export default function StaffManagementPage() {
     }
 
     const selectedRoleDefinition = roles.find((role) => role.id === roleId)
+    const permissions = Object.entries(accessLevels).filter(([, level]) => level === 'edit').map(([key]) => key as PermissionKey)
+    const visibleMenus = Object.keys(accessLevels) as PermissionKey[]
+    const effectiveRoleTitle = roleTitle.trim() || selectedRoleDefinition?.name || 'Custom Role'
     const generatedPin = (drawerMode === 'edit' && activeStaff?.pin) ? activeStaff.pin : generatePin()
     const generatedStaffId = employeeId || (drawerMode === 'edit' && activeStaff?.staffId ? activeStaff.staffId : generateStaffId(fullName))
 
@@ -250,9 +271,10 @@ export default function StaffManagementPage() {
         staffId: activeStaff.staffId || generatedStaffId,
         pin: activeStaff.pin || generatedPin,
         roleId,
-        roleName: selectedRoleDefinition?.name || 'Custom Role',
-        permissions: selectedRoleDefinition?.permissions || [],
-        visibleMenus: selectedRoleDefinition?.visibleMenus,
+        roleName: effectiveRoleTitle,
+        permissions,
+        visibleMenus,
+        accessLevels,
         dataScope: selectedRoleDefinition?.dataScope || 'team',
         status,
         branch,
@@ -280,6 +302,8 @@ export default function StaffManagementPage() {
         pin: generatedPin,
         fullName,
         roleId,
+        roleTitle: effectiveRoleTitle,
+        accessLevels,
         email,
         phone,
         branch,
@@ -307,9 +331,10 @@ export default function StaffManagementPage() {
       staffId: generatedStaffId,
       pin: generatedPin,
       roleId,
-      roleName: selectedRoleDefinition?.name || 'Custom Role',
-      permissions: selectedRoleDefinition?.permissions || [],
-      visibleMenus: selectedRoleDefinition?.visibleMenus,
+      roleName: effectiveRoleTitle,
+      permissions,
+      visibleMenus,
+      accessLevels,
       dataScope: selectedRoleDefinition?.dataScope || 'team',
       status,
       createdAt: new Date().toISOString(),
@@ -339,6 +364,8 @@ export default function StaffManagementPage() {
       pin: generatedPin,
       fullName,
       roleId,
+      roleTitle: effectiveRoleTitle,
+      accessLevels,
       email,
       phone,
       branch,
@@ -591,11 +618,39 @@ export default function StaffManagementPage() {
             <div className="panel-title">Role Assignment</div>
             <div className="form-grid two-up">
               <div className="fg">
-                <label>Role</label>
-                <select className="allow-readonly" value={roleId} onChange={(e) => setRoleId(e.target.value)}>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select>
-                <div className="metric-note" style={{ marginTop: 6 }}>Choose one role. Permissions will follow it automatically.</div>
+                <label>Role title</label>
+                <input className="allow-readonly" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="Type the staff role title" />
+                <div className="metric-note" style={{ marginTop: 6 }}>Type the title this staff member should see.</div>
               </div>
               <div className="fg"><label>Status</label><select className="allow-readonly" value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}><option value="active">Active</option><option value="disabled">Inactive</option></select></div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <div className="panel-title" style={{ marginBottom: 10 }}>Menu access</div>
+              <div className="metric-note" style={{ marginBottom: 12 }}>Choose whether this staff member cannot access, can view, or can edit each menu.</div>
+              <div className="permission-grid">
+                {permissionOptions.map((permission) => (
+                  <div key={permission.key} className="permission-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span>{permission.label}</span>
+                    <select
+                      className="allow-readonly"
+                      value={accessLevels[permission.key] || 'none'}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        setAccessLevels((current) => {
+                          const next = { ...current }
+                          if (value === 'none') delete next[permission.key]
+                          else next[permission.key] = value as 'view' | 'edit'
+                          return next
+                        })
+                      }}
+                    >
+                      <option value="none">No access</option>
+                      <option value="view">View only</option>
+                      <option value="edit">Edit</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
