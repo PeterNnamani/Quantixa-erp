@@ -18,7 +18,13 @@ const sidebarSections = [
   { id: 'ai', label: 'AI Assistant', description: 'Automation and insights' },
 ]
 
-const bankMasterList = ['UBA', 'Access Bank', 'GTBank', 'Zenith Bank', 'First Bank', 'Stanbic IBTC', 'Fidelity Bank', 'FCMB', 'Union Bank', 'Sterling Bank']
+const bankMasterList = [
+  'Access Bank', 'Citibank Nigeria', 'Ecobank Nigeria', 'Fidelity Bank', 'First Bank of Nigeria',
+  'FCMB', 'Globus Bank', 'GTBank', 'Heritage Bank', 'Jaiz Bank', 'Keystone Bank',
+  'Moniepoint', 'Opay', 'Polaris Bank', 'PremiumTrust Bank', 'Providus Bank', 'Stanbic IBTC',
+  'Sterling Bank', 'SunTrust Bank', 'TAJBank', 'Titan Trust Bank', 'Union Bank', 'United Bank for Africa (UBA)',
+  'Unity Bank', 'Wema Bank', 'Zenith Bank', 'Kuda', 'PalmPay', 'Kora', 'VFD Microfinance Bank',
+]
 const accountTypes = ['Current', 'Savings', 'Cash', 'Wallet', 'Other']
 
 export default function SettingsPage() {
@@ -28,6 +34,7 @@ export default function SettingsPage() {
   const [openingCapital, setOpeningCapital] = useState(state.openingCapital)
   const [activeSection, setActiveSection] = useState(isSuperAdmin ? 'bank-management' : 'company')
   const [newBankName, setNewBankName] = useState('')
+  const [manualBankName, setManualBankName] = useState('')
   const [newAccountName, setNewAccountName] = useState('')
   const [newAccountNumber, setNewAccountNumber] = useState('')
   const [newAccountType, setNewAccountType] = useState('Current')
@@ -62,7 +69,7 @@ export default function SettingsPage() {
   }
 
   const handleAddBank = async () => {
-    const bankName = newBankName.trim()
+    const bankName = (newBankName === '__manual__' ? manualBankName : newBankName).trim()
     const accountName = newAccountName.trim()
     if (!bankName || !accountName) {
       alert('Select a bank and enter an account name.')
@@ -98,6 +105,7 @@ export default function SettingsPage() {
     updateState({ banks: { ...state.banks, [accountKey]: newBankBalance } })
     addAuditLog('CREATE', 'BANK', accountKey, `Added ${newAccountType.toLowerCase()} account with ${formatCurrency(newBankBalance)} opening balance.`)
     setNewBankName('')
+    setManualBankName('')
     setNewAccountName('')
     setNewAccountNumber('')
     setNewAccountType('Current')
@@ -461,7 +469,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="settings-form-section-title">Bank information</div>
                   <div className="form-grid two-up">
-                    <div className="fg"><label>Bank</label><select value={newBankName} onChange={(event) => setNewBankName(event.target.value)}><option value="">Select a bank</option>{bankMasterList.map((bank) => <option key={bank} value={bank}>{bank}</option>)}</select></div>
+                    <div className="fg"><label>Bank</label><select value={newBankName} onChange={(event) => { setNewBankName(event.target.value); if (event.target.value !== '__manual__') setManualBankName('') }}><option value="">Select a bank</option>{bankMasterList.map((bank) => <option key={bank} value={bank}>{bank}</option>)}<option value="__manual__">Add bank manually</option></select>{newBankName === '__manual__' && <input value={manualBankName} onChange={(event) => setManualBankName(event.target.value)} placeholder="Enter bank name" autoFocus />}</div>
                     <div className="fg"><label>Account name</label><input value={newAccountName} onChange={(event) => setNewAccountName(event.target.value)} placeholder="Main Business Account" /></div>
                     <div className="fg"><label>Account number <span className="field-hint">optional</span></label><input value={newAccountNumber} onChange={(event) => setNewAccountNumber(event.target.value.replace(/\D/g, '').slice(0, 20))} placeholder="0123456789" inputMode="numeric" /></div>
                     <div className="fg"><label>Account type</label><select value={newAccountType} onChange={(event) => setNewAccountType(event.target.value)}>{accountTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select></div>

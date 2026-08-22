@@ -6833,6 +6833,85 @@ html[data-theme='dark'] .pricing-row span {
   }
 }
 
+@media (max-width: 640px) {
+  .settings-bank-hero {
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .settings-bank-hero .panel-subtitle {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .settings-bank-hero-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .settings-bank-metric {
+    padding: 12px;
+  }
+
+  .settings-bank-form,
+  .settings-bank-stack>.panel-card {
+    padding: 16px;
+  }
+
+  .settings-bank-form .panel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .settings-bank-submit .metric-note {
+    line-height: 1.45;
+  }
+
+  .bank-account-register {
+    overflow-x: visible;
+  }
+
+  .bank-register-head {
+    display: none;
+  }
+
+  .bank-register-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px 14px;
+    min-width: 0;
+    padding: 14px 0;
+  }
+
+  .bank-register-row>span {
+    min-width: 0;
+  }
+
+  .bank-register-row>span:nth-child(2)::before,
+  .bank-register-row>span:nth-child(3)::before,
+  .bank-register-row>span:nth-child(4)::before {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--text3);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .bank-register-row>span:nth-child(2)::before {
+    content: 'Type';
+  }
+
+  .bank-register-row>span:nth-child(3)::before {
+    content: 'Balance';
+  }
+
+  .bank-register-row>span:nth-child(4)::before {
+    content: 'Status';
+  }
+}
+
 /* ── ALERTS ─────────────────────────────────────────────– */
 .alert {
   padding: 12px 14px;
