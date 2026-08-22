@@ -6,32 +6,33 @@ import { useAccounting } from '@/lib/context'
 import { formatCurrency } from '@/lib/utils'
 import { getDefaultRoles, saveRoles, type RoleDefinition, type PermissionKey } from '@/lib/rbac'
 import { parseSpreadsheetFile, prepareGenericImportPayload, type ImportSummary } from '@/lib/import-utils'
-import { Plus, Landmark, WalletCards } from 'lucide-react'
-
-const bankMasterList = ['UBA', 'Access Bank', 'GTBank', 'Zenith Bank', 'First Bank', 'Stanbic IBTC', 'Fidelity Bank', 'FCMB', 'Union Bank', 'Sterling Bank']
+import { Building2, Landmark, Plus, ShieldCheck, WalletCards } from 'lucide-react'
 
 const sidebarSections = [
   { id: 'company', label: 'Company', description: 'Profile, branding, and legal details' },
   { id: 'business', label: 'Business', description: 'Defaults, dates, and workflow' },
-  { id: 'bank-management', label: 'Bank & Cash', description: 'Accounts, opening balances, and access' },
   { id: 'notifications', label: 'Notifications', description: 'Email, SMS, and push' },
   { id: 'security', label: 'Security', description: 'Auth, sessions, and policies' },
   { id: 'integrations', label: 'Integrations', description: 'Payments, storage, and APIs' },
   { id: 'ai', label: 'AI Assistant', description: 'Automation and insights' },
 ]
 
+const bankMasterList = ['UBA', 'Access Bank', 'GTBank', 'Zenith Bank', 'First Bank', 'Stanbic IBTC', 'Fidelity Bank', 'FCMB', 'Union Bank', 'Sterling Bank']
+const accountTypes = ['Current', 'Savings', 'Cash', 'Wallet', 'Other']
+
 export default function SettingsPage() {
   const { state, updateState, addAuditLog, user } = useAccounting()
   const [openingCapital, setOpeningCapital] = useState(state.openingCapital)
   const [activeSection, setActiveSection] = useState('company')
-  const [newBankName, setNewBankName] = useState(bankMasterList[0])
+  const [newBankName, setNewBankName] = useState('')
   const [newAccountName, setNewAccountName] = useState('')
   const [newAccountNumber, setNewAccountNumber] = useState('')
-  const [newAccountType, setNewAccountType] = useState<'Current' | 'Savings' | 'Cash' | 'Wallet' | 'Other'>('Current')
+  const [newAccountType, setNewAccountType] = useState('Current')
   const [newCurrency, setNewCurrency] = useState('NGN')
   const [newBranch, setNewBranch] = useState('')
+  const [newOpeningDate, setNewOpeningDate] = useState(new Date().toISOString().slice(0, 10))
+  const [newAccountStatus, setNewAccountStatus] = useState('Active')
   const [newBankBalance, setNewBankBalance] = useState(0)
-  const [newBalanceDate, setNewBalanceDate] = useState(new Date().toISOString().slice(0, 10))
   const [roles, setRoles] = useState<RoleDefinition[]>(state.roles || getDefaultRoles())
   const [roleName, setRoleName] = useState('Sales Supervisor')
   const [roleTemplate, setRoleTemplate] = useState('Custom')
@@ -61,32 +62,26 @@ export default function SettingsPage() {
   const handleAddBank = () => {
     const bankName = newBankName.trim()
     const accountName = newAccountName.trim()
-    if (!accountName) {
-      alert('Please enter an account name.')
+    if (!bankName || !accountName) {
+      alert('Select a bank and enter an account name.')
       return
     }
-    if (Object.prototype.hasOwnProperty.call(state.banks, accountName)) {
-      alert('This account name already exists.')
+    const accountKey = `${bankName} — ${accountName}`
+    if (Object.prototype.hasOwnProperty.call(state.banks, accountKey)) {
+      alert('This bank account already exists.')
       return
     }
 
-    const account = {
-      id: `BANK-${Date.now()}`,
-      bankName,
-      accountName,
-      accountNumber: newAccountNumber.trim(),
-      accountType: newAccountType,
-      currency: newCurrency.trim().toUpperCase() || 'NGN',
-      branch: newBranch.trim(),
-      openingBalance: newBankBalance,
-      openingBalanceDate: newBalanceDate,
-      status: 'Active' as const,
-    }
-    updateState({ banks: { ...state.banks, [accountName]: newBankBalance }, bankAccounts: [...state.bankAccounts, account] })
-    addAuditLog('CREATE', 'BANK', account.id, `Added ${bankName} account ${accountName} with ${formatCurrency(newBankBalance)}`)
+    updateState({ banks: { ...state.banks, [accountKey]: newBankBalance } })
+    addAuditLog('CREATE', 'BANK', accountKey, `Added ${newAccountType.toLowerCase()} account with ${formatCurrency(newBankBalance)} opening balance.`)
+    setNewBankName('')
     setNewAccountName('')
     setNewAccountNumber('')
+    setNewAccountType('Current')
+    setNewCurrency('NGN')
     setNewBranch('')
+    setNewOpeningDate(new Date().toISOString().slice(0, 10))
+    setNewAccountStatus('Active')
     setNewBankBalance(0)
   }
 
@@ -368,6 +363,15 @@ export default function SettingsPage() {
                 <span className="sidebar-subtitle">{section.description}</span>
               </button>
             ))}
+            {isSuperAdmin && (
+              <button
+                className={`sidebar-item ${activeSection === 'bank-management' ? 'active' : ''}`}
+                onClick={() => setActiveSection('bank-management')}
+              >
+                <span className="sidebar-title">Bank Management</span>
+                <span className="sidebar-subtitle">Create and configure company bank accounts</span>
+              </button>
+            )}
           </aside>
 
           <div className="settings-content">
@@ -408,36 +412,57 @@ export default function SettingsPage() {
             )}
 
             {activeSection === 'bank-management' && isSuperAdmin && (
-              <div className="settings-security-stack">
-                <div className="panel-card">
-                  <div className="panel-title"><Landmark size={19} style={{ verticalAlign: 'middle', marginRight: 8 }} />Bank & cash management</div>
-                  <div className="panel-subtitle">Create an account once. It becomes available across Bank Balances, payments, expenses, receivables, payables, and the ledger.</div>
-                  <div className="form-grid two-up" style={{ marginTop: 18 }}>
-                  <div className="fg"><label>Bank</label><select value={newBankName} onChange={(event) => setNewBankName(event.target.value)}>{bankMasterList.map((bank) => <option key={bank}>{bank}</option>)}</select></div>
-                  <div className="fg"><label>Account name</label><input type="text" value={newAccountName} onChange={(event) => setNewAccountName(event.target.value)} placeholder="Main Business Account" /></div>
-                  <div className="fg"><label>Account number</label><input type="text" inputMode="numeric" value={newAccountNumber} onChange={(event) => setNewAccountNumber(event.target.value)} placeholder="0123456789" /></div>
-                  <div className="fg"><label>Account type</label><select value={newAccountType} onChange={(event) => setNewAccountType(event.target.value as typeof newAccountType)}><option>Current</option><option>Savings</option><option>Cash</option><option>Wallet</option><option>Other</option></select></div>
-                  <div className="fg"><label>Currency</label><input type="text" maxLength={3} value={newCurrency} onChange={(event) => setNewCurrency(event.target.value)} /></div>
-                  <div className="fg"><label>Branch <span className="metric-note">(optional)</span></label><input type="text" value={newBranch} onChange={(event) => setNewBranch(event.target.value)} placeholder="Lagos HQ" /></div>
-                  <div className="fg"><label>Opening balance</label><input type="number" min={0} value={newBankBalance} onChange={(event) => setNewBankBalance(Number(event.target.value))} /></div>
-                  <div className="fg"><label>Opening balance date</label><input type="date" value={newBalanceDate} onChange={(event) => setNewBalanceDate(event.target.value)} /></div>
+              <div className="settings-bank-stack">
+                <div className="settings-bank-hero">
+                  <div>
+                    <div className="eyebrow">Super Admin control</div>
+                    <div className="panel-title">Banks &amp; accounts</div>
+                    <div className="panel-subtitle">Create the accounts used across Bank Balances, payments, expenses, receivables, payables, and the ledger.</div>
                   </div>
-                  <button className="action-btn primary" type="button" onClick={handleAddBank}><Plus size={16} /> Add bank account</button>
+                  <div className="settings-bank-hero-icon"><Landmark size={28} /></div>
                 </div>
+
+                <div className="settings-bank-metrics">
+                  <div className="settings-bank-metric"><WalletCards size={18} /><span><strong>{Object.keys(state.banks).length}</strong> accounts configured</span></div>
+                  <div className="settings-bank-metric"><Building2 size={18} /><span><strong>{formatCurrency(Object.values(state.banks).reduce((sum, balance) => sum + balance, 0))}</strong> opening balances</span></div>
+                  <div className="settings-bank-metric"><ShieldCheck size={18} /><span><strong>Centralized</strong> account access</span></div>
+                </div>
+
+                <div className="panel-card settings-bank-form">
+                  <div className="panel-head">
+                    <div>
+                      <div className="panel-title">Add bank account</div>
+                      <div className="panel-subtitle">The opening balance seeds the account in Bank Balances. Future movements belong in Bank Transactions.</div>
+                    </div>
+                    <span className="status-pill active">Super Admin only</span>
+                  </div>
+                  <div className="settings-form-section-title">Bank information</div>
+                  <div className="form-grid two-up">
+                    <div className="fg"><label>Bank</label><select value={newBankName} onChange={(event) => setNewBankName(event.target.value)}><option value="">Select a bank</option>{bankMasterList.map((bank) => <option key={bank} value={bank}>{bank}</option>)}</select></div>
+                    <div className="fg"><label>Account name</label><input value={newAccountName} onChange={(event) => setNewAccountName(event.target.value)} placeholder="Main Business Account" /></div>
+                    <div className="fg"><label>Account number <span className="field-hint">optional</span></label><input value={newAccountNumber} onChange={(event) => setNewAccountNumber(event.target.value.replace(/\D/g, '').slice(0, 20))} placeholder="0123456789" inputMode="numeric" /></div>
+                    <div className="fg"><label>Account type</label><select value={newAccountType} onChange={(event) => setNewAccountType(event.target.value)}>{accountTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select></div>
+                    <div className="fg"><label>Currency</label><select value={newCurrency} onChange={(event) => setNewCurrency(event.target.value)}><option value="NGN">NGN - Nigerian Naira</option><option value="USD">USD - US Dollar</option><option value="GBP">GBP - Pound Sterling</option></select></div>
+                    <div className="fg"><label>Branch <span className="field-hint">optional</span></label><input value={newBranch} onChange={(event) => setNewBranch(event.target.value)} placeholder="Lagos HQ" /></div>
+                  </div>
+                  <div className="settings-form-section-title">Opening position</div>
+                  <div className="form-grid three-up">
+                    <div className="fg"><label>Opening balance</label><input type="number" min={0} step="0.01" value={newBankBalance} onChange={(event) => setNewBankBalance(Number(event.target.value))} /></div>
+                    <div className="fg"><label>Opening balance date</label><input type="date" value={newOpeningDate} onChange={(event) => setNewOpeningDate(event.target.value)} /></div>
+                    <div className="fg"><label>Status</label><select value={newAccountStatus} onChange={(event) => setNewAccountStatus(event.target.value)}><option>Active</option><option>Inactive</option></select></div>
+                  </div>
+                  <div className="inline-actions settings-bank-submit"><button className="action-btn primary" type="button" onClick={handleAddBank}><Plus size={16} /> Add bank account</button><span className="metric-note">Account balance is derived from opening balance and recorded transactions.</span></div>
+                </div>
+
                 <div className="panel-card">
-                  <div className="panel-title"><WalletCards size={19} style={{ verticalAlign: 'middle', marginRight: 8 }} />Configured accounts</div>
-                  <div className="panel-subtitle">Balances remain transaction-driven after setup. Use Bank Balances for movements and reconciliation.</div>
-                  <div className="toggle-list" style={{ marginTop: 20 }}>
-                    {state.bankAccounts.map((account) => (
-                      <div className="toggle-row" key={account.id}>
-                        <span><strong>{account.accountName}</strong><small style={{ display: 'block', color: 'var(--text3)' }}>{account.bankName} · {account.accountType}{account.accountNumber ? ` · ••••${account.accountNumber.slice(-4)}` : ''}</small></span>
-                        <span><strong>{formatCurrency(state.banks[account.accountName] ?? account.openingBalance)}</strong><small style={{ display: 'block', textAlign: 'right', color: 'var(--green-text)' }}>{account.status}</small></span>
-                      </div>
-                    ))}
-                    {state.bankAccounts.length === 0 && Object.entries(state.banks).map(([bank, balance]) => (
-                      <div className="toggle-row" key={bank}><span>{bank}</span><span className="status-pill active">{formatCurrency(balance)}</span></div>
-                    ))}
-                    {state.bankAccounts.length === 0 && Object.keys(state.banks).length === 0 && <div className="metric-note">No bank accounts configured.</div>}
+                  <div className="panel-head"><div><div className="panel-title">Configured accounts</div><div className="panel-subtitle">Accounts created here become available to every connected banking workflow.</div></div><span className="status-pill">{Object.keys(state.banks).length} total</span></div>
+                  <div className="bank-account-register">
+                    <div className="bank-register-row bank-register-head"><span>Account</span><span>Type</span><span>Opening balance</span><span>Status</span></div>
+                    {Object.entries(state.banks).map(([account, balance]) => {
+                      const [institution, accountName] = account.split(' — ')
+                      return <div className="bank-register-row" key={account}><span><strong>{accountName || institution}</strong><small>{accountName ? institution : 'Legacy account'}</small></span><span>Bank account</span><span>{formatCurrency(balance)}</span><span className="status-pill active">Active</span></div>
+                    })}
+                    {Object.keys(state.banks).length === 0 && <div className="metric-note bank-empty-state">No bank accounts configured yet.</div>}
                   </div>
                 </div>
               </div>

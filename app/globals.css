@@ -6623,6 +6623,142 @@ html[data-theme='dark'] .pricing-row span {
   gap: 16px;
 }
 
+.settings-bank-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-bank-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid rgba(26, 58, 124, 0.14);
+  border-radius: 14px;
+  background: linear-gradient(115deg, rgba(26, 58, 124, 0.09), rgba(255, 255, 255, 0.92));
+}
+
+.settings-bank-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  color: #1a3a7c;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(26, 58, 124, 0.12);
+}
+
+.settings-bank-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-bank-metric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text2);
+  background: var(--bg);
+  font-size: 12px;
+}
+
+.settings-bank-metric svg {
+  color: #1a3a7c;
+  flex: 0 0 auto;
+}
+
+.settings-bank-metric strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.settings-bank-form {
+  border-color: rgba(26, 58, 124, 0.18);
+}
+
+.settings-form-section-title {
+  margin: 20px 0 12px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.field-hint {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.settings-bank-submit {
+  justify-content: space-between;
+  margin-top: 22px;
+}
+
+.settings-bank-submit .action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bank-account-register {
+  margin-top: 18px;
+  overflow-x: auto;
+}
+
+.bank-register-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) minmax(100px, 0.8fr) minmax(140px, 1fr) 90px;
+  align-items: center;
+  gap: 16px;
+  min-width: 620px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13px;
+}
+
+.bank-register-head {
+  padding-top: 0;
+  border-top: 0;
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.bank-register-row strong,
+.bank-register-row small {
+  display: block;
+}
+
+.bank-register-row strong {
+  color: var(--text);
+}
+
+.bank-register-row small {
+  margin-top: 3px;
+  color: var(--text3);
+  font-size: 11px;
+}
+
+.bank-empty-state {
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--border);
+}
+
 .faq-list {
   display: flex;
   flex-direction: column;
@@ -6685,6 +6821,15 @@ html[data-theme='dark'] .pricing-row span {
   .option-grid,
   .form-grid.two-up {
     grid-template-columns: 1fr;
+  }
+
+  .settings-bank-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-bank-submit {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
