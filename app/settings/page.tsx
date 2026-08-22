@@ -6,10 +6,14 @@ import { useAccounting } from '@/lib/context'
 import { formatCurrency } from '@/lib/utils'
 import { getDefaultRoles, saveRoles, type RoleDefinition, type PermissionKey } from '@/lib/rbac'
 import { parseSpreadsheetFile, prepareGenericImportPayload, type ImportSummary } from '@/lib/import-utils'
+import { Plus, Landmark, WalletCards } from 'lucide-react'
+
+const bankMasterList = ['UBA', 'Access Bank', 'GTBank', 'Zenith Bank', 'First Bank', 'Stanbic IBTC', 'Fidelity Bank', 'FCMB', 'Union Bank', 'Sterling Bank']
 
 const sidebarSections = [
   { id: 'company', label: 'Company', description: 'Profile, branding, and legal details' },
   { id: 'business', label: 'Business', description: 'Defaults, dates, and workflow' },
+  { id: 'bank-management', label: 'Bank & Cash', description: 'Accounts, opening balances, and access' },
   { id: 'notifications', label: 'Notifications', description: 'Email, SMS, and push' },
   { id: 'security', label: 'Security', description: 'Auth, sessions, and policies' },
   { id: 'integrations', label: 'Integrations', description: 'Payments, storage, and APIs' },
@@ -20,8 +24,14 @@ export default function SettingsPage() {
   const { state, updateState, addAuditLog, user } = useAccounting()
   const [openingCapital, setOpeningCapital] = useState(state.openingCapital)
   const [activeSection, setActiveSection] = useState('company')
-  const [newBankName, setNewBankName] = useState('')
+  const [newBankName, setNewBankName] = useState(bankMasterList[0])
+  const [newAccountName, setNewAccountName] = useState('')
+  const [newAccountNumber, setNewAccountNumber] = useState('')
+  const [newAccountType, setNewAccountType] = useState<'Current' | 'Savings' | 'Cash' | 'Wallet' | 'Other'>('Current')
+  const [newCurrency, setNewCurrency] = useState('NGN')
+  const [newBranch, setNewBranch] = useState('')
   const [newBankBalance, setNewBankBalance] = useState(0)
+  const [newBalanceDate, setNewBalanceDate] = useState(new Date().toISOString().slice(0, 10))
   const [roles, setRoles] = useState<RoleDefinition[]>(state.roles || getDefaultRoles())
   const [roleName, setRoleName] = useState('Sales Supervisor')
   const [roleTemplate, setRoleTemplate] = useState('Custom')
@@ -50,18 +60,33 @@ export default function SettingsPage() {
 
   const handleAddBank = () => {
     const bankName = newBankName.trim()
-    if (!bankName) {
-      alert('Please enter a bank name.')
+    const accountName = newAccountName.trim()
+    if (!accountName) {
+      alert('Please enter an account name.')
       return
     }
-    if (Object.prototype.hasOwnProperty.call(state.banks, bankName)) {
-      alert('This bank already exists.')
+    if (Object.prototype.hasOwnProperty.call(state.banks, accountName)) {
+      alert('This account name already exists.')
       return
     }
 
-    updateState({ banks: { ...state.banks, [bankName]: newBankBalance } })
-    addAuditLog('CREATE', 'BANK', bankName, `Added bank ${bankName} with ${formatCurrency(newBankBalance)}`)
-    setNewBankName('')
+    const account = {
+      id: `BANK-${Date.now()}`,
+      bankName,
+      accountName,
+      accountNumber: newAccountNumber.trim(),
+      accountType: newAccountType,
+      currency: newCurrency.trim().toUpperCase() || 'NGN',
+      branch: newBranch.trim(),
+      openingBalance: newBankBalance,
+      openingBalanceDate: newBalanceDate,
+      status: 'Active' as const,
+    }
+    updateState({ banks: { ...state.banks, [accountName]: newBankBalance }, bankAccounts: [...state.bankAccounts, account] })
+    addAuditLog('CREATE', 'BANK', account.id, `Added ${bankName} account ${accountName} with ${formatCurrency(newBankBalance)}`)
+    setNewAccountName('')
+    setNewAccountNumber('')
+    setNewBranch('')
     setNewBankBalance(0)
   }
 
@@ -343,15 +368,6 @@ export default function SettingsPage() {
                 <span className="sidebar-subtitle">{section.description}</span>
               </button>
             ))}
-            {isSuperAdmin && (
-              <button
-                className={`sidebar-item ${activeSection === 'bank-management' ? 'active' : ''}`}
-                onClick={() => setActiveSection('bank-management')}
-              >
-                <span className="sidebar-title">Bank Management</span>
-                <span className="sidebar-subtitle">Create and configure company bank accounts</span>
-              </button>
-            )}
           </aside>
 
           <div className="settings-content">
@@ -392,28 +408,37 @@ export default function SettingsPage() {
             )}
 
             {activeSection === 'bank-management' && isSuperAdmin && (
-              <div className="panel-card">
-                <div className="panel-title">Bank account management</div>
-                <div className="panel-subtitle">Only the Super Admin can create company bank accounts. Staff access can be assigned from Staff Management.</div>
-                <div className="form-grid two-up" style={{ marginTop: 18 }}>
-                  <div className="fg">
-                    <label>Bank name</label>
-                    <input type="text" value={newBankName} onChange={(event) => setNewBankName(event.target.value)} placeholder="Enter bank name" />
+              <div className="settings-security-stack">
+                <div className="panel-card">
+                  <div className="panel-title"><Landmark size={19} style={{ verticalAlign: 'middle', marginRight: 8 }} />Bank & cash management</div>
+                  <div className="panel-subtitle">Create an account once. It becomes available across Bank Balances, payments, expenses, receivables, payables, and the ledger.</div>
+                  <div className="form-grid two-up" style={{ marginTop: 18 }}>
+                  <div className="fg"><label>Bank</label><select value={newBankName} onChange={(event) => setNewBankName(event.target.value)}>{bankMasterList.map((bank) => <option key={bank}>{bank}</option>)}</select></div>
+                  <div className="fg"><label>Account name</label><input type="text" value={newAccountName} onChange={(event) => setNewAccountName(event.target.value)} placeholder="Main Business Account" /></div>
+                  <div className="fg"><label>Account number</label><input type="text" inputMode="numeric" value={newAccountNumber} onChange={(event) => setNewAccountNumber(event.target.value)} placeholder="0123456789" /></div>
+                  <div className="fg"><label>Account type</label><select value={newAccountType} onChange={(event) => setNewAccountType(event.target.value as typeof newAccountType)}><option>Current</option><option>Savings</option><option>Cash</option><option>Wallet</option><option>Other</option></select></div>
+                  <div className="fg"><label>Currency</label><input type="text" maxLength={3} value={newCurrency} onChange={(event) => setNewCurrency(event.target.value)} /></div>
+                  <div className="fg"><label>Branch <span className="metric-note">(optional)</span></label><input type="text" value={newBranch} onChange={(event) => setNewBranch(event.target.value)} placeholder="Lagos HQ" /></div>
+                  <div className="fg"><label>Opening balance</label><input type="number" min={0} value={newBankBalance} onChange={(event) => setNewBankBalance(Number(event.target.value))} /></div>
+                  <div className="fg"><label>Opening balance date</label><input type="date" value={newBalanceDate} onChange={(event) => setNewBalanceDate(event.target.value)} /></div>
                   </div>
-                  <div className="fg">
-                    <label>Opening balance</label>
-                    <input type="number" min={0} value={newBankBalance} onChange={(event) => setNewBankBalance(Number(event.target.value))} />
-                  </div>
+                  <button className="action-btn primary" type="button" onClick={handleAddBank}><Plus size={16} /> Add bank account</button>
                 </div>
-                <button className="action-btn primary" type="button" onClick={handleAddBank}>Add bank account</button>
-                <div className="toggle-list" style={{ marginTop: 20 }}>
-                  {Object.entries(state.banks).map(([bank, balance]) => (
-                    <div className="toggle-row" key={bank}>
-                      <span>{bank}</span>
-                      <span className="status-pill active">{formatCurrency(balance)}</span>
-                    </div>
-                  ))}
-                  {Object.keys(state.banks).length === 0 && <div className="metric-note">No bank accounts configured.</div>}
+                <div className="panel-card">
+                  <div className="panel-title"><WalletCards size={19} style={{ verticalAlign: 'middle', marginRight: 8 }} />Configured accounts</div>
+                  <div className="panel-subtitle">Balances remain transaction-driven after setup. Use Bank Balances for movements and reconciliation.</div>
+                  <div className="toggle-list" style={{ marginTop: 20 }}>
+                    {state.bankAccounts.map((account) => (
+                      <div className="toggle-row" key={account.id}>
+                        <span><strong>{account.accountName}</strong><small style={{ display: 'block', color: 'var(--text3)' }}>{account.bankName} · {account.accountType}{account.accountNumber ? ` · ••••${account.accountNumber.slice(-4)}` : ''}</small></span>
+                        <span><strong>{formatCurrency(state.banks[account.accountName] ?? account.openingBalance)}</strong><small style={{ display: 'block', textAlign: 'right', color: 'var(--green-text)' }}>{account.status}</small></span>
+                      </div>
+                    ))}
+                    {state.bankAccounts.length === 0 && Object.entries(state.banks).map(([bank, balance]) => (
+                      <div className="toggle-row" key={bank}><span>{bank}</span><span className="status-pill active">{formatCurrency(balance)}</span></div>
+                    ))}
+                    {state.bankAccounts.length === 0 && Object.keys(state.banks).length === 0 && <div className="metric-note">No bank accounts configured.</div>}
+                  </div>
                 </div>
               </div>
             )}
