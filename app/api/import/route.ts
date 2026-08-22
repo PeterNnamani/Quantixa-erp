@@ -7,6 +7,7 @@ type GenericImportPayload = {
     staffId?: string
     sales?: any[]
     purchases?: any[]
+    expenses?: any[]
     products?: any[]
     staff?: any[]
     contacts?: any[]
@@ -354,6 +355,26 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap, c
     }
 }
 
+async function insertExpenseRecords(expenses: any[], companyId: string): Promise<void> {
+    if (!supabaseAdmin || expenses.length === 0) return
+    const rows = expenses.map((expense) => ({
+        company_id: companyId,
+        reference: String(expense.reference || expense.id || '').trim() || `E-${Date.now()}`,
+        expense_date: expense.date || new Date().toISOString().slice(0, 10),
+        description: String(expense.description || 'Imported expense'),
+        category: String(expense.category || 'General'),
+        amount: Number(expense.amount || 0),
+        status: String(expense.status || 'Pending Approval'),
+        notes: expense.notes || null,
+        bank_account_id: expense.bank_account_id || null,
+        entered_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }))
+    const { error } = await supabaseAdmin.from('expenses').upsert(rows, { onConflict: 'reference' })
+    if (error) throw error
+}
+
 function formatErrorMessage(error: unknown): string {
     if (!error) return 'Unknown server error'
     if (error instanceof Error) return error.message
@@ -398,6 +419,7 @@ export async function POST(request: Request) {
         const contacts = Array.isArray(payload.contacts) ? payload.contacts : []
         const sales = Array.isArray(payload.sales) ? payload.sales : []
         const purchases = Array.isArray(payload.purchases) ? payload.purchases : []
+        const expenses = Array.isArray(payload.expenses) ? payload.expenses : []
         const products = Array.isArray(payload.products) ? payload.products : []
         const staff = Array.isArray(payload.staff) ? payload.staff : []
 
@@ -429,6 +451,7 @@ export async function POST(request: Request) {
 
         await insertSaleRecords(sales, contactMap, companyId)
         await insertPurchaseRecords(purchases, contactMap, companyId)
+        await insertExpenseRecords(expenses, companyId)
 
         return NextResponse.json({ success: true })
     } catch (error) {

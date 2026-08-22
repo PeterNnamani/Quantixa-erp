@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import * as mammoth from 'mammoth'
 import { makeID, parseNumeric } from './utils'
 import { generateSku } from './sku'
 
@@ -7,6 +8,7 @@ export type ImportRecord = Record<string, unknown>
 export type GenericImportPayload = {
     sales: Record<string, unknown>[]
     purchases: Record<string, unknown>[]
+    expenses: Record<string, unknown>[]
     products: Record<string, unknown>[]
     staff: Record<string, unknown>[]
     contacts: Record<string, unknown>[]
@@ -15,6 +17,7 @@ export type GenericImportPayload = {
 export type ImportSummary = {
     sales: number
     purchases: number
+    expenses: number
     products: number
     staff: number
     contacts: number
@@ -56,7 +59,7 @@ function hasKey(row: ImportRecord, keys: string[]) {
     return keys.some((key) => normalized.some((item) => item.includes(key)))
 }
 
-export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'inventory' | 'staff' | 'contact' | 'unknown' {
+export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'expenses' | 'inventory' | 'staff' | 'contact' | 'unknown' {
     const normalizedKeys = Object.keys(row).map(normalizeKey)
     const lowerValues = Object.values(row).map((value) => stringValue(value).toLowerCase()).join(' ')
 
@@ -64,6 +67,7 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'i
     const inventoryKeys = ['sku', 'product', 'item', 'name', 'description', 'stock qty', 'opening stock qty', 'stock bal', 'stock balance', 'stock balance', 'quantity', 'qty sold', 'selling price', 'unit price', 'selling price', 'sales revenue', 'profit', 'cogs', 'unit cost', 'branch', 'reorder', 'department', 'category', 'category name', 'closing', 'opening', 'available', 'no. purchased', 'total']
     const saleKeys = ['sale date', 'sale_date', 'customer', 'invoice', 'receipt', 'payment method', 'payment status', 'total amount', 'amount paid']
     const purchaseKeys = ['purchase date', 'supplier', 'invoice number', 'purchase order', 'payment status', 'total', 'amount paid', 'balance']
+    const expenseKeys = ['expense date', 'expense', 'expense number', 'expense category', 'payee', 'vendor', 'amount', 'expense account']
     const contactKeys = ['type', 'name', 'email', 'phone', 'address', 'credit limit', 'opening balance']
 
     const makeScore = (keywords: string[]) =>
@@ -73,6 +77,7 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'i
     const inventoryScore = makeScore(inventoryKeys) + (lowerValues.includes('stock') || lowerValues.includes('inventory') ? 2 : 0)
     const saleScore = makeScore(saleKeys) + (lowerValues.includes('sale') ? 1 : 0)
     const purchaseScore = makeScore(purchaseKeys) + (lowerValues.includes('purchase') ? 1 : 0)
+    const expenseScore = makeScore(expenseKeys) + (lowerValues.includes('expense') ? 2 : 0)
     const contactScore = makeScore(contactKeys) + (lowerValues.includes('customer') || lowerValues.includes('supplier') || lowerValues.includes('vendor') ? 1 : 0)
 
     const scores = {
@@ -80,6 +85,7 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'i
         inventory: inventoryScore,
         sales: saleScore,
         purchases: purchaseScore,
+        expenses: expenseScore,
         contact: contactScore,
     }
 
@@ -100,6 +106,19 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'i
     }
 
     return winner
+}
+
+function normalizeExpenseRow(row: ImportRecord) {
+    const reference = stringValue(row['reference'] || row['expense number'] || row['expense no'] || row['number'] || makeID('EXP'))
+    const description = stringValue(row['description'] || row['expense description'] || row['expense'] || row['details'] || row['name']) || 'Imported expense'
+    const category = stringValue(row['category'] || row['expense category'] || row['expense account'] || 'General') || 'General'
+    const amount = Math.max(0, parseNumeric(row['amount'] || row['total'] || row['expense amount'] || row['value'] || 0))
+    const status = stringValue(row['status'] || 'Pending Approval') || 'Pending Approval'
+    const vendor = stringValue(row['vendor'] || row['payee'] || row['supplier'] || '')
+    const department = stringValue(row['department'] || row['dept'] || '')
+    const payment = stringValue(row['payment method'] || row['method'] || '')
+    const notes = [vendor && `Vendor: ${vendor}`, department && `Department: ${department}`, payment && `Payment: ${payment}`, stringValue(row['notes'] || row['memo'] || '')].filter(Boolean).join(' | ')
+    return { id: makeID('EXP'), reference, date: dateValue(row['expense date'] || row['date'] || row['transaction date']), description, category, amount, status, notes, bank: stringValue(row['bank'] || row['account'] || row['payment account'] || '') }
 }
 
 function buildCustomerName(row: ImportRecord): string {
@@ -330,6 +349,7 @@ export function prepareGenericImportPayload(rows: ImportRecord[]): { payload: Ge
     const payload: GenericImportPayload = {
         sales: [],
         purchases: [],
+        expenses: [],
         products: [],
         staff: [],
         contacts: [],
@@ -353,6 +373,11 @@ export function prepareGenericImportPayload(rows: ImportRecord[]): { payload: Ge
             if (purchase.supplier) {
                 payload.contacts.push({ type: 'supplier', name: purchase.supplier, email: '', phone: '' })
             }
+            return
+        }
+
+        if (category === 'expenses') {
+            payload.expenses.push(normalizeExpenseRow(row))
             return
         }
 
@@ -389,6 +414,7 @@ export function prepareGenericImportPayload(rows: ImportRecord[]): { payload: Ge
 
     payload.sales = dedupe(payload.sales, (item) => String(item.reference || item.id || ''))
     payload.purchases = dedupe(payload.purchases, (item) => String(item.reference || item.id || ''))
+    payload.expenses = dedupe(payload.expenses, (item) => String(item.reference || item.id || ''))
     payload.products = dedupe(payload.products, (item) => String(item.sku || item.name || item.id || ''))
     payload.staff = dedupe(payload.staff, (item) => String(item.username || item.staffId || item.id || ''))
     payload.contacts = dedupe(payload.contacts, (item) => `${String(item.type || 'customer')}|${String(item.name || '')}`)
@@ -396,6 +422,7 @@ export function prepareGenericImportPayload(rows: ImportRecord[]): { payload: Ge
     const summary: ImportSummary = {
         sales: payload.sales.length,
         purchases: payload.purchases.length,
+        expenses: payload.expenses.length,
         products: payload.products.length,
         staff: payload.staff.length,
         contacts: payload.contacts.length,
@@ -408,6 +435,14 @@ export function prepareGenericImportPayload(rows: ImportRecord[]): { payload: Ge
 export async function parseSpreadsheetFile(file: File): Promise<ImportRecord[]> {
     const fileName = file.name.toLowerCase()
     const extension = fileName.split('.').pop() || ''
+    if (extension === 'docx') {
+        const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })
+        const lines = result.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+        if (lines.length < 2) return []
+        const delimiter = lines[0].includes('\t') ? '\t' : lines[0].includes('|') ? '|' : ','
+        const headers = lines[0].split(delimiter).map((header) => header.trim())
+        return lines.slice(1).map((line) => line.split(delimiter).reduce((row, value, index) => ({ ...row, [headers[index] || `Column ${index + 1}`]: value.trim() }), {} as ImportRecord))
+    }
     let workbook: XLSX.WorkBook
 
     if (extension === 'csv') {

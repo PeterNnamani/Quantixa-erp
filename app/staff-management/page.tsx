@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users, ThumbsUp, ChevronDown } from 'lucide-react'
 import AppLayout from '@/components/layout/app-layout'
+import BulkImport from '@/components/bulk-import'
 import { useAccounting } from '@/lib/context'
 import { generatePin, generateStaffId, saveRoles, type AccessLevels, type PermissionKey, type RoleDefinition, type StaffMemberRecord } from '@/lib/rbac'
 import { saveUserToDatabase } from '@/lib/user-db'
@@ -443,6 +444,7 @@ export default function StaffManagementPage() {
             <p className="page-subtitle">Manage people, branches, roles, and access from a single polished workspace.</p>
           </div>
           <div className="page-actions">
+            <BulkImport label="Bulk upload" />
             <button className="action-btn primary allow-readonly" onClick={() => setDrawerOpen(true)}>Add Staff</button>
           </div>
         </div>

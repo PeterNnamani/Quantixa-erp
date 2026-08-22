@@ -242,6 +242,7 @@ export function getPermissionAccessLevel(
 ): AccessLevel | null {
     if (!user) return null
     if (user.accessLevels && user.accessLevels[permission]) return user.accessLevels[permission] || null
+    if (permission === 'settings') return 'view'
     const broadPermission: PermissionKey | undefined =
         ['bankTxn', 'banks', 'overdraft', 'dailyClose', 'ledger', 'payables', 'prepayments', 'supplierRebates', 'loans', 'tax'].includes(permission)
             ? 'accounting'

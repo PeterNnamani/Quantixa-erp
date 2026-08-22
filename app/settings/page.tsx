@@ -33,6 +33,10 @@ export default function SettingsPage() {
   const [importStatus, setImportStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [currentPin, setCurrentPin] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [pinStatus, setPinStatus] = useState<{ tone: 'error' | 'success'; message: string } | null>(null)
 
   const selectedRole = useMemo(() => roles.find((role) => role.id === previewRoleId) || roles[0], [previewRoleId, roles])
 
@@ -253,6 +257,40 @@ export default function SettingsPage() {
     )
   }
 
+  const handlePinChange = async () => {
+    setPinStatus(null)
+    if (!/^\d{4}$/.test(currentPin) || !/^\d{4}$/.test(newPin)) {
+      setPinStatus({ tone: 'error', message: 'PINs must be exactly four digits.' })
+      return
+    }
+    if (newPin !== confirmPin) {
+      setPinStatus({ tone: 'error', message: 'New PIN and confirmation do not match.' })
+      return
+    }
+
+    try {
+      const response = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId: user?.companyId, staffId: user?.staffId, username: user?.username, currentPin, newPin }),
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) throw new Error(result.error || 'Unable to update PIN.')
+
+      const storage = localStorage.getItem('hw_auth_user') ? localStorage : sessionStorage
+      storage.setItem('hw_auth_user', JSON.stringify({ ...user, pin: newPin }))
+      const nextStaff = state.staffMembers.map((member) => member.staffId === user?.staffId ? { ...member, pin: newPin } : member)
+      updateState({ staffMembers: nextStaff })
+      setCurrentPin('')
+      setNewPin('')
+      setConfirmPin('')
+      setPinStatus({ tone: 'success', message: 'PIN updated. Staff Management now shows the new PIN.' })
+      addAuditLog('UPDATE', 'USER', user?.staffId || user?.username || 'CURRENT_USER', 'Personal PIN updated.')
+    } catch (error) {
+      setPinStatus({ tone: 'error', message: error instanceof Error ? error.message : 'Unable to update PIN.' })
+    }
+  }
+
   return (
     <AppLayout>
       <div className="page-shell">
@@ -337,13 +375,26 @@ export default function SettingsPage() {
             )}
 
             {activeSection === 'security' && (
-              <div className="panel-card">
+              <div className="settings-security-stack">
+                <div className="panel-card">
+                  <div className="panel-title">Change personal PIN</div>
+                  <div className="panel-subtitle">Update the four-digit PIN used to sign in. This change is written to your staff account.</div>
+                  <div className="form-grid two-up pin-form">
+                    <div className="fg"><label>Current PIN</label><input inputMode="numeric" maxLength={4} pattern="[0-9]*" type="password" value={currentPin} onChange={(event) => setCurrentPin(event.target.value.replace(/\D/g, '').slice(0, 4))} /></div>
+                    <div className="fg"><label>New PIN</label><input inputMode="numeric" maxLength={4} pattern="[0-9]*" type="password" value={newPin} onChange={(event) => setNewPin(event.target.value.replace(/\D/g, '').slice(0, 4))} /></div>
+                    <div className="fg"><label>Confirm new PIN</label><input inputMode="numeric" maxLength={4} pattern="[0-9]*" type="password" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, '').slice(0, 4))} /></div>
+                  </div>
+                  {pinStatus && <div className={`staff-inline-notice ${pinStatus.tone}`}>{pinStatus.message}</div>}
+                  <button className="action-btn primary" type="button" onClick={() => void handlePinChange()}>Update PIN</button>
+                </div>
+                <div className="panel-card">
                 <div className="panel-title">Security controls</div>
                 <div className="toggle-list">
                   <div className="toggle-row"><span>Two-factor authentication</span><span className="status-pill active">Enabled</span></div>
                   <div className="toggle-row"><span>Session timeout</span><span className="status-pill">20 mins</span></div>
                   <div className="toggle-row"><span>Audit logs</span><span className="status-pill active">Active</span></div>
                   <div className="toggle-row"><span>IP restrictions</span><span className="status-pill">Configurable</span></div>
+                </div>
                 </div>
               </div>
             )}

@@ -38,13 +38,15 @@ export interface User {
   name: string
   role: string
   roleId?: string
-  permissions?: string[]
+  permissions?: PermissionKey[]
   visibleMenus?: PermissionKey[]
   accessLevels?: AccessLevels
   roleName?: string
   dataScope?: 'own' | 'team' | 'branch' | 'all'
   branchId?: string
   staffId?: string
+  username?: string
+  pin?: string
 }
 
 export interface StaffMember {
@@ -91,6 +93,10 @@ export interface Sale {
   notes: string
   status: string
   enteredBy: string
+  amountPaid?: number
+  balance?: number
+  branch?: string
+  orderStatus?: string
 }
 
 export interface Purchase {
@@ -349,6 +355,10 @@ function normalizeRemoteSales(data: any[]): AppState['sales'] {
     notes: item.notes || '',
     status: item.status || '',
     enteredBy: item.created_by || 'System',
+    amountPaid: Number(item.amount_paid || 0),
+    balance: Number(item.balance ?? Math.max(0, Number(item.total_amount || 0) - Number(item.amount_paid || 0))),
+    branch: item.branch || '',
+    orderStatus: item.order_status || '',
   }))
 }
 

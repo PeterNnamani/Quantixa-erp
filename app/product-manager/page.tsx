@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
+import BulkImport from '@/components/bulk-import'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, parseNumeric } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
@@ -275,6 +276,7 @@ export default function ProductManagerPage() {
                         <div className="pg-subtitle">Manage products, pricing, categories, variants, suppliers, and product settings.</div>
                     </div>
                     <div className="product-manager-actions">
+                        <BulkImport label="Bulk upload" />
                         <button className="product-manager-btn secondary" type="button" onClick={() => setShowProductForm(true)}>+ Add Product</button>
                         <button className="product-manager-btn secondary" type="button" onClick={handleImportProducts}>Import Products</button>
                         <button className="product-manager-btn secondary allow-readonly" type="button" onClick={handleExportProducts}>Export Products</button>

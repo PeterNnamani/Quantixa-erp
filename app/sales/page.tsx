@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
+import BulkImport from '@/components/bulk-import'
 import { useAccounting } from '@/lib/context'
 import { Sale } from '@/lib/context'
 import { formatCurrency, makeID, getCurrentDate, PAYMENT_TERMS, canEdit, parseNumeric } from '@/lib/utils'
@@ -480,6 +481,7 @@ export default function SalesPage() {
             <div className="module-subtitle">Create invoices, manage customer orders, monitor revenue, and track sales performance.</div>
           </div>
           <div className="module-actions">
+            <BulkImport label="Bulk upload" />
             <button className="btn btn-primary" type="button" onClick={() => setShowForm((prev) => !prev)}>{showForm ? 'Close' : '+ New Sale'}</button>
             <button className="btn btn-secondary" type="button" onClick={() => setShowImportModal(true)}>Import</button>
             <button className="btn btn-secondary" type="button" onClick={handleNewInvoice}>+ New Invoice</button>

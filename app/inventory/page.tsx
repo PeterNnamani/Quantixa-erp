@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import AppLayout from '@/components/layout/app-layout'
+import BulkImport from '@/components/bulk-import'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, triggerAppToast } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
@@ -113,6 +114,7 @@ export default function InventoryPage() {
             <div className="pg-subtitle">Monitor stock levels, warehouse activities, inventory movements, and stock valuation.</div>
           </div>
           <div className="inventory-actions">
+            <BulkImport label="Bulk upload" />
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Stock Adjustment')}>+ Stock Adjustment</button>
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Stock Transfer')}>+ Stock Transfer</button>
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Receive Stock')}>+ Receive Stock</button>
