@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users, ThumbsUp } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users, ThumbsUp, ChevronDown } from 'lucide-react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { generatePin, generateStaffId, saveRoles, type AccessLevels, type PermissionKey, type RoleDefinition, type StaffMemberRecord } from '@/lib/rbac'
@@ -15,13 +15,29 @@ const positionOptions = ['Sales Manager', 'Cashier', 'Store Officer', 'Accountan
 const permissionOptions: { key: PermissionKey; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'sales', label: 'Sales' },
+  { key: 'creditSales', label: 'Credit Sales' },
   { key: 'inventory', label: 'Inventory' },
+  { key: 'productManager', label: 'Product Manager' },
   { key: 'purchases', label: 'Purchases' },
   { key: 'expenses', label: 'Expenses' },
+  { key: 'bankTxn', label: 'Bank Transactions' },
+  { key: 'banks', label: 'Bank Balances' },
+  { key: 'overdraft', label: 'UBA Overdraft' },
+  { key: 'dailyClose', label: 'Daily Closing' },
+  { key: 'ledger', label: 'General Ledger' },
+  { key: 'receivables', label: 'Receivables' },
+  { key: 'payables', label: 'Payables' },
+  { key: 'prepayments', label: 'Prepayments' },
+  { key: 'supplierRebates', label: 'Supplier Rebates' },
+  { key: 'loans', label: 'Loans' },
+  { key: 'tax', label: 'Tax' },
   { key: 'customers', label: 'Customer Management' },
   { key: 'suppliers', label: 'Supplier Management' },
   { key: 'accounting', label: 'Accounting & Ledger' },
   { key: 'reports', label: 'Reports & Analytics' },
+  { key: 'monthlyReport', label: 'Monthly Report' },
+  { key: 'annualReport', label: 'Annual Report' },
+  { key: 'assetSchedule', label: 'Asset Schedule' },
   { key: 'admin', label: 'Admin Tools' },
   { key: 'settings', label: 'Settings & Security' },
 ]
@@ -59,6 +75,7 @@ export default function StaffManagementPage() {
   const [roleId, setRoleId] = useState(state.roles[0]?.id || 'cashier')
   const [roleTitle, setRoleTitle] = useState('')
   const [accessLevels, setAccessLevels] = useState<AccessLevels>({})
+  const [menuAccessOpen, setMenuAccessOpen] = useState(false)
   const [openAccessMenu, setOpenAccessMenu] = useState<PermissionKey | null>(null)
   const [status, setStatus] = useState<StaffMemberRecord['status']>('active')
 
@@ -146,6 +163,7 @@ export default function StaffManagementPage() {
     setRoleId(state.roles[0]?.id || 'cashier')
     setRoleTitle('')
     setAccessLevels({})
+    setMenuAccessOpen(false)
     setOpenAccessMenu(null)
     setStatus('active')
     setActiveStaff(null)
@@ -592,139 +610,155 @@ export default function StaffManagementPage() {
               overflowY: 'auto',
             }}
           >
-          <div className="panel-head" style={{ marginBottom: 20 }}>
-            <div>
-              <div className="panel-title">
-                {drawerMode === 'view' ? 'View staff details' : drawerMode === 'edit' ? 'Edit staff' : 'Add New Staff'}
+            <div className="panel-head" style={{ marginBottom: 20 }}>
+              <div>
+                <div className="panel-title">
+                  {drawerMode === 'view' ? 'View staff details' : drawerMode === 'edit' ? 'Edit staff' : 'Add New Staff'}
+                </div>
+                <div className="page-subtitle">
+                  {drawerMode === 'view'
+                    ? 'Review the staff profile and assigned access.'
+                    : drawerMode === 'edit'
+                      ? 'Update role assignments and personal details.'
+                      : 'Collect personal, employment, and access details in one flow.'}
+                </div>
               </div>
-              <div className="page-subtitle">
-                {drawerMode === 'view'
-                  ? 'Review the staff profile and assigned access.'
-                  : drawerMode === 'edit'
-                    ? 'Update role assignments and personal details.'
-                    : 'Collect personal, employment, and access details in one flow.'}
+              <button className="action-btn" type="button" onClick={() => {
+                setDrawerOpen(false)
+                resetForm()
+              }}>
+                Close
+              </button>
+            </div>
+
+            <div className="panel-card">
+              <div className="panel-title">Personal Information</div>
+              <div className="form-grid two-up">
+                <div className="fg"><label>First Name</label><input className="allow-readonly" value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
+                <div className="fg"><label>Last Name</label><input className="allow-readonly" value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
+                <div className="fg"><label>Phone</label><input className="allow-readonly" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+                <div className="fg"><label>Email</label><input className="allow-readonly" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+                <div className="fg"><label>Date of Birth</label><input className="allow-readonly" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} /></div>
+                <div className="fg"><label>Gender</label><select className="allow-readonly" value={gender} onChange={(e) => setGender(e.target.value)}>{genderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                <div className="fg"><label>Passport Photo</label><input className="allow-readonly" value={passportPhoto} onChange={(e) => setPassportPhoto(e.target.value)} placeholder="Image URL" /></div>
               </div>
             </div>
-            <button className="action-btn" type="button" onClick={() => {
-              setDrawerOpen(false)
-              resetForm()
-            }}>
-              Close
-            </button>
-          </div>
 
-          <div className="panel-card">
-            <div className="panel-title">Personal Information</div>
-            <div className="form-grid two-up">
-              <div className="fg"><label>First Name</label><input className="allow-readonly" value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
-              <div className="fg"><label>Last Name</label><input className="allow-readonly" value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
-              <div className="fg"><label>Phone</label><input className="allow-readonly" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-              <div className="fg"><label>Email</label><input className="allow-readonly" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-              <div className="fg"><label>Date of Birth</label><input className="allow-readonly" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} /></div>
-              <div className="fg"><label>Gender</label><select className="allow-readonly" value={gender} onChange={(e) => setGender(e.target.value)}>{genderOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-              <div className="fg"><label>Passport Photo</label><input className="allow-readonly" value={passportPhoto} onChange={(e) => setPassportPhoto(e.target.value)} placeholder="Image URL" /></div>
-            </div>
-          </div>
-
-          <div className="panel-card" style={{ marginTop: 18 }}>
-            <div className="panel-title">Employment</div>
-            <div className="form-grid two-up">
-              <div className="fg"><label>Employee ID</label><input className="allow-readonly" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Auto-generated if blank" /></div>
-              <div className="fg"><label>Department</label><select className="allow-readonly" value={department} onChange={(e) => setDepartment(e.target.value)}>{departmentOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-              <div className="fg"><label>Position</label><select className="allow-readonly" value={position} onChange={(e) => setPosition(e.target.value)}>{positionOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-              <div className="fg"><label>Employment Date</label><input className="allow-readonly" type="date" value={employmentDate} onChange={(e) => setEmploymentDate(e.target.value)} /></div>
-              <div className="fg"><label>Salary</label><input className="allow-readonly" value={salary} onChange={(e) => setSalary(e.target.value)} /></div>
-              <div className="fg"><label>Branch</label><select className="allow-readonly" value={branch} onChange={(e) => setBranch(e.target.value)}>{branchOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-            </div>
-          </div>
-
-          <div className="panel-card" style={{ marginTop: 18 }}>
-            <div className="panel-title">Role Assignment</div>
-            <div className="form-grid two-up">
-              <div className="fg">
-                <label>Role title</label>
-                <input className="allow-readonly" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="Type the staff role title" />
-                <div className="metric-note" style={{ marginTop: 6 }}>Type the title this staff member should see.</div>
+            <div className="panel-card" style={{ marginTop: 18 }}>
+              <div className="panel-title">Employment</div>
+              <div className="form-grid two-up">
+                <div className="fg"><label>Employee ID</label><input className="allow-readonly" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Auto-generated if blank" /></div>
+                <div className="fg"><label>Department</label><select className="allow-readonly" value={department} onChange={(e) => setDepartment(e.target.value)}>{departmentOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                <div className="fg"><label>Position</label><select className="allow-readonly" value={position} onChange={(e) => setPosition(e.target.value)}>{positionOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                <div className="fg"><label>Employment Date</label><input className="allow-readonly" type="date" value={employmentDate} onChange={(e) => setEmploymentDate(e.target.value)} /></div>
+                <div className="fg"><label>Salary</label><input className="allow-readonly" value={salary} onChange={(e) => setSalary(e.target.value)} /></div>
+                <div className="fg"><label>Branch</label><select className="allow-readonly" value={branch} onChange={(e) => setBranch(e.target.value)}>{branchOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
               </div>
-              <div className="fg"><label>Status</label><select className="allow-readonly" value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}><option value="active">Active</option><option value="disabled">Inactive</option></select></div>
             </div>
-            <div style={{ marginTop: 18 }}>
-              <div className="panel-title" style={{ marginBottom: 10 }}>Menu access</div>
-              <div className="metric-note" style={{ marginBottom: 12 }}>Choose whether this staff member cannot access, can view, or can edit each menu.</div>
-              <div className="permission-grid">
-                {permissionOptions.map((permission) => (
-                  <div key={permission.key} className="permission-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <span>{permission.label}</span>
-                    <div className="staff-access-picker">
-                      <button
-                        type="button"
-                        className={`staff-access-trigger ${accessLevels[permission.key] ? 'has-value' : ''} allow-readonly`}
-                        onClick={() => setOpenAccessMenu((current) => current === permission.key ? null : permission.key)}
-                        aria-expanded={openAccessMenu === permission.key}
-                        aria-haspopup="listbox"
-                      >
-                        {accessLevels[permission.key] === 'view' ? 'View only' : accessLevels[permission.key] === 'edit' ? 'Edit' : 'Select access'}
-                        <span className="staff-access-chevron" aria-hidden="true">⌄</span>
-                      </button>
-                      {openAccessMenu === permission.key && (
-                        <div className="staff-access-options" role="listbox" aria-label={`${permission.label} access`}>
-                          {[
-                            { value: 'none', label: 'No access' },
-                            { value: 'view', label: 'View only' },
-                            { value: 'edit', label: 'Edit' },
-                          ].map((option) => (
+
+            <div className="panel-card" style={{ marginTop: 18 }}>
+              <div className="panel-title">Role Assignment</div>
+              <div className="form-grid two-up">
+                <div className="fg">
+                  <label>Role title</label>
+                  <input className="allow-readonly" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} placeholder="Type the staff role title" />
+                  <div className="metric-note" style={{ marginTop: 6 }}>Type the title this staff member should see.</div>
+                </div>
+                <div className="fg"><label>Status</label><select className="allow-readonly" value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}><option value="active">Active</option><option value="disabled">Inactive</option></select></div>
+              </div>
+              <div style={{ marginTop: 18 }}>
+                <button
+                  type="button"
+                  className="staff-menu-access-toggle allow-readonly"
+                  onClick={() => setMenuAccessOpen((current) => !current)}
+                  aria-expanded={menuAccessOpen}
+                  aria-controls="staff-menu-access-list"
+                >
+                  <span>
+                    <span className="panel-title">Menu access</span>
+                    <span className="metric-note">{Object.keys(accessLevels).length} menus configured</span>
+                  </span>
+                  <ChevronDown size={18} className={menuAccessOpen ? 'staff-menu-access-chevron open' : 'staff-menu-access-chevron'} aria-hidden="true" />
+                </button>
+                {menuAccessOpen && (
+                  <div id="staff-menu-access-list" className="staff-menu-access-list">
+                    <div className="metric-note" style={{ marginBottom: 12 }}>Choose whether this staff member cannot access, can view, or can edit each menu.</div>
+                    <div className="permission-grid">
+                      {permissionOptions.map((permission) => (
+                        <div key={permission.key} className="permission-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                          <span>{permission.label}</span>
+                          <div className="staff-access-picker">
                             <button
-                              key={option.value}
                               type="button"
-                              className={`staff-access-option ${(!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value ? 'selected' : ''}`}
-                              onClick={() => {
-                                setAccessLevels((current) => {
-                                  const next = { ...current }
-                                  if (option.value === 'none') delete next[permission.key]
-                                  else next[permission.key] = option.value as 'view' | 'edit'
-                                  return next
-                                })
-                                setOpenAccessMenu(null)
-                              }}
-                              role="option"
-                              aria-selected={(!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value}
+                              className={`staff-access-trigger ${accessLevels[permission.key] ? 'has-value' : ''} allow-readonly`}
+                              onClick={() => setOpenAccessMenu((current) => current === permission.key ? null : permission.key)}
+                              aria-expanded={openAccessMenu === permission.key}
+                              aria-haspopup="listbox"
                             >
-                              <span>{option.label}</span>
-                              {((!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value) && <span aria-hidden="true">✓</span>}
+                              {accessLevels[permission.key] === 'view' ? 'View only' : accessLevels[permission.key] === 'edit' ? 'Edit' : 'Select access'}
+                              <span className="staff-access-chevron" aria-hidden="true">⌄</span>
                             </button>
-                          ))}
+                            {openAccessMenu === permission.key && (
+                              <div className="staff-access-options" role="listbox" aria-label={`${permission.label} access`}>
+                                {[
+                                  { value: 'none', label: 'No access' },
+                                  { value: 'view', label: 'View only' },
+                                  { value: 'edit', label: 'Edit' },
+                                ].map((option) => (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    className={`staff-access-option ${(!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value ? 'selected' : ''}`}
+                                    onClick={() => {
+                                      setAccessLevels((current) => {
+                                        const next = { ...current }
+                                        if (option.value === 'none') delete next[permission.key]
+                                        else next[permission.key] = option.value as 'view' | 'edit'
+                                        return next
+                                      })
+                                      setOpenAccessMenu(null)
+                                    }}
+                                    role="option"
+                                    aria-selected={(!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value}
+                                  >
+                                    <span>{option.label}</span>
+                                    {((!accessLevels[permission.key] && option.value === 'none') || accessLevels[permission.key] === option.value) && <span aria-hidden="true">✓</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
-          </div>
 
-          <div className="panel-card" style={{ marginTop: 18 }}>
-            <div className="panel-title">Login Credentials</div>
-            <div className="form-grid two-up">
-              <div className="fg"><label>Login ID</label><input className="allow-readonly" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Auto-generated if blank" /></div>
-              <div className="fg">
-                <label>Auto-generated PIN</label>
-                <input className="allow-readonly" value={drawerMode === 'edit' && activeStaff?.pin ? activeStaff.pin : 'Generated on save'} readOnly />
-                <div className="metric-note" style={{ marginTop: 6 }}>The system creates a 4-digit PIN automatically for sign-in.</div>
+            <div className="panel-card" style={{ marginTop: 18 }}>
+              <div className="panel-title">Login Credentials</div>
+              <div className="form-grid two-up">
+                <div className="fg"><label>Login ID</label><input className="allow-readonly" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Auto-generated if blank" /></div>
+                <div className="fg">
+                  <label>Auto-generated PIN</label>
+                  <input className="allow-readonly" value={drawerMode === 'edit' && activeStaff?.pin ? activeStaff.pin : 'Generated on save'} readOnly />
+                  <div className="metric-note" style={{ marginTop: 6 }}>The system creates a 4-digit PIN automatically for sign-in.</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="inline-actions" style={{ marginTop: 24, justifyContent: 'space-between' }}>
-            <button className="action-btn allow-readonly" type="button" onClick={() => {
-              setDrawerOpen(false)
-              resetForm()
-            }}>
-              Cancel
-            </button>
-            <button className="action-btn primary allow-readonly" type="button" onClick={saveStaff}>
-              {drawerMode === 'edit' ? 'Update' : 'Save'}
-            </button>
-          </div>
+            <div className="inline-actions" style={{ marginTop: 24, justifyContent: 'space-between' }}>
+              <button className="action-btn allow-readonly" type="button" onClick={() => {
+                setDrawerOpen(false)
+                resetForm()
+              }}>
+                Cancel
+              </button>
+              <button className="action-btn primary allow-readonly" type="button" onClick={saveStaff}>
+                {drawerMode === 'edit' ? 'Update' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       )}

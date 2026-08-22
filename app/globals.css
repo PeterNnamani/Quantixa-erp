@@ -4239,6 +4239,55 @@ html[data-theme='dark'] .sidebar-body {
   min-width: 132px;
 }
 
+.staff-menu-access-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  background: var(--bg2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staff-menu-access-toggle:hover,
+.staff-menu-access-toggle[aria-expanded='true'] {
+  border-color: var(--royal);
+  background: var(--royal-xlight);
+}
+
+.staff-menu-access-toggle .panel-title,
+.staff-menu-access-toggle .metric-note {
+  display: block;
+}
+
+.staff-menu-access-toggle .metric-note {
+  margin-top: 3px;
+}
+
+.staff-menu-access-chevron {
+  flex-shrink: 0;
+  color: var(--text2);
+  transition: transform 180ms ease;
+}
+
+.staff-menu-access-chevron.open {
+  transform: rotate(180deg);
+}
+
+.staff-menu-access-list {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg);
+}
+
 .staff-access-trigger {
   width: 100%;
   display: flex;

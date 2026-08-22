@@ -1,14 +1,29 @@
 export type PermissionKey =
     | 'dashboard'
     | 'sales'
+    | 'creditSales'
     | 'receivables'
     | 'inventory'
+    | 'productManager'
     | 'purchases'
     | 'expenses'
     | 'customers'
     | 'suppliers'
     | 'accounting'
+    | 'bankTxn'
+    | 'banks'
+    | 'overdraft'
+    | 'dailyClose'
+    | 'ledger'
+    | 'payables'
+    | 'prepayments'
+    | 'supplierRebates'
+    | 'loans'
+    | 'tax'
     | 'reports'
+    | 'monthlyReport'
+    | 'annualReport'
+    | 'assetSchedule'
     | 'admin'
     | 'settings'
 
@@ -227,6 +242,17 @@ export function getPermissionAccessLevel(
 ): AccessLevel | null {
     if (!user) return null
     if (user.accessLevels && user.accessLevels[permission]) return user.accessLevels[permission] || null
+    const broadPermission: PermissionKey | undefined =
+        ['bankTxn', 'banks', 'overdraft', 'dailyClose', 'ledger', 'payables', 'prepayments', 'supplierRebates', 'loans', 'tax'].includes(permission)
+            ? 'accounting'
+            : ['monthlyReport', 'annualReport', 'assetSchedule'].includes(permission)
+                ? 'reports'
+                : permission === 'productManager'
+                    ? 'inventory'
+                    : permission === 'creditSales'
+                        ? 'sales'
+                        : undefined
+    if (broadPermission && user.accessLevels?.[broadPermission]) return user.accessLevels[broadPermission] || null
     if (getRolePermissions(user).includes(permission)) return 'edit'
     if (user.visibleMenus?.includes(permission)) return 'view'
 
@@ -248,13 +274,13 @@ export function canEditPermission(
 }
 
 const ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
-    '/dashboard': 'dashboard', '/sales': 'sales', '/inventory': 'inventory', '/purchases': 'purchases',
-    '/customers': 'customers', '/suppliers': 'suppliers', '/expenses': 'expenses', '/ledger': 'accounting', '/daily-close': 'accounting',
-    '/receivables': 'receivables', '/payables': 'accounting', '/prepayments': 'accounting', '/supplier-rebates': 'accounting',
-    '/loans': 'accounting', '/reports': 'reports', '/monthly-report': 'reports', '/annual-report': 'reports',
-    '/asset-schedule': 'reports', '/settings': 'settings', '/backup': 'admin', '/change-password': 'settings',
-    '/subscription-and-licensing': 'admin', '/audit': 'admin', '/staff-management': 'admin', '/role-management': 'admin', '/bank-txn': 'accounting',
-    '/tax': 'accounting', '/product-manager': 'inventory', '/user-guide': 'dashboard',
+    '/dashboard': 'dashboard', '/sales': 'sales', '/credit-sales': 'creditSales', '/inventory': 'inventory', '/purchases': 'purchases',
+    '/customers': 'customers', '/suppliers': 'suppliers', '/expenses': 'expenses', '/ledger': 'ledger', '/daily-close': 'dailyClose',
+    '/receivables': 'receivables', '/payables': 'payables', '/prepayments': 'prepayments', '/supplier-rebates': 'supplierRebates',
+    '/loans': 'loans', '/reports': 'reports', '/monthly-report': 'monthlyReport', '/annual-report': 'annualReport',
+    '/asset-schedule': 'assetSchedule', '/settings': 'settings', '/backup': 'admin', '/change-password': 'settings',
+    '/subscription-and-licensing': 'admin', '/audit': 'admin', '/staff-management': 'admin', '/role-management': 'admin', '/bank-txn': 'bankTxn',
+    '/banks': 'banks', '/uba-overdraft': 'overdraft', '/tax': 'tax', '/product-manager': 'productManager', '/user-guide': 'dashboard',
 }
 
 export function getRoutePermission(pathname: string): PermissionKey | null {
@@ -295,23 +321,25 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
     const allItems = [
         { label: 'Dashboard', href: '/dashboard', group: 'OVERVIEW', permission: 'dashboard' as PermissionKey, icon: 'dashboard' },
         { label: 'Sales', href: '/sales', group: 'TRANSACTIONS', permission: 'sales' as PermissionKey, icon: 'sales' },
+        { label: 'Credit Sales', href: '/credit-sales', group: 'TRANSACTIONS', permission: 'creditSales' as PermissionKey, icon: 'creditSales' },
         { label: 'Purchases', href: '/purchases', group: 'TRANSACTIONS', permission: 'purchases' as PermissionKey, icon: 'purchases' },
         { label: 'Expenses', href: '/expenses', group: 'TRANSACTIONS', permission: 'expenses' as PermissionKey, icon: 'expenses' },
         { label: 'Inventory', href: '/inventory', group: 'STOCK', permission: 'inventory' as PermissionKey, icon: 'inventory' },
-        { label: 'Product Manager', href: '/product-manager', group: 'STOCK', permission: 'inventory' as PermissionKey, icon: 'productManager' },
-        { label: 'Bank Transactions', href: '/bank-txn', group: 'BANKING', permission: 'accounting' as PermissionKey, icon: 'bankTxn' },
-        { label: 'Bank Balances', href: '/banks', group: 'BANKING', permission: 'accounting' as PermissionKey, icon: 'banks' },
-        { label: 'Daily Closing', href: '/daily-close', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'dailyClose' },
+        { label: 'Product Manager', href: '/product-manager', group: 'STOCK', permission: 'productManager' as PermissionKey, icon: 'productManager' },
+        { label: 'Bank Transactions', href: '/bank-txn', group: 'BANKING', permission: 'bankTxn' as PermissionKey, icon: 'bankTxn' },
+        { label: 'Bank Balances', href: '/banks', group: 'BANKING', permission: 'banks' as PermissionKey, icon: 'banks' },
+        { label: 'UBA Overdraft', href: '/uba-overdraft', group: 'BANKING', permission: 'overdraft' as PermissionKey, icon: 'overdraft' },
+        { label: 'Daily Closing', href: '/daily-close', group: 'ACCOUNTING', permission: 'dailyClose' as PermissionKey, icon: 'dailyClose' },
         { label: 'Audit Trail', href: '/audit', group: 'AUDIT & ADMIN', permission: 'admin' as PermissionKey, icon: 'audit' },
-        { label: 'General Ledger', href: '/ledger', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'ledger' },
+        { label: 'General Ledger', href: '/ledger', group: 'ACCOUNTING', permission: 'ledger' as PermissionKey, icon: 'ledger' },
         { label: 'Receivables', href: '/receivables', group: 'ACCOUNTING', permission: 'receivables' as PermissionKey, icon: 'receivables' },
-        { label: 'Payables', href: '/payables', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'payables' },
-        { label: 'Prepayments', href: '/prepayments', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'prepayments' },
-        { label: 'Supplier Rebates', href: '/supplier-rebates', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'supplierRebates' },
-        { label: 'Loans', href: '/loans', group: 'ACCOUNTING', permission: 'accounting' as PermissionKey, icon: 'loans' },
-        { label: 'Monthly Report', href: '/monthly-report', group: 'REPORTS', permission: 'reports' as PermissionKey, icon: 'monthlyReport' },
-        { label: 'Annual Report', href: '/annual-report', group: 'REPORTS', permission: 'reports' as PermissionKey, icon: 'annualReport' },
-        { label: 'Asset Schedule', href: '/asset-schedule', group: 'REPORTS', permission: 'reports' as PermissionKey, icon: 'assetSchedule' },
+        { label: 'Payables', href: '/payables', group: 'ACCOUNTING', permission: 'payables' as PermissionKey, icon: 'payables' },
+        { label: 'Prepayments', href: '/prepayments', group: 'ACCOUNTING', permission: 'prepayments' as PermissionKey, icon: 'prepayments' },
+        { label: 'Supplier Rebates', href: '/supplier-rebates', group: 'ACCOUNTING', permission: 'supplierRebates' as PermissionKey, icon: 'supplierRebates' },
+        { label: 'Loans', href: '/loans', group: 'ACCOUNTING', permission: 'loans' as PermissionKey, icon: 'loans' },
+        { label: 'Monthly Report', href: '/monthly-report', group: 'REPORTS', permission: 'monthlyReport' as PermissionKey, icon: 'monthlyReport' },
+        { label: 'Annual Report', href: '/annual-report', group: 'REPORTS', permission: 'annualReport' as PermissionKey, icon: 'annualReport' },
+        { label: 'Asset Schedule', href: '/asset-schedule', group: 'REPORTS', permission: 'assetSchedule' as PermissionKey, icon: 'assetSchedule' },
         { label: 'Staff Management', href: '/staff-management', group: 'HUMAN RESOURCES', permission: 'admin' as PermissionKey, icon: 'settings' },
         { label: 'Settings', href: '/settings', group: 'AUDIT & ADMIN', permission: 'settings' as PermissionKey, icon: 'settings' },
         { label: 'Backup & Recovery', href: '/backup', group: 'AUDIT & ADMIN', permission: 'admin' as PermissionKey, icon: 'settings' },
