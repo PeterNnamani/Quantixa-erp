@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, triggerAppToast } from '@/lib/utils'
 import { downloadExcel, downloadPdf } from '@/lib/export-utils'
-import { PlusCircle, Repeat, Download, Filter, ArrowDown, ArrowUp, CheckCircle2 } from 'lucide-react'
+import { Repeat, Download, Filter, ArrowDown, ArrowUp, CheckCircle2 } from 'lucide-react'
 
 const bankStyles: Record<string, { background: string; accent: string }> = {
   'Globus Bank': {
@@ -32,14 +32,11 @@ const bankStyles: Record<string, { background: string; accent: string }> = {
 
 export default function BanksPage() {
   const { state, updateState, addAuditLog } = useAccounting()
-  const [showBankForm, setShowBankForm] = useState(false)
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [showReconcileModal, setShowReconcileModal] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [showExportDropdown, setShowExportDropdown] = useState(false)
   const [activeReportModal, setActiveReportModal] = useState<string | null>(null)
-  const [newBankName, setNewBankName] = useState('')
-  const [newBankBalance, setNewBankBalance] = useState(0)
   const [transferSource, setTransferSource] = useState('')
   const [transferTarget, setTransferTarget] = useState('')
   const [transferAmount, setTransferAmount] = useState(500000)
@@ -63,25 +60,6 @@ export default function BanksPage() {
   const pendingDeposits = state.bankTxns.filter((txn) => txn.amount > 0 && txn.status !== 'Completed').reduce((sum, txn) => sum + txn.amount, 0)
   const pendingWithdrawals = state.bankTxns.filter((txn) => txn.amount < 0 && txn.status !== 'Completed').reduce((sum, txn) => sum + Math.abs(txn.amount), 0)
   const reconciliationDue = state.bankTxns.filter((txn) => txn.status !== 'Completed').length
-
-  const handleAddBank = () => {
-    const bankName = newBankName.trim()
-    if (!bankName) {
-      alert('Please enter a bank name.')
-      return
-    }
-    if (Object.prototype.hasOwnProperty.call(state.banks, bankName)) {
-      alert('This bank already exists.')
-      return
-    }
-
-    const updatedBanks = { ...state.banks, [bankName]: newBankBalance }
-    updateState({ banks: updatedBanks })
-    addAuditLog('CREATE', 'BANK', bankName, `Added bank ${bankName} with ${formatCurrency(newBankBalance)}`)
-    setNewBankName('')
-    setNewBankBalance(0)
-    setShowBankForm(false)
-  }
 
   const openTransferModal = () => {
     if (bankAccounts.length < 2) {
@@ -259,9 +237,6 @@ export default function BanksPage() {
             <div className="pg-subtitle">Monitor all company bank accounts, cash balances, and account performance in real time.</div>
           </div>
           <div className="bank-actions">
-            <button className="btn btn-secondary" title="Create a new bank account" onClick={() => setShowBankForm(true)}>
-              <PlusCircle size={16} style={{ marginRight: 6 }} /> Add Bank Account
-            </button>
             <button
               className="btn btn-secondary"
               title={bankAccounts.length < 2 ? 'Create at least two bank accounts first' : 'Transfer funds between accounts'}
@@ -304,28 +279,6 @@ export default function BanksPage() {
             </button>
           </div>
         </div>
-
-        {showBankForm && (
-          <div className="bank-modal-overlay">
-            <div className="card bank-modal-card">
-              <div className="card-title">Add Bank Account</div>
-              <div className="bank-form-grid">
-                <label>
-                  <span>Bank Name</span>
-                  <input type="text" value={newBankName} onChange={(e) => setNewBankName(e.target.value)} placeholder="Enter bank name" />
-                </label>
-                <label>
-                  <span>Opening Balance</span>
-                  <input type="number" min={0} value={newBankBalance} onChange={(e) => setNewBankBalance(Number(e.target.value))} placeholder="0" />
-                </label>
-              </div>
-              <div className="btn-group" style={{ justifyContent: 'flex-end', gap: 8 }}>
-                <button className="btn btn-primary" type="button" onClick={handleAddBank}>Create Account</button>
-                <button className="btn btn-secondary" type="button" onClick={() => setShowBankForm(false)}>Cancel</button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="bank-card-grid">
           {bankAccounts.length > 0 ? (

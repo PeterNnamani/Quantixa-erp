@@ -14,7 +14,6 @@ const genderOptions = ['Female', 'Male', 'Other']
 const departmentOptions = ['Sales', 'Inventory', 'Accounting', 'HR', 'Operations']
 const positionOptions = ['Sales Manager', 'Cashier', 'Store Officer', 'Accountant', 'HR Officer']
 const permissionOptions: { key: PermissionKey; label: string }[] = [
-  { key: 'dashboard', label: 'Dashboard' },
   { key: 'sales', label: 'Sales' },
   { key: 'creditSales', label: 'Credit Sales' },
   { key: 'inventory', label: 'Inventory' },
@@ -23,7 +22,6 @@ const permissionOptions: { key: PermissionKey; label: string }[] = [
   { key: 'expenses', label: 'Expenses' },
   { key: 'bankTxn', label: 'Bank Transactions' },
   { key: 'banks', label: 'Bank Balances' },
-  { key: 'overdraft', label: 'UBA Overdraft' },
   { key: 'dailyClose', label: 'Daily Closing' },
   { key: 'ledger', label: 'General Ledger' },
   { key: 'receivables', label: 'Receivables' },

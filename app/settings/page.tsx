@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const { state, updateState, addAuditLog, user } = useAccounting()
   const [openingCapital, setOpeningCapital] = useState(state.openingCapital)
   const [activeSection, setActiveSection] = useState('company')
+  const [newBankName, setNewBankName] = useState('')
+  const [newBankBalance, setNewBankBalance] = useState(0)
   const [roles, setRoles] = useState<RoleDefinition[]>(state.roles || getDefaultRoles())
   const [roleName, setRoleName] = useState('Sales Supervisor')
   const [roleTemplate, setRoleTemplate] = useState('Custom')
@@ -39,10 +41,28 @@ export default function SettingsPage() {
   const [pinStatus, setPinStatus] = useState<{ tone: 'error' | 'success'; message: string } | null>(null)
 
   const selectedRole = useMemo(() => roles.find((role) => role.id === previewRoleId) || roles[0], [previewRoleId, roles])
+  const isSuperAdmin = user?.role === 'super-admin'
 
   const handleSaveOpeningCapital = () => {
     updateState({ openingCapital: parseFloat(openingCapital as any) || 0 })
     alert('Opening capital saved!')
+  }
+
+  const handleAddBank = () => {
+    const bankName = newBankName.trim()
+    if (!bankName) {
+      alert('Please enter a bank name.')
+      return
+    }
+    if (Object.prototype.hasOwnProperty.call(state.banks, bankName)) {
+      alert('This bank already exists.')
+      return
+    }
+
+    updateState({ banks: { ...state.banks, [bankName]: newBankBalance } })
+    addAuditLog('CREATE', 'BANK', bankName, `Added bank ${bankName} with ${formatCurrency(newBankBalance)}`)
+    setNewBankName('')
+    setNewBankBalance(0)
   }
 
   const openImportModal = () => {
@@ -323,6 +343,15 @@ export default function SettingsPage() {
                 <span className="sidebar-subtitle">{section.description}</span>
               </button>
             ))}
+            {isSuperAdmin && (
+              <button
+                className={`sidebar-item ${activeSection === 'bank-management' ? 'active' : ''}`}
+                onClick={() => setActiveSection('bank-management')}
+              >
+                <span className="sidebar-title">Bank Management</span>
+                <span className="sidebar-subtitle">Create and configure company bank accounts</span>
+              </button>
+            )}
           </aside>
 
           <div className="settings-content">
@@ -362,6 +391,33 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {activeSection === 'bank-management' && isSuperAdmin && (
+              <div className="panel-card">
+                <div className="panel-title">Bank account management</div>
+                <div className="panel-subtitle">Only the Super Admin can create company bank accounts. Staff access can be assigned from Staff Management.</div>
+                <div className="form-grid two-up" style={{ marginTop: 18 }}>
+                  <div className="fg">
+                    <label>Bank name</label>
+                    <input type="text" value={newBankName} onChange={(event) => setNewBankName(event.target.value)} placeholder="Enter bank name" />
+                  </div>
+                  <div className="fg">
+                    <label>Opening balance</label>
+                    <input type="number" min={0} value={newBankBalance} onChange={(event) => setNewBankBalance(Number(event.target.value))} />
+                  </div>
+                </div>
+                <button className="action-btn primary" type="button" onClick={handleAddBank}>Add bank account</button>
+                <div className="toggle-list" style={{ marginTop: 20 }}>
+                  {Object.entries(state.banks).map(([bank, balance]) => (
+                    <div className="toggle-row" key={bank}>
+                      <span>{bank}</span>
+                      <span className="status-pill active">{formatCurrency(balance)}</span>
+                    </div>
+                  ))}
+                  {Object.keys(state.banks).length === 0 && <div className="metric-note">No bank accounts configured.</div>}
+                </div>
+              </div>
+            )}
+
             {activeSection === 'notifications' && (
               <div className="panel-card">
                 <div className="panel-title">Notification settings</div>
@@ -388,13 +444,13 @@ export default function SettingsPage() {
                   <button className="action-btn primary" type="button" onClick={() => void handlePinChange()}>Update PIN</button>
                 </div>
                 <div className="panel-card">
-                <div className="panel-title">Security controls</div>
-                <div className="toggle-list">
-                  <div className="toggle-row"><span>Two-factor authentication</span><span className="status-pill active">Enabled</span></div>
-                  <div className="toggle-row"><span>Session timeout</span><span className="status-pill">20 mins</span></div>
-                  <div className="toggle-row"><span>Audit logs</span><span className="status-pill active">Active</span></div>
-                  <div className="toggle-row"><span>IP restrictions</span><span className="status-pill">Configurable</span></div>
-                </div>
+                  <div className="panel-title">Security controls</div>
+                  <div className="toggle-list">
+                    <div className="toggle-row"><span>Two-factor authentication</span><span className="status-pill active">Enabled</span></div>
+                    <div className="toggle-row"><span>Session timeout</span><span className="status-pill">20 mins</span></div>
+                    <div className="toggle-row"><span>Audit logs</span><span className="status-pill active">Active</span></div>
+                    <div className="toggle-row"><span>IP restrictions</span><span className="status-pill">Configurable</span></div>
+                  </div>
                 </div>
               </div>
             )}

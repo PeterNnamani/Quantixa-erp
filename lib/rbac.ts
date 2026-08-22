@@ -12,7 +12,6 @@ export type PermissionKey =
     | 'accounting'
     | 'bankTxn'
     | 'banks'
-    | 'overdraft'
     | 'dailyClose'
     | 'ledger'
     | 'payables'
@@ -110,7 +109,7 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         name: 'Super Admin',
         description: 'Platform provisioning and oversight (no transactional posting)',
         permissions: ['dashboard', 'reports', 'admin', 'settings'],
-        visibleMenus: ['dashboard', 'reports', 'admin', 'settings'],
+        visibleMenus: ['dashboard', 'reports', 'admin', 'settings', 'bankTxn', 'banks'],
         dataScope: 'all',
         template: 'Super Admin',
     },
@@ -244,7 +243,7 @@ export function getPermissionAccessLevel(
     if (user.accessLevels && user.accessLevels[permission]) return user.accessLevels[permission] || null
     if (permission === 'settings') return 'view'
     const broadPermission: PermissionKey | undefined =
-        ['bankTxn', 'banks', 'overdraft', 'dailyClose', 'ledger', 'payables', 'prepayments', 'supplierRebates', 'loans', 'tax'].includes(permission)
+        ['bankTxn', 'banks', 'dailyClose', 'ledger', 'payables', 'prepayments', 'supplierRebates', 'loans', 'tax'].includes(permission)
             ? 'accounting'
             : ['monthlyReport', 'annualReport', 'assetSchedule'].includes(permission)
                 ? 'reports'
@@ -281,7 +280,7 @@ const ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
     '/loans': 'loans', '/reports': 'reports', '/monthly-report': 'monthlyReport', '/annual-report': 'annualReport',
     '/asset-schedule': 'assetSchedule', '/settings': 'settings', '/backup': 'admin', '/change-password': 'settings',
     '/subscription-and-licensing': 'admin', '/audit': 'admin', '/staff-management': 'admin', '/role-management': 'admin', '/bank-txn': 'bankTxn',
-    '/banks': 'banks', '/uba-overdraft': 'overdraft', '/tax': 'tax', '/product-manager': 'productManager', '/user-guide': 'dashboard',
+    '/banks': 'banks', '/tax': 'tax', '/product-manager': 'productManager', '/user-guide': 'dashboard',
 }
 
 export function getRoutePermission(pathname: string): PermissionKey | null {
@@ -329,7 +328,6 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
         { label: 'Product Manager', href: '/product-manager', group: 'STOCK', permission: 'productManager' as PermissionKey, icon: 'productManager' },
         { label: 'Bank Transactions', href: '/bank-txn', group: 'BANKING', permission: 'bankTxn' as PermissionKey, icon: 'bankTxn' },
         { label: 'Bank Balances', href: '/banks', group: 'BANKING', permission: 'banks' as PermissionKey, icon: 'banks' },
-        { label: 'UBA Overdraft', href: '/uba-overdraft', group: 'BANKING', permission: 'overdraft' as PermissionKey, icon: 'overdraft' },
         { label: 'Daily Closing', href: '/daily-close', group: 'ACCOUNTING', permission: 'dailyClose' as PermissionKey, icon: 'dailyClose' },
         { label: 'Audit Trail', href: '/audit', group: 'AUDIT & ADMIN', permission: 'admin' as PermissionKey, icon: 'audit' },
         { label: 'General Ledger', href: '/ledger', group: 'ACCOUNTING', permission: 'ledger' as PermissionKey, icon: 'ledger' },
