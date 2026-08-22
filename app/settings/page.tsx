@@ -22,8 +22,10 @@ const accountTypes = ['Current', 'Savings', 'Cash', 'Wallet', 'Other']
 
 export default function SettingsPage() {
   const { state, updateState, addAuditLog, user } = useAccounting()
+  const normalizedRole = String(user?.role || user?.roleId || user?.roleName || '').toLowerCase().replace(/[_\s]+/g, '-')
+  const isSuperAdmin = normalizedRole === 'super-admin'
   const [openingCapital, setOpeningCapital] = useState(state.openingCapital)
-  const [activeSection, setActiveSection] = useState('company')
+  const [activeSection, setActiveSection] = useState(isSuperAdmin ? 'bank-management' : 'company')
   const [newBankName, setNewBankName] = useState('')
   const [newAccountName, setNewAccountName] = useState('')
   const [newAccountNumber, setNewAccountNumber] = useState('')
@@ -52,7 +54,6 @@ export default function SettingsPage() {
   const [pinStatus, setPinStatus] = useState<{ tone: 'error' | 'success'; message: string } | null>(null)
 
   const selectedRole = useMemo(() => roles.find((role) => role.id === previewRoleId) || roles[0], [previewRoleId, roles])
-  const isSuperAdmin = user?.role === 'super-admin'
 
   const handleSaveOpeningCapital = () => {
     updateState({ openingCapital: parseFloat(openingCapital as any) || 0 })
