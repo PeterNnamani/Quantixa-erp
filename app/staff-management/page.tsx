@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users, ThumbsUp } from 'lucide-react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { generatePin, generateStaffId, saveRoles, type AccessLevels, type PermissionKey, type RoleDefinition, type StaffMemberRecord } from '@/lib/rbac'
@@ -71,6 +71,8 @@ export default function StaffManagementPage() {
   const [drawerMode, setDrawerMode] = useState<'add' | 'view' | 'edit'>('add')
   const [activeStaff, setActiveStaff] = useState<StaffMemberRecord | null>(null)
   const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({})
+  const [saveConfirmation, setSaveConfirmation] = useState<{ name: string; staffId: string; pin: string; saved: boolean } | null>(null)
+  const [inlineNotice, setInlineNotice] = useState<{ message: string; tone: 'error' | 'success' } | null>(null)
 
   const selectedRole = useMemo(() => roles.find((role) => role.id === selectedRoleId) || roles[0], [roles, selectedRoleId])
 
@@ -94,12 +96,12 @@ export default function StaffManagementPage() {
   const handleCreateRole = () => {
     const id = roleName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
     if (!id) {
-      alert('Enter a valid role name.')
+      setInlineNotice({ message: 'Enter a valid role name.', tone: 'error' })
       return
     }
 
     if (roles.some((role) => role.id === id)) {
-      alert('A role with that name already exists.')
+      setInlineNotice({ message: 'A role with that name already exists.', tone: 'error' })
       return
     }
 
@@ -123,7 +125,7 @@ export default function StaffManagementPage() {
     setRoleTemplate('Custom')
     setRolePermissions(['dashboard'])
     setRoleDataScope('team')
-    alert(`Created role ${newRole.name}`)
+    setInlineNotice({ message: `Created role ${newRole.name}`, tone: 'success' })
   }
 
   const resetForm = () => {
@@ -155,6 +157,12 @@ export default function StaffManagementPage() {
       searchInputRef.current?.focus()
     }
   }, [searchOpen])
+
+  useEffect(() => {
+    if (!saveConfirmation) return
+    const timeoutId = window.setTimeout(() => setSaveConfirmation(null), 3000)
+    return () => window.clearTimeout(timeoutId)
+  }, [saveConfirmation])
 
   useEffect(() => {
     // Fetch staff list from DB for the current company and merge into state
@@ -256,7 +264,7 @@ export default function StaffManagementPage() {
   const saveStaff = async () => {
     const fullName = `${firstName} ${lastName}`.trim()
     if (!fullName) {
-      alert('Enter a valid first and last name for the staff member.')
+      setInlineNotice({ message: 'Enter a valid first and last name for the staff member.', tone: 'error' })
       return
     }
 
@@ -297,6 +305,8 @@ export default function StaffManagementPage() {
       const nextStaff = staffMembers.map((member) => (member.id === activeStaff.id ? updatedStaff : member))
       setStaffMembers(nextStaff)
       updateState({ staffMembers: nextStaff })
+      setDrawerOpen(false)
+      resetForm()
 
       const saveResult = await saveUserToDatabase({
         companyId: user?.companyId || '',
@@ -318,12 +328,10 @@ export default function StaffManagementPage() {
         status,
       })
 
-      setDrawerOpen(false)
-      resetForm()
       if (saveResult.success) {
-        alert(`Staff member ${updatedStaff.name} updated.`)
+        setSaveConfirmation({ name: updatedStaff.name, staffId: updatedStaff.staffId, pin: updatedStaff.pin, saved: true })
       } else {
-        alert(`Staff member ${updatedStaff.name} updated locally, but could not be saved to the users table: ${saveResult.error}`)
+        setSaveConfirmation({ name: updatedStaff.name, staffId: updatedStaff.staffId, pin: updatedStaff.pin, saved: false })
       }
       return
     }
@@ -359,6 +367,8 @@ export default function StaffManagementPage() {
     const nextStaff = [newStaff, ...staffMembers]
     setStaffMembers(nextStaff)
     updateState({ staffMembers: nextStaff })
+    setDrawerOpen(false)
+    resetForm()
 
     const saveResult = await saveUserToDatabase({
       companyId: user?.companyId || '',
@@ -380,18 +390,16 @@ export default function StaffManagementPage() {
       status,
     })
 
-    setDrawerOpen(false)
-    resetForm()
     if (saveResult.success) {
-      alert(`Staff member ${fullName} created with Staff ID ${generatedStaffId} and PIN ${generatedPin}`)
+      setSaveConfirmation({ name: fullName, staffId: generatedStaffId, pin: generatedPin, saved: true })
     } else {
-      alert(`Staff member ${fullName} created locally, but could not be saved to the users table: ${saveResult.error}`)
+      setSaveConfirmation({ name: fullName, staffId: generatedStaffId, pin: generatedPin, saved: false })
     }
   }
 
   const toggleStatus = (id: string) => {
     const nextStaff = staffMembers.map((member) =>
-      member.id === id ? { ...member, status: member.status === 'active' ? 'disabled' : 'active' } : member
+      member.id === id ? { ...member, status: (member.status === 'active' ? 'disabled' : 'active') as StaffMemberRecord['status'] } : member
     )
     setStaffMembers(nextStaff)
     updateState({ staffMembers: nextStaff })
@@ -420,6 +428,8 @@ export default function StaffManagementPage() {
             <button className="action-btn primary allow-readonly" onClick={() => setDrawerOpen(true)}>Add Staff</button>
           </div>
         </div>
+
+        {inlineNotice && <div className={`staff-inline-notice ${inlineNotice.tone}`} role="status">{inlineNotice.message}</div>}
 
         <div className="panel-card">
           <div className="panel-head">
@@ -557,20 +567,31 @@ export default function StaffManagementPage() {
 
       {drawerOpen && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            height: '100vh',
-            width: '460px',
-            background: 'var(--bg)',
-            borderLeft: '1px solid var(--border)',
-            boxShadow: '-12px 0 38px rgba(15, 23, 42, 0.14)',
-            padding: 24,
-            zIndex: 80,
-            overflowY: 'auto',
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setDrawerOpen(false)
+              resetForm()
+            }
           }}
+          style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(15, 23, 42, 0.18)' }}
         >
+          <div
+            onMouseDown={(event) => event.stopPropagation()}
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              height: '100%',
+              width: '460px',
+              maxWidth: '100%',
+              background: 'var(--bg)',
+              borderLeft: '1px solid var(--border)',
+              boxShadow: '-12px 0 38px rgba(15, 23, 42, 0.14)',
+              padding: 24,
+              overflowY: 'auto',
+            }}
+          >
           <div className="panel-head" style={{ marginBottom: 20 }}>
             <div>
               <div className="panel-title">
@@ -703,6 +724,19 @@ export default function StaffManagementPage() {
             <button className="action-btn primary allow-readonly" type="button" onClick={saveStaff}>
               {drawerMode === 'edit' ? 'Update' : 'Save'}
             </button>
+          </div>
+          </div>
+        </div>
+      )}
+
+      {saveConfirmation && (
+        <div className="staff-save-confirmation" role="status" aria-live="polite">
+          <div className="staff-save-icon"><ThumbsUp size={22} /></div>
+          <strong>{saveConfirmation.saved ? 'Staff created successfully' : 'Staff saved locally'}</strong>
+          <span>{saveConfirmation.name}</span>
+          <div className="staff-credential-preview">
+            <span>Staff ID <b>{saveConfirmation.staffId}</b></span>
+            <span>PIN <b>{saveConfirmation.pin}</b></span>
           </div>
         </div>
       )}
