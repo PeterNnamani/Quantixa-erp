@@ -1,460 +1,106 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { ArrowDownToLine, Check, ChevronRight, CircleDollarSign, FileText, Filter, MoreHorizontal, Paperclip, Plus, Search, Upload, X } from 'lucide-react'
 import AppLayout from '@/components/layout/app-layout'
-import { useAccounting } from '@/lib/context'
-import { Expense } from '@/lib/context'
-import { formatCurrency, makeID, getCurrentDate, EXP_CATS, canEdit } from '@/lib/utils'
+import { Expense, useAccounting } from '@/lib/context'
+import { canEdit, EXP_CATS, formatCurrency, getCurrentDate, makeID } from '@/lib/utils'
+import { downloadExcel } from '@/lib/export-utils'
 
-const datePresets = ['This Month', 'Last 30 Days', 'This Quarter', 'This Year', 'Custom Date']
-const banks = ['All Banks', 'Globus Bank', 'Access Bank', 'Zenith Bank', 'UBA']
-const categories = ['All Categories', ...EXP_CATS]
+type Tab = 'Expenses' | 'Reimbursements' | 'Recurring' | 'Categories'
+type ExpenseStatus = 'Pending Approval' | 'Approved' | 'Scheduled' | 'Paid' | 'Overdue' | 'Rejected'
 
-function getDateRange(preset: string, customFrom: string, customTo: string) {
-  const today = new Date()
-  const start = new Date(today)
-  const end = new Date(today)
+const statusOptions: Array<'All Statuses' | ExpenseStatus> = ['All Statuses', 'Pending Approval', 'Approved', 'Scheduled', 'Paid', 'Overdue', 'Rejected']
+const paymentMethods = ['Bank Transfer', 'Cash', 'Card', 'Cheque', 'Direct Debit', 'Other']
+const departments = ['All Departments', 'Operations', 'Finance', 'Sales', 'Marketing', 'People']
 
-  switch (preset) {
-    case 'This Month':
-      start.setDate(1)
-      break
-    case 'Last 30 Days':
-      start.setDate(today.getDate() - 29)
-      break
-    case 'This Quarter': {
-      const quarter = Math.floor(today.getMonth() / 3)
-      start.setMonth(quarter * 3)
-      start.setDate(1)
-      break
-    }
-    case 'This Year':
-      start.setMonth(0)
-      start.setDate(1)
-      break
-    case 'Custom Date':
-      return { from: customFrom, to: customTo }
-    default:
-      return { from: '', to: '' }
-  }
+function displayStatus(expense: Expense): ExpenseStatus {
+    if (expense.status === 'VOID') return 'Rejected'
+    if (expense.status === 'ACTIVE') return 'Paid'
+    return (statusOptions.includes(expense.status as ExpenseStatus) ? expense.status : 'Pending Approval') as ExpenseStatus
+}
 
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return {
-    from: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
-    to: `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`,
-  }
+function dateLabel(value: string) {
+    return new Date(`${value}T00:00:00`).toLocaleDateString('en-NG', { month: 'short', day: '2-digit', year: 'numeric' })
 }
 
 export default function ExpensesPage() {
-  const { state, updateState, user, addAuditLog } = useAccounting()
-  const [showForm, setShowForm] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All Categories')
-  const [selectedBank, setSelectedBank] = useState('All Banks')
-  const [selectedStatus, setSelectedStatus] = useState('All')
-  const [selectedDateRange, setSelectedDateRange] = useState('This Month')
-  const [customFrom, setCustomFrom] = useState(getCurrentDate())
-  const [customTo, setCustomTo] = useState(getCurrentDate())
-  const [currentPage, setCurrentPage] = useState(1)
-  const [selectedExpenseId, setSelectedExpenseId] = useState(state.expenses[0]?.id ?? '')
-  const [showFilters, setShowFilters] = useState(false)
-  const itemsPerPage = 10
+    const { state, updateState, user, addAuditLog } = useAccounting()
+    const [activeTab, setActiveTab] = useState<Tab>('Expenses')
+    const [showForm, setShowForm] = useState(false)
+    const [showFilters, setShowFilters] = useState(false)
+    const [search, setSearch] = useState('')
+    const [status, setStatus] = useState<'All Statuses' | ExpenseStatus>('All Statuses')
+    const [category, setCategory] = useState('All Categories')
+    const [department, setDepartment] = useState('All Departments')
+    const [period, setPeriod] = useState('This month')
+    const [selectedId, setSelectedId] = useState(state.expenses[0]?.id ?? '')
+    const [receiptName, setReceiptName] = useState('')
+    const receiptInput = useRef<HTMLInputElement>(null)
+    const [formData, setFormData] = useState({ date: getCurrentDate(), desc: '', category: EXP_CATS[0], amount: 0, tax: 0, bank: Object.keys(state.banks)[0] || 'Globus Bank', vendor: '', department: 'Operations', method: 'Bank Transfer', notes: '', project: '', reference: '', status: 'Pending Approval' as ExpenseStatus })
 
-  const expenses = useMemo(
-    () => state.expenses.filter((expense) => expense.status !== 'VOID'),
-    [state.expenses]
-  )
+    const expenses = useMemo(() => state.expenses.filter((expense) => expense.status !== 'VOID'), [state.expenses])
+    const selectedExpense = expenses.find((expense) => expense.id === selectedId) || expenses[0]
 
-  const activeExpense = useMemo(
-    () => expenses.find((expense) => expense.id === selectedExpenseId) || expenses[0] || null,
-    [expenses, selectedExpenseId]
-  )
-
-  const summary = useMemo(() => {
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const monthlyExpenses = expenses
-      .filter((expense) => {
-        const date = new Date(expense.date)
+    const filteredExpenses = useMemo(() => {
+        const query = search.toLowerCase().trim()
         const today = new Date()
-        return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()
-      })
-      .reduce((sum, expense) => sum + expense.amount, 0)
-    const bankSpend = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const categoryCount = new Set(expenses.map((expense) => expense.category)).size
-    return { totalExpenses, monthlyExpenses, bankSpend, categoryCount }
-  }, [expenses])
+        const rangeStart = new Date(today)
+        if (period === 'Last 30 days') rangeStart.setDate(today.getDate() - 29)
+        if (period === 'This quarter') rangeStart.setMonth(Math.floor(today.getMonth() / 3) * 3, 1)
+        if (period === 'This year') rangeStart.setMonth(0, 1)
+        if (period === 'This month') rangeStart.setDate(1)
+        return expenses.filter((expense) => {
+            const searchable = `${expense.id} ${expense.desc} ${expense.category} ${expense.bank} ${expense.notes}`.toLowerCase()
+            const expenseDate = new Date(`${expense.date}T00:00:00`)
+            return expenseDate >= rangeStart && expenseDate <= today && (!query || searchable.includes(query)) && (status === 'All Statuses' || displayStatus(expense) === status) && (category === 'All Categories' || expense.category === category) && (department === 'All Departments' || expense.notes.includes(`Department: ${department}`))
+        })
+    }, [expenses, search, status, category, department, period])
 
-  const expensesByCategory = useMemo(() => {
-    return categories.slice(1).reduce<Record<string, number>>((acc, category) => {
-      acc[category] = expenses.filter((expense) => expense.category === category).reduce((sum, expense) => sum + expense.amount, 0)
-      return acc
-    }, {})
-  }, [expenses])
+    const metrics = useMemo(() => {
+        const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+        const paid = expenses.filter((expense) => displayStatus(expense) === 'Paid').reduce((sum, expense) => sum + expense.amount, 0)
+        const pendingItems = expenses.filter((expense) => ['Pending Approval', 'Approved', 'Scheduled'].includes(displayStatus(expense)))
+        const pending = pendingItems.reduce((sum, expense) => sum + expense.amount, 0)
+        const overdue = expenses.filter((expense) => displayStatus(expense) === 'Overdue').reduce((sum, expense) => sum + expense.amount, 0)
+        const thisMonth = expenses.filter((expense) => new Date(expense.date).getMonth() === new Date().getMonth()).reduce((sum, expense) => sum + expense.amount, 0)
+        const tax = expenses.reduce((sum, expense) => sum + expense.amount * 0.075, 0)
+        return { total, paid, pending, pendingCount: pendingItems.length, overdue, thisMonth, tax }
+    }, [expenses])
 
-  const filteredExpenses = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase()
-    const range = getDateRange(selectedDateRange, customFrom, customTo)
-    const from = range.from ? new Date(range.from) : null
-    const to = range.to ? new Date(range.to) : null
+    const categoryTotals = useMemo(() => EXP_CATS.map((name) => ({ name, amount: expenses.filter((expense) => expense.category === name).reduce((sum, expense) => sum + expense.amount, 0) })).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount), [expenses])
+    const maxCategory = Math.max(...categoryTotals.map((item) => item.amount), 1)
 
-    return expenses
-      .filter((expense) => {
-        if (!term) return true
-        return `${expense.id} ${expense.desc} ${expense.category} ${expense.bank} ${expense.notes}`.toLowerCase().includes(term)
-      })
-      .filter((expense) => selectedCategory === 'All Categories' || expense.category === selectedCategory)
-      .filter((expense) => selectedBank === 'All Banks' || expense.bank === selectedBank)
-      .filter((expense) => selectedStatus === 'All' || expense.status === selectedStatus)
-      .filter((expense) => {
-        if (!from || !to) return true
-        const date = new Date(expense.date)
-        return date >= from && date <= to
-      })
-  }, [expenses, searchTerm, selectedCategory, selectedBank, selectedStatus, selectedDateRange, customFrom, customTo])
-
-  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / itemsPerPage))
-  const activePage = Math.min(currentPage, totalPages)
-  const paginatedExpenses = filteredExpenses.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage)
-
-  const [formData, setFormData] = useState({
-    date: getCurrentDate(),
-    desc: '',
-    category: EXP_CATS[0],
-    amount: 0,
-    bank: state.banks ? Object.keys(state.banks)[0] ?? 'Globus Bank' : 'Globus Bank',
-    notes: '',
-  })
-
-  const handleSaveExpense = () => {
-    if (!formData.desc || !formData.amount) {
-      alert('Please enter description and amount for this expense.')
-      return
+    const saveExpense = () => {
+        if (!formData.desc || formData.amount <= 0) return
+        const expense: Expense = { id: makeID('EXP'), date: formData.date, desc: formData.desc, category: formData.category, amount: formData.amount, bank: formData.bank, status: formData.status, enteredBy: user?.name || 'System', notes: [`Vendor: ${formData.vendor || 'Unassigned'}`, `Department: ${formData.department}`, `Payment: ${formData.method}`, `Tax: ${formData.tax}`, formData.project ? `Project: ${formData.project}` : '', formData.reference ? `Reference: ${formData.reference}` : '', formData.notes, receiptName ? `Receipt: ${receiptName}` : ''].filter(Boolean).join(' | ') }
+        updateState({ expenses: [...state.expenses, expense] })
+        addAuditLog('CREATE', 'EXPENSE', expense.id, `${expense.category} expense recorded: ${formatCurrency(expense.amount)}`)
+        setSelectedId(expense.id)
+        setShowForm(false)
+        setReceiptName('')
+        setFormData({ ...formData, date: getCurrentDate(), desc: '', amount: 0, tax: 0, vendor: '', project: '', reference: '', notes: '' })
     }
 
-    const expense: Expense = {
-      id: makeID('EXP'),
-      date: formData.date,
-      desc: formData.desc,
-      category: formData.category,
-      amount: formData.amount,
-      bank: formData.bank,
-      notes: formData.notes,
-      status: 'ACTIVE',
-      enteredBy: user?.name || 'System',
-    }
+    const exportExpenses = () => downloadExcel('quantixa-expenses.xlsx', filteredExpenses.map((expense) => ({ Date: expense.date, Number: expense.id, Description: expense.desc, Category: expense.category, Amount: expense.amount, Status: displayStatus(expense), Account: expense.bank })))
+    const resetFilters = () => { setSearch(''); setStatus('All Statuses'); setCategory('All Categories'); setDepartment('All Departments'); setPeriod('This month') }
 
-    const updatedBanks = { ...state.banks }
-    updatedBanks[formData.bank] = (updatedBanks[formData.bank] ?? 0) - formData.amount
-
-    const bankTxn = {
-      id: makeID('TXN'),
-      date: formData.date,
-      name: expense.desc,
-      activity: 'Expense payment',
-      method: expense.bank,
-      amount: -formData.amount,
-      status: 'Completed',
-      description: `Expense ${expense.category} paid from ${expense.bank}`,
-      attachments: 0,
-      type: 'Withdrawal',
-      bank: expense.bank,
-    }
-
-    updateState({
-      expenses: [...state.expenses, expense],
-      banks: updatedBanks,
-      bankTxns: [bankTxn, ...state.bankTxns],
-    })
-
-    addAuditLog('CREATE', 'EXPENSE', expense.id, `${expense.category} expense recorded: ${formatCurrency(expense.amount)}`)
-    setShowForm(false)
-    setFormData({
-      date: getCurrentDate(),
-      desc: '',
-      category: EXP_CATS[0],
-      amount: 0,
-      bank: state.banks ? Object.keys(state.banks)[0] ?? 'Globus Bank' : 'Globus Bank',
-      notes: '',
-    })
-  }
-
-  const handleVoidExpense = (expenseId: string) => {
-    const expense = state.expenses.find((item) => item.id === expenseId)
-    if (!expense) return
-
-    const newBanks = { ...state.banks }
-    newBanks[expense.bank] = (newBanks[expense.bank] ?? 0) + expense.amount
-
-    updateState({
-      expenses: state.expenses.map((item) => (item.id === expenseId ? { ...item, status: 'VOID' } : item)),
-      banks: newBanks,
-    })
-
-    addAuditLog('VOID', 'EXPENSE', expenseId, `Voided expense ${expense.id}`)
-  }
-
-  return (
-    <AppLayout>
-      <div className="module-shell">
-        <div className="module-header">
-          <div>
-            <div className="module-title">Expenses</div>
-            <div className="module-subtitle">Control operating spend, categorize costs and reconcile every payment across bank accounts.</div>
-          </div>
-          <div className="module-actions">
-            <button className="btn btn-secondary" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
-            <button className="btn btn-secondary allow-readonly">Export</button>
-            <button className="btn btn-secondary">Reconcile</button>
-            {canEdit(user?.role || '') && <button className="btn btn-primary" onClick={() => setShowForm((prev) => !prev)}>{showForm ? 'Close Form' : '+ New Expense'}</button>}
-          </div>
-        </div>
-
-        <div className="dashboard-card-grid">
-          <div className="dashboard-card">
-            <div className="metric-label">Total Expenses</div>
-            <div className="metric-value">{formatCurrency(summary.totalExpenses)}</div>
-          </div>
-          <div className="dashboard-card">
-            <div className="metric-label">Monthly Spend</div>
-            <div className="metric-value">{formatCurrency(summary.monthlyExpenses)}</div>
-          </div>
-          <div className="dashboard-card">
-            <div className="metric-label">Bank Spend</div>
-            <div className="metric-value">{formatCurrency(summary.bankSpend)}</div>
-          </div>
-          <div className="dashboard-card">
-            <div className="metric-label">Expense Categories</div>
-            <div className="metric-value">{summary.categoryCount}</div>
-          </div>
-        </div>
-
-        {showFilters && (
-          <div className="filter-panel">
-            <div className="section-head">
-              <div>
-                <div className="card-title">Expense Filters</div>
-                <div className="section-subtitle">Search, categorize and slice expense transactions by date, bank and cost center.</div>
-              </div>
+    return (
+        <AppLayout>
+            <div className="module-shell expenses-workspace">
+                <header className="module-header"><div><div className="eyebrow">Operations / Finance</div><div className="module-title">Expenses</div><div className="module-subtitle">Track, manage, approve, and analyze business expenses.</div></div><div className="module-actions"><button className="btn btn-secondary" onClick={exportExpenses}><ArrowDownToLine size={15} /> Export</button><button className="btn btn-secondary" onClick={() => setShowFilters((value) => !value)}><Filter size={15} /> Filters</button>{canEdit(user?.role || '') && <button className="btn btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> Add Expense</button>}</div></header>
+                <nav className="expense-tabs" aria-label="Expense views">{(['Expenses', 'Reimbursements', 'Recurring', 'Categories'] as Tab[]).map((tab) => <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>{tab}{tab === 'Expenses' && <span>{expenses.length}</span>}</button>)}</nav>
+                {activeTab === 'Expenses' && <>
+                    <section className="dashboard-card-grid expense-metrics">{[['Total Expenses', metrics.total, 'Across selected records', 'metric-blue'], ['Paid', metrics.paid, 'Expenses settled', 'metric-green'], ['Pending', metrics.pending, `${metrics.pendingCount} expenses`, 'metric-amber'], ['Overdue', metrics.overdue, 'Approved, unpaid', 'metric-red'], ['This Month', metrics.thisMonth, 'Current period', 'metric-teal'], ['Tax / VAT', metrics.tax, 'Estimated recoverable', 'metric-purple']].map(([label, amount, note, tone]) => <div className={`dashboard-card ${tone}`} key={label as string}><div className="metric-label">{label}</div><div className="metric-value">{formatCurrency(amount as number)}</div><div className="metric-note">{note}</div></div>)}</section>
+                    {showFilters && <section className="filter-panel expense-filter-panel"><div className="filter-row"><label className="search-filter"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search expenses, vendors, or references..." /></label><label>Date range<select value={period} onChange={(event) => setPeriod(event.target.value)}><option>This month</option><option>Last 30 days</option><option>This quarter</option><option>This year</option></select></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>Category<select value={category} onChange={(event) => setCategory(event.target.value)}><option>All Categories</option>{EXP_CATS.map((option) => <option key={option}>{option}</option>)}</select></label><label>Department<select value={department} onChange={(event) => setDepartment(event.target.value)}>{departments.map((option) => <option key={option}>{option}</option>)}</select></label><button className="btn btn-ghost" onClick={resetFilters}>Clear filters</button></div></section>}
+                    <div className="module-content-grid expense-main-grid"><section className="card expense-register"><div className="card-hd"><div><div className="card-title">Expense register</div><div className="section-subtitle">{filteredExpenses.length} records {period.toLowerCase()}</div></div><button className="icon-button" title="More register options"><MoreHorizontal size={18} /></button></div><div className="tbl-wrap"><table><thead><tr><th>Date</th><th>Expense #</th><th>Description</th><th>Category</th><th>Vendor</th><th className="td-r">Amount</th><th className="td-r">Tax</th><th className="td-r">Total</th><th>Payment</th><th>Account</th><th>Status</th><th /></tr></thead><tbody>{filteredExpenses.length === 0 ? <tr><td colSpan={12} className="empty-state">No expenses match these filters.</td></tr> : filteredExpenses.map((expense) => { const expenseStatus = displayStatus(expense); const tax = expense.amount * 0.075; const vendor = expense.notes.match(/Vendor: ([^|]+)/)?.[1]?.trim() || 'Unassigned'; return <tr key={expense.id} className={selectedExpense?.id === expense.id ? 'selected' : ''} onClick={() => setSelectedId(expense.id)}><td>{dateLabel(expense.date)}</td><td><strong>{expense.id}</strong></td><td>{expense.desc}</td><td>{expense.category}</td><td>{vendor}</td><td className="td-r">{formatCurrency(expense.amount)}</td><td className="td-r muted-cell">{formatCurrency(tax)}</td><td className="td-r"><strong>{formatCurrency(expense.amount + tax)}</strong></td><td>{expense.notes.match(/Payment: ([^|]+)/)?.[1] || 'Bank Transfer'}</td><td>{expense.bank}</td><td><span className={`status-pill status-${expenseStatus.toLowerCase().replaceAll(' ', '-')}`}>{expenseStatus}</span></td><td><ChevronRight size={16} className="muted-cell" /></td></tr> })}</tbody></table></div></section>
+                        <aside className="detail-panel expense-detail-panel">{selectedExpense ? <><div className="detail-topline"><span className="eyebrow">Expense details</span><span className={`status-pill status-${displayStatus(selectedExpense).toLowerCase().replaceAll(' ', '-')}`}>{displayStatus(selectedExpense)}</span></div><div><h2>{selectedExpense.id}</h2><p className="detail-description">{selectedExpense.desc}</p><div className="expense-amount">{formatCurrency(selectedExpense.amount * 1.075)}</div></div><div className="detail-section"><div className="detail-section-title">Information</div><div className="detail-row"><span>Expense date</span><strong>{dateLabel(selectedExpense.date)}</strong></div><div className="detail-row"><span>Category</span><strong>{selectedExpense.category}</strong></div><div className="detail-row"><span>Payment account</span><strong>{selectedExpense.bank}</strong></div><div className="detail-row"><span>Department</span><strong>{selectedExpense.notes.match(/Department: ([^|]+)/)?.[1] || 'Operations'}</strong></div><div className="detail-row"><span>Created by</span><strong>{selectedExpense.enteredBy}</strong></div></div><div className="workflow-panel"><div className="detail-section-title">Approval timeline</div>{['Submitted', 'Manager review', 'Finance approval', 'Payment posted', 'Bank reconciled'].map((step, index) => <div className="approval-step" key={step}><span className={index < (displayStatus(selectedExpense) === 'Paid' ? 5 : 2) ? 'complete' : ''}>{index < (displayStatus(selectedExpense) === 'Paid' ? 5 : 2) ? <Check size={13} /> : index + 1}</span><div><strong>{step}</strong><small>{index < (displayStatus(selectedExpense) === 'Paid' ? 5 : 2) ? (index === 0 ? selectedExpense.enteredBy : 'Completed') : 'Pending'}</small></div></div>)}</div><div className="detail-actions"><button className="btn btn-secondary"><FileText size={15} /> View journal</button><button className="btn btn-primary">Record payment</button></div></> : <div className="empty-state">Select an expense to see its details.</div>}</aside>
+                    </div>
+                    <section className="expense-analytics-grid"><div className="chart-card"><div className="card-hd"><div><div className="chart-card-title">Monthly expenses</div><div className="section-subtitle">Spend trend by month</div></div><CircleDollarSign size={18} className="muted-cell" /></div><div className="bar-chart">{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'].map((month, index) => <div className="bar-column" key={month}><div className="bar-value" style={{ height: `${Math.max(12, ((index + 2) / 10) * 100)}%` }} /><span>{month}</span></div>)}</div></div><div className="chart-card"><div className="chart-card-title">Expenses by category</div><div className="category-bars">{categoryTotals.slice(0, 5).map((item) => <div className="category-bar" key={item.name}><div><span>{item.name}</span><strong>{formatCurrency(item.amount)}</strong></div><i style={{ width: `${(item.amount / maxCategory) * 100}%` }} /></div>)}{categoryTotals.length === 0 && <div className="empty-state">Category insights appear as expenses are recorded.</div>}</div></div></section>
+                </>}
+                {activeTab !== 'Expenses' && <section className="card empty-module-state"><div className="empty-module-icon"><CircleDollarSign size={24} /></div><h2>{activeTab}</h2><p>This workspace is ready for {activeTab.toLowerCase()} records and approvals.</p><button className="btn btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> Add record</button></section>}
+                {showForm && <div className="expense-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowForm(false)}><section className="expense-modal"><div className="card-hd"><div><div className="card-title">Add expense</div><div className="section-subtitle">Create an auditable expense record and route it for approval.</div></div><button className="icon-button" onClick={() => setShowForm(false)} aria-label="Close"><X size={18} /></button></div><div className="expense-form-grid"><label>Expense date<input type="date" value={formData.date} onChange={(event) => setFormData({ ...formData, date: event.target.value })} /></label><label>Expense number<input value="Auto-generated" disabled /></label><label className="field-wide">Description<input value={formData.desc} onChange={(event) => setFormData({ ...formData, desc: event.target.value })} placeholder="e.g. Office internet subscription" /></label><label>Category<select value={formData.category} onChange={(event) => setFormData({ ...formData, category: event.target.value })}>{EXP_CATS.map((option) => <option key={option}>{option}</option>)}</select></label><label>Vendor / payee<input value={formData.vendor} onChange={(event) => setFormData({ ...formData, vendor: event.target.value })} placeholder="Vendor name" /></label><label>Amount<input type="number" min="0" value={formData.amount || ''} onChange={(event) => setFormData({ ...formData, amount: Number(event.target.value) })} placeholder="0" /></label><label>Tax / VAT<input type="number" min="0" value={formData.tax || ''} onChange={(event) => setFormData({ ...formData, tax: Number(event.target.value) })} placeholder="0" /></label><label>Expense account<select><option>6100 - Office Expenses</option><option>6200 - Transport</option><option>6300 - Utilities</option></select></label><label>Payment account<select value={formData.bank} onChange={(event) => setFormData({ ...formData, bank: event.target.value })}>{Object.keys(state.banks).map((bank) => <option key={bank}>{bank}</option>)}</select></label><label>Department<select value={formData.department} onChange={(event) => setFormData({ ...formData, department: event.target.value })}>{departments.slice(1).map((option) => <option key={option}>{option}</option>)}</select></label><label>Payment method<select value={formData.method} onChange={(event) => setFormData({ ...formData, method: event.target.value })}>{paymentMethods.map((option) => <option key={option}>{option}</option>)}</select></label><label>Payment status<select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value as ExpenseStatus })}>{statusOptions.slice(1).map((option) => <option key={option}>{option}</option>)}</select></label><label>Project <span className="field-optional">Optional</span><input value={formData.project} onChange={(event) => setFormData({ ...formData, project: event.target.value })} placeholder="Project code" /></label><label>Reference / transaction ID<span className="field-optional">Optional</span><input value={formData.reference} onChange={(event) => setFormData({ ...formData, reference: event.target.value })} placeholder="e.g. TXN-1024" /></label><label className="field-wide">Notes<span className="field-optional">Optional</span><textarea value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} placeholder="Add context for reviewers" /></label><div className="field-wide"><button className="receipt-upload" onClick={() => receiptInput.current?.click()}><Paperclip size={16} /> {receiptName || 'Upload receipt or invoice'}<Upload size={15} /></button><input ref={receiptInput} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden onChange={(event) => setReceiptName(event.target.files?.[0]?.name || '')} /></div></div><div className="btn-group"><button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button><button className="btn btn-primary" onClick={saveExpense}>Save expense</button></div></section></div>}
             </div>
-            <div className="filter-row">
-              <label>
-                Search
-                <input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="Description, notes, bank or category..." />
-              </label>
-              <label>
-                Category
-                <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                  {categories.map((category) => (<option key={category}>{category}</option>))}
-                </select>
-              </label>
-              <label>
-                Bank
-                <select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)}>
-                  {banks.map((bank) => (<option key={bank}>{bank}</option>))}
-                </select>
-              </label>
-              <label>
-                Status
-                <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
-                  <option>All</option>
-                  <option>ACTIVE</option>
-                  <option>VOID</option>
-                </select>
-              </label>
-              <label>
-                Date Range
-                <select value={selectedDateRange} onChange={(e) => setSelectedDateRange(e.target.value)}>
-                  {datePresets.map((preset) => (<option key={preset}>{preset}</option>))}
-                </select>
-              </label>
-              {selectedDateRange === 'Custom Date' && (
-                <>
-                  <label>
-                    From
-                    <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
-                  </label>
-                  <label>
-                    To
-                    <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
-                  </label>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {showForm && (
-          <div className="card">
-            <div className="card-hd">
-              <div className="card-title">Record Expense</div>
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>Close</button>
-            </div>
-            <div className="form-grid">
-              <div className="fg">
-                <label>Date</label>
-                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-              </div>
-              <div className="fg">
-                <label>Description</label>
-                <input value={formData.desc} onChange={(e) => setFormData({ ...formData, desc: e.target.value })} placeholder="Expense description" />
-              </div>
-              <div className="fg">
-                <label>Category</label>
-                <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                  {EXP_CATS.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
-                </select>
-              </div>
-              <div className="fg">
-                <label>Amount</label>
-                <input type="number" min={0} value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })} />
-              </div>
-              <div className="fg">
-                <label>Paid From</label>
-                <select value={formData.bank} onChange={(e) => setFormData({ ...formData, bank: e.target.value })}>
-                  {Object.keys(state.banks).map((bank) => (<option key={bank}>{bank}</option>))}
-                </select>
-              </div>
-              <div className="fg">
-                <label>Notes</label>
-                <input value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Optional remarks" />
-              </div>
-            </div>
-            <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
-              <button className="btn btn-primary" onClick={handleSaveExpense}>Save Expense</button>
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        <div className="module-content-grid">
-          <div>
-            <div className="card">
-              <div className="card-hd">
-                <div className="card-title">Expense Register</div>
-                <div className="table-summary">Showing {filteredExpenses.length} expense{filteredExpenses.length === 1 ? '' : 's'}</div>
-              </div>
-              <div className="tbl-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Date</th>
-                      <th>Description</th>
-                      <th>Category</th>
-                      <th>Bank</th>
-                      <th className="td-r">Amount</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedExpenses.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--text3)' }}>
-                          No expenses match current filters.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedExpenses.map((expense) => (
-                        <tr key={expense.id} onClick={() => setSelectedExpenseId(expense.id)} className={selectedExpenseId === expense.id ? 'selected' : ''}>
-                          <td>{expense.id}</td>
-                          <td>{expense.date}</td>
-                          <td>{expense.desc}</td>
-                          <td>{expense.category}</td>
-                          <td>{expense.bank}</td>
-                          <td className="td-r">{formatCurrency(expense.amount)}</td>
-                          <td><span className={`badge ${expense.status === 'VOID' ? 'b-red' : 'b-blue'}`}>{expense.status}</span></td>
-                          <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {canEdit(user?.role || '') && expense.status !== 'VOID' && (
-                              <button className="btn btn-sm btn-danger" onClick={() => handleVoidExpense(expense.id)}>Void</button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {totalPages > 1 && (
-                <div className="txn-footer" style={{ justifyContent: 'center' }}>
-                  <button className="btn btn-sm btn-secondary" type="button" onClick={() => setCurrentPage(Math.max(1, activePage - 1))} disabled={activePage === 1}>‹</button>
-                  <span className="page-info">Page {activePage} of {totalPages}</span>
-                  <button className="btn btn-sm btn-secondary" type="button" onClick={() => setCurrentPage(Math.min(totalPages, activePage + 1))} disabled={activePage === totalPages}>›</button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="detail-panel">
-            <div className="detail-section">
-              <div className="detail-section-title">Expense Snapshot</div>
-              <div className="detail-row"><span>ID</span><strong>{activeExpense?.id || '-'}</strong></div>
-              <div className="detail-row"><span>Date</span><strong>{activeExpense?.date || '-'}</strong></div>
-              <div className="detail-row"><span>Description</span><strong>{activeExpense?.desc || '-'}</strong></div>
-              <div className="detail-row"><span>Category</span><strong>{activeExpense?.category || '-'}</strong></div>
-              <div className="detail-row"><span>Bank</span><strong>{activeExpense?.bank || '-'}</strong></div>
-              <div className="detail-row"><span>Status</span><strong>{activeExpense?.status || '-'}</strong></div>
-            </div>
-
-            <div className="detail-section">
-              <div className="detail-section-title">Financial Summary</div>
-              <div className="detail-row"><span>Amount</span><strong>{formatCurrency(activeExpense?.amount ?? 0)}</strong></div>
-              <div className="detail-row"><span>Remaining</span><strong>{formatCurrency(0)}</strong></div>
-              <div className="detail-row"><span>Recorded By</span><strong>{activeExpense?.enteredBy || '-'}</strong></div>
-              <div className="detail-row"><span>Notes</span><strong>{activeExpense?.notes || '-'}</strong></div>
-            </div>
-
-            <div className="detail-section">
-              <div className="detail-section-title">Category Spend</div>
-              <div style={{ display: 'grid', gap: 12 }}>
-                {Object.entries(expensesByCategory).map(([category, amount]) => (
-                  <div key={category} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', background: 'var(--bg2)', borderRadius: '14px' }}>
-                    <span style={{ color: 'var(--text2)' }}>{category}</span>
-                    <strong>{formatCurrency(amount)}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="workflow-panel">
-              <div className="detail-section-title">Expense workflow</div>
-              {['Request logged', 'Approval completed', 'Payment posted', 'Bank reconciled', 'Cost center updated'].map((step) => (
-                <div key={step} className="workflow-step">
-                  <strong>{step}</strong>
-                  <span>Completed</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="dashboard-card-grid">
-          <div className="chart-card">
-            <div className="chart-card-title">Expense Trend</div>
-            <div className="chart-placeholder">Chart placeholder</div>
-          </div>
-          <div className="chart-card">
-            <div className="chart-card-title">Bank Impact</div>
-            <div className="chart-placeholder">Chart placeholder</div>
-          </div>
-          <div className="chart-card">
-            <div className="chart-card-title">Category Breakdown</div>
-            <div className="chart-placeholder">Chart placeholder</div>
-          </div>
-          <div className="chart-card">
-            <div className="chart-card-title">High-Value Expenses</div>
-            <div className="chart-placeholder">Chart placeholder</div>
-          </div>
-        </div>
-
-        <div className="reports-row">
-          <button className="btn btn-secondary">Expense Report</button>
-          <button className="btn btn-secondary">Category Report</button>
-          <button className="btn btn-secondary">Bank Reconciliation</button>
-          <button className="btn btn-secondary">Approval Audit</button>
-          <button className="btn btn-secondary">Cost Center Report</button>
-        </div>
-      </div>
-    </AppLayout>
-  )
+        </AppLayout>
+    )
 }

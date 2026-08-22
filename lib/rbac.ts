@@ -4,6 +4,7 @@ export type PermissionKey =
     | 'receivables'
     | 'inventory'
     | 'purchases'
+    | 'expenses'
     | 'customers'
     | 'suppliers'
     | 'accounting'
@@ -71,8 +72,8 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // Super Admin is a platform provisioning & oversight role — no transactional posting
     'super-admin': ['dashboard', 'reports', 'admin', 'settings'],
     // Managing Director / Business Owner: broad visibility across modules (view/reporting focus)
-    md: ['dashboard', 'sales', 'purchases', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
-    accountant: ['dashboard', 'sales', 'purchases', 'accounting', 'reports', 'customers', 'suppliers'],
+    md: ['dashboard', 'sales', 'purchases', 'expenses', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
+    accountant: ['dashboard', 'sales', 'purchases', 'expenses', 'accounting', 'reports', 'customers', 'suppliers'],
     // Sales officer / cashier: sales-focused
     'sales-officer': ['dashboard', 'sales'],
     'sales-manager': ['dashboard', 'sales'],
@@ -102,8 +103,8 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         id: 'business-owner',
         name: 'Business Owner',
         description: 'Company owner with broad visibility across modules',
-        permissions: ['dashboard', 'sales', 'purchases', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
-        visibleMenus: ['dashboard', 'sales', 'purchases', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
+        permissions: ['dashboard', 'sales', 'purchases', 'expenses', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
+        visibleMenus: ['dashboard', 'sales', 'purchases', 'expenses', 'inventory', 'accounting', 'reports', 'admin', 'settings', 'customers', 'suppliers'],
         dataScope: 'all',
         template: 'Business Owner',
     },
@@ -120,8 +121,8 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         id: 'accountant',
         name: 'Accountant',
         description: 'Manages financial records',
-        permissions: ['dashboard', 'sales', 'purchases', 'accounting', 'reports'],
-        visibleMenus: ['dashboard', 'sales', 'purchases', 'accounting', 'reports'],
+        permissions: ['dashboard', 'sales', 'purchases', 'expenses', 'accounting', 'reports'],
+        visibleMenus: ['dashboard', 'sales', 'purchases', 'expenses', 'accounting', 'reports'],
         dataScope: 'team',
         template: 'Accountant',
     },
@@ -248,7 +249,7 @@ export function canEditPermission(
 
 const ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
     '/dashboard': 'dashboard', '/sales': 'sales', '/inventory': 'inventory', '/purchases': 'purchases',
-    '/customers': 'customers', '/suppliers': 'suppliers', '/ledger': 'accounting', '/daily-close': 'accounting',
+    '/customers': 'customers', '/suppliers': 'suppliers', '/expenses': 'expenses', '/ledger': 'accounting', '/daily-close': 'accounting',
     '/receivables': 'receivables', '/payables': 'accounting', '/prepayments': 'accounting', '/supplier-rebates': 'accounting',
     '/loans': 'accounting', '/reports': 'reports', '/monthly-report': 'reports', '/annual-report': 'reports',
     '/asset-schedule': 'reports', '/settings': 'settings', '/backup': 'admin', '/change-password': 'settings',
@@ -295,6 +296,7 @@ export function getVisibleNavigationItems(user: Pick<UserWithRole, 'role' | 'per
         { label: 'Dashboard', href: '/dashboard', group: 'OVERVIEW', permission: 'dashboard' as PermissionKey, icon: 'dashboard' },
         { label: 'Sales', href: '/sales', group: 'TRANSACTIONS', permission: 'sales' as PermissionKey, icon: 'sales' },
         { label: 'Purchases', href: '/purchases', group: 'TRANSACTIONS', permission: 'purchases' as PermissionKey, icon: 'purchases' },
+        { label: 'Expenses', href: '/expenses', group: 'TRANSACTIONS', permission: 'expenses' as PermissionKey, icon: 'expenses' },
         { label: 'Inventory', href: '/inventory', group: 'STOCK', permission: 'inventory' as PermissionKey, icon: 'inventory' },
         { label: 'Product Manager', href: '/product-manager', group: 'STOCK', permission: 'inventory' as PermissionKey, icon: 'productManager' },
         { label: 'Bank Transactions', href: '/bank-txn', group: 'BANKING', permission: 'accounting' as PermissionKey, icon: 'bankTxn' },

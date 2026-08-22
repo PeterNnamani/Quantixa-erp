@@ -708,6 +708,25 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             if (inventoryPersistErr) throw inventoryPersistErr
           }
 
+          if (normalizedUpdates.expenses) {
+            const { data: accounts } = await supabase.from('bank_accounts').select('id,name').eq('company_id', companyId)
+            const accountIds: Record<string, string> = {}
+              ; (accounts || []).forEach((account: any) => { accountIds[account.name] = account.id })
+            const expenseRows = (normalizedUpdates.expenses as Expense[]).map((expense) => ({
+              company_id: companyId,
+              reference: expense.id,
+              expense_date: expense.date,
+              description: expense.desc,
+              category: expense.category,
+              amount: expense.amount,
+              bank_account_id: accountIds[expense.bank] || null,
+              status: expense.status,
+              notes: expense.notes || null,
+            }))
+            const { error: expensesPersistErr } = await supabase.from('expenses').upsert(expenseRows, { onConflict: 'reference' })
+            if (expensesPersistErr) throw expensesPersistErr
+          }
+
           if (normalizedUpdates.banks) {
             const banksArray = Object.entries(normalizedUpdates.banks).map(([name, balance]) => ({ company_id: companyId, name, institution: name, balance }))
             await supabase.from('bank_accounts').upsert(banksArray, { onConflict: 'name' })

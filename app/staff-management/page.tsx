@@ -17,6 +17,7 @@ const permissionOptions: { key: PermissionKey; label: string }[] = [
   { key: 'sales', label: 'Sales' },
   { key: 'inventory', label: 'Inventory' },
   { key: 'purchases', label: 'Purchases' },
+  { key: 'expenses', label: 'Expenses' },
   { key: 'customers', label: 'Customer Management' },
   { key: 'suppliers', label: 'Supplier Management' },
   { key: 'accounting', label: 'Accounting & Ledger' },
