@@ -8168,6 +8168,17 @@ html[data-theme='dark'] .donut-center {
   font-weight: 400;
 }
 
+.category-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.category-add-row .btn {
+  min-height: 42px;
+}
+
 .receipt-upload {
   display: flex;
   justify-content: space-between;

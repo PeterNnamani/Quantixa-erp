@@ -96,12 +96,17 @@ export const PRODUCTS: Record<string, string[]> = {
 export const BANKS = ['Globus Bank', 'Access Bank', 'Zenith Bank', 'UBA']
 export const PURCHASE_BANKS = ['Globus Bank', 'Access Bank', 'Zenith Bank', 'Credit (Payable)']
 export const EXP_CATS = [
-  'Salaries & Wages',
-  'Rent & Facilities',
-  'Utilities',
-  'Transportation',
-  'Marketing',
-  'Miscellaneous',
+  'Admin / Overhead',
+  'Office Supplies & Consumables',
+  'Distribution & Logistics',
+  'Sales & Marketing',
+  'Office Utilities',
+  'Operations Wages',
+  'Cost of Goods Sold',
+  'Gov. Levies, Licenses & Permits',
+  'Fines & Penalties',
+  'Drawings',
+  'Fixed Asset',
 ]
 export const BANK_TXN_TYPES = [
   'Daily POS Sweep',

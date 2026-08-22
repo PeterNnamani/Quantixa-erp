@@ -30,6 +30,7 @@ function enrichStoredUser(raw: any) {
 }
 import { createSeedLedgerData, postJournalEntry, findAccountByName } from '@/lib/ledger'
 import { generateSku } from '@/lib/sku'
+import { EXP_CATS } from '@/lib/utils'
 
 export interface User {
   companyId?: string
@@ -275,6 +276,7 @@ export interface AppState {
   sales: Sale[]
   purchases: Purchase[]
   expenses: Expense[]
+  expenseCategories: string[]
   inventory: InventoryItem[]
   banks: Record<string, number>
   bankTxns: any[]
@@ -314,6 +316,7 @@ const defaultState: AppState = {
   sales: [],
   purchases: [],
   expenses: [],
+  expenseCategories: [],
   inventory: [],
   banks: {},
   bankTxns: [],
@@ -500,10 +503,11 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       if (!supabase || !user?.companyId) return
       const companyId = user.companyId
       try {
-        const [{ data: salesData, error: salesErr }, { data: purchasesData, error: purchasesErr }, { data: expensesData, error: expensesErr }, { data: inventoryData, error: inventoryErr }, { data: prepaymentsData, error: prepaymentsErr }, { data: contactsData, error: contactsErr }, { data: banksData, error: banksErr }, { data: txnsData, error: txnsErr }] = await Promise.all([
+        const [{ data: salesData, error: salesErr }, { data: purchasesData, error: purchasesErr }, { data: expensesData, error: expensesErr }, { data: categoriesData, error: categoriesErr }, { data: inventoryData, error: inventoryErr }, { data: prepaymentsData, error: prepaymentsErr }, { data: contactsData, error: contactsErr }, { data: banksData, error: banksErr }, { data: txnsData, error: txnsErr }] = await Promise.all([
           supabase.from('sales').select('*').eq('company_id', companyId).order('sale_date', { ascending: false }).limit(200),
           supabase.from('purchases').select('*').eq('company_id', companyId).order('purchase_date', { ascending: false }).limit(200),
           supabase.from('expenses').select('*').eq('company_id', companyId).order('expense_date', { ascending: false }).limit(200),
+          supabase.from('expense_categories').select('name').eq('company_id', companyId).order('name'),
           supabase.from('products').select('*').eq('company_id', companyId).order('updated_at', { ascending: false }).limit(200),
           supabase.from('prepayments').select('*, prepayment_schedules(*)').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
           supabase.from('contacts').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
@@ -514,6 +518,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         if (salesErr) console.error('Error loading sales from Supabase', salesErr)
         if (purchasesErr) console.error('Error loading purchases from Supabase', purchasesErr)
         if (expensesErr) console.error('Error loading expenses from Supabase', expensesErr)
+        if (categoriesErr && categoriesErr.code !== 'PGRST205') console.error('Error loading expense categories from Supabase', categoriesErr)
         if (inventoryErr) console.error('Error loading inventory from Supabase', inventoryErr)
         if (prepaymentsErr) {
           if (prepaymentsErr.code === 'PGRST205') {
@@ -531,6 +536,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         const remoteSales = salesData && salesData.length > 0 ? normalizeRemoteSales(salesData) : []
         const remotePurchases = purchasesData && purchasesData.length > 0 ? normalizeRemotePurchases(purchasesData) : []
         const remoteExpenses = expensesData && expensesData.length > 0 ? normalizeRemoteExpenses(expensesData) : []
+        const remoteExpenseCategories = (categoriesData || []).map((item: any) => item.name).filter(Boolean)
         const remoteInventory = inventoryData && inventoryData.length > 0 ? normalizeRemoteInventory(inventoryData) : []
         const remotePrepayments = prepaymentsErr && prepaymentsErr.code === 'PGRST205'
           ? []
@@ -545,6 +551,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             sales: remoteSales.length > 0 ? remoteSales : prev.sales,
             purchases: remotePurchases.length > 0 ? remotePurchases : prev.purchases,
             expenses: remoteExpenses.length > 0 ? remoteExpenses : prev.expenses,
+            expenseCategories: remoteExpenseCategories.length > 0 ? remoteExpenseCategories : prev.expenseCategories,
             inventory: remoteInventory.length > 0 ? remoteInventory : prev.inventory,
             prepayments: remotePrepayments.length > 0 ? remotePrepayments : prev.prepayments,
             supplierList: supplierList.length > 0 ? supplierList : prev.supplierList,
@@ -619,6 +626,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       setState({
         ...defaultState,
         ...parsedState,
+        expenseCategories: Array.isArray(parsedState.expenseCategories) ? parsedState.expenseCategories : defaultState.expenseCategories,
         inventory: Array.isArray(parsedState.inventory) ? normalizeInventorySkus(parsedState.inventory) : defaultState.inventory,
         roles: Array.isArray(parsedState.roles) && parsedState.roles.length > 0 ? parsedState.roles : defaultState.roles,
         staffMembers: Array.isArray(parsedState.staffMembers) ? parsedState.staffMembers : defaultState.staffMembers,
@@ -725,6 +733,13 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             }))
             const { error: expensesPersistErr } = await supabase.from('expenses').upsert(expenseRows, { onConflict: 'reference' })
             if (expensesPersistErr) throw expensesPersistErr
+          }
+
+          if (normalizedUpdates.expenseCategories) {
+            const categoryRows = Array.from(new Set([...(normalizedUpdates.expenseCategories as string[]), ...EXP_CATS]))
+              .map((name) => ({ company_id: companyId, name, updated_at: new Date().toISOString() }))
+            const { error: categoriesPersistErr } = await supabase.from('expense_categories').upsert(categoryRows, { onConflict: 'company_id,name' })
+            if (categoriesPersistErr && categoriesPersistErr.code !== 'PGRST205') throw categoriesPersistErr
           }
 
           if (normalizedUpdates.banks) {

@@ -376,6 +376,17 @@ CREATE TABLE IF NOT EXISTS expenses (
 CREATE INDEX IF NOT EXISTS idx_expenses_expense_date ON expenses(expense_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
 
+CREATE TABLE IF NOT EXISTS expense_categories (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW(),
+  UNIQUE (company_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_expense_categories_company_id ON expense_categories(company_id);
+
 -- Inventory movements
 CREATE TABLE IF NOT EXISTS inventory_movements (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
