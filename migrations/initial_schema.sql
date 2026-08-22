@@ -149,14 +149,20 @@ GROUP BY coa.id, coa.code, coa.name, coa.account_type, coa.account_subtype;
 -- Bank accounts
 CREATE TABLE IF NOT EXISTS bank_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
+  company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  name text NOT NULL,
   institution text NOT NULL,
   account_number text,
+  account_type text NOT NULL DEFAULT 'Current',
   currency text NOT NULL DEFAULT 'NGN',
+  branch text,
+  opening_balance numeric(18,2) NOT NULL DEFAULT 0,
+  opening_balance_date date,
   balance numeric(18,2) NOT NULL DEFAULT 0,
   status text NOT NULL DEFAULT 'active',
   created_at timestamptz NOT NULL DEFAULT NOW(),
-  updated_at timestamptz NOT NULL DEFAULT NOW()
+  updated_at timestamptz NOT NULL DEFAULT NOW(),
+  UNIQUE (company_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_institution ON bank_accounts(institution);

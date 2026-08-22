@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/utils'
 import { getDefaultRoles, saveRoles, type RoleDefinition, type PermissionKey } from '@/lib/rbac'
 import { parseSpreadsheetFile, prepareGenericImportPayload, type ImportSummary } from '@/lib/import-utils'
 import { Building2, Landmark, Plus, ShieldCheck, WalletCards } from 'lucide-react'
+import { supabase } from '@/lib/supabase.browser'
 
 const sidebarSections = [
   { id: 'company', label: 'Company', description: 'Profile, branding, and legal details' },
@@ -60,7 +61,7 @@ export default function SettingsPage() {
     alert('Opening capital saved!')
   }
 
-  const handleAddBank = () => {
+  const handleAddBank = async () => {
     const bankName = newBankName.trim()
     const accountName = newAccountName.trim()
     if (!bankName || !accountName) {
@@ -71,6 +72,27 @@ export default function SettingsPage() {
     if (Object.prototype.hasOwnProperty.call(state.banks, accountKey)) {
       alert('This bank account already exists.')
       return
+    }
+
+    if (supabase && user?.companyId) {
+      const { error } = await supabase.from('bank_accounts').upsert({
+        company_id: user.companyId,
+        name: accountKey,
+        institution: bankName,
+        account_number: newAccountNumber.trim() || null,
+        account_type: newAccountType,
+        currency: newCurrency,
+        branch: newBranch.trim() || null,
+        opening_balance: newBankBalance,
+        opening_balance_date: newOpeningDate || null,
+        balance: newBankBalance,
+        status: newAccountStatus.toLowerCase(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'company_id,name' })
+      if (error) {
+        alert(`Unable to save bank account: ${error.message}`)
+        return
+      }
     }
 
     updateState({ banks: { ...state.banks, [accountKey]: newBankBalance } })
