@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { downloadExcel, downloadPdf } from '@/lib/export-utils'
-import { formatCurrency, triggerAppToast } from '@/lib/utils'
+import { calculateVAT, formatCurrency, triggerAppToast } from '@/lib/utils'
 
 const expenseCategories = ['Salary', 'Rent', 'Fuel', 'Marketing', 'Utilities', 'Operations']
 
@@ -12,12 +12,22 @@ export default function MonthlyReportPage() {
     const { state } = useAccounting()
     const [activeRange, setActiveRange] = useState<'Daily' | 'Weekly' | 'Monthly'>('Monthly')
     const [statusMessage, setStatusMessage] = useState('Report generated for the current month.')
+    const [includeVAT, setIncludeVAT] = useState(false)
 
     const totalRevenue = useMemo(() => state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0), [state.sales])
     const totalExpenses = useMemo(() => state.expenses.reduce((sum, expense) => sum + expense.amount, 0), [state.expenses])
     const netProfit = totalRevenue - totalExpenses
     const totalPurchases = useMemo(() => state.purchases.reduce((sum, purchase) => sum + purchase.total, 0), [state.purchases])
     const inventoryValue = useMemo(() => state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0), [state.inventory])
+    const reportVAT = includeVAT ? calculateVAT(totalRevenue) : 0
+    const reportExportData = {
+        action: 'Report export',
+        range: activeRange,
+        totalRevenue,
+        totalExpenses,
+        totalPurchases,
+        ...(includeVAT ? { VAT: reportVAT, totalIncludingVAT: totalRevenue + reportVAT } : {}),
+    }
 
     const overviewCards = [
         { label: 'Total Revenue', value: formatCurrency(totalRevenue), change: 'Database-backed' },
@@ -55,13 +65,13 @@ export default function MonthlyReportPage() {
             downloadPdf(
                 `monthly-report-${activeRange.toLowerCase()}.pdf`,
                 'Monthly Report',
-                [{ action, range: activeRange }],
+                [{ ...reportExportData, action }],
                 'QUANTIXA'
             )
         }
 
         if (action === 'Export Excel') {
-            downloadExcel(`monthly-report-${activeRange.toLowerCase()}.xlsx`, [{ action, range: activeRange }])
+            downloadExcel(`monthly-report-${activeRange.toLowerCase()}.xlsx`, [{ ...reportExportData, action }])
         }
     }
 
@@ -79,6 +89,7 @@ export default function MonthlyReportPage() {
                         <button className="action-btn secondary allow-readonly" onClick={() => handleAction('Export PDF')}>Export PDF</button>
                         <button className="action-btn secondary allow-readonly" onClick={() => handleAction('Export Excel')}>Export Excel</button>
                         <button className="action-btn secondary" onClick={() => handleAction('Schedule Report')}>Schedule Report</button>
+                        <label><input type="checkbox" checked={includeVAT} onChange={(event) => setIncludeVAT(event.target.checked)} /> Calculate VAT on export</label>
                     </div>
                 </div>
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
-import { triggerAppToast, formatCurrency } from '@/lib/utils'
+import { calculateVAT, triggerAppToast, formatCurrency } from '@/lib/utils'
 import { downloadPdf } from '@/lib/export-utils'
 
 const statements = ['Profit & Loss', 'Balance Sheet', 'Cash Flow', 'Trial Balance', 'General Ledger', 'Tax Summary']
@@ -12,11 +12,22 @@ export default function AnnualReportPage() {
     const { state } = useAccounting()
     const [reportMode, setReportMode] = useState<'summary' | 'board' | 'tax'>('summary')
     const [selectedStatement, setSelectedStatement] = useState('Profit & Loss')
+    const [includeVAT, setIncludeVAT] = useState(false)
 
     const annualRevenue = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0)
     const annualExpenses = state.expenses.reduce((sum, expense) => sum + expense.amount, 0)
     const annualPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.total, 0)
     const annualNetProfit = annualRevenue - annualPurchases - annualExpenses
+    const reportVAT = includeVAT ? calculateVAT(annualRevenue) : 0
+    const reportExportData = {
+        reportType: 'annual',
+        mode: reportMode,
+        selectedStatement,
+        annualRevenue,
+        annualExpenses,
+        annualPurchases,
+        ...(includeVAT ? { VAT: reportVAT, totalIncludingVAT: annualRevenue + reportVAT } : {}),
+    }
     const annualCards = [
         { label: 'Annual Revenue', value: formatCurrency(annualRevenue) },
         { label: 'Annual Expenses', value: formatCurrency(annualExpenses) },
@@ -47,7 +58,7 @@ export default function AnnualReportPage() {
             downloadPdf(
                 'annual-report.pdf',
                 'Annual Report',
-                [{ reportType: 'annual', mode: reportMode, selectedStatement }],
+                [{ ...reportExportData }],
                 'QUANTIXA'
             )
         }
@@ -66,6 +77,7 @@ export default function AnnualReportPage() {
                         <button className="action-btn secondary" type="button" onClick={() => { setReportMode('board'); handleAction('Board Report') }}>Board Report</button>
                         <button className="action-btn secondary allow-readonly" type="button" onClick={() => handleAction('Export PDF')}>Export PDF</button>
                         <button className="action-btn secondary" type="button" onClick={() => { setReportMode('tax'); handleAction('Tax Package') }}>Tax Package</button>
+                        <label><input type="checkbox" checked={includeVAT} onChange={(event) => setIncludeVAT(event.target.checked)} /> Calculate VAT on export</label>
                     </div>
                 </div>
 

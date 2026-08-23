@@ -49,7 +49,7 @@ export default function AssetSchedulePage() {
         [assetPurchases]
     )
 
-    const accumulatedDepreciation = useMemo(() => Math.round(totalAssetValue * 0.15), [totalAssetValue])
+    const accumulatedDepreciation = 0
     const currentBookValue = Math.max(0, totalAssetValue - accumulatedDepreciation)
 
     const assetCategoryCounts = useMemo(
@@ -72,8 +72,8 @@ export default function AssetSchedulePage() {
                 category: purchase.category,
                 purchaseDate: purchase.date,
                 cost: formatCurrency(purchase.total || 0),
-                depreciation: formatCurrencyOrZero(Math.round((purchase.total || 0) * 0.1)),
-                bookValue: formatCurrencyOrZero(Math.round((purchase.total || 0) * 0.9)),
+                depreciation: formatCurrencyOrZero(0),
+                bookValue: formatCurrencyOrZero(purchase.total || 0),
                 status: purchase.status || 'Unknown',
                 supplier: purchase.supplier,
                 branch: purchase.branch || 'Head Office',
@@ -176,7 +176,7 @@ export default function AssetSchedulePage() {
                         <div className="card-hd">
                             <div>
                                 <div className="card-title">Asset Detail Panel</div>
-                                <div className="section-subtitle">Toyota Hilux selected</div>
+                                <div className="section-subtitle">{selectedAsset ? selectedAsset.name : 'No asset selected'}</div>
                             </div>
                         </div>
                         <div className="statement-block compact">
@@ -238,11 +238,8 @@ export default function AssetSchedulePage() {
                             </div>
                         </div>
                         <div className="statement-block compact">
-                            <div className="statement-row"><span>Monthly Depreciation</span><strong>₦333,333</strong></div>
-                            <div className="statement-row"><span>Jan</span><strong>₦333,333</strong></div>
-                            <div className="statement-row"><span>Feb</span><strong>₦333,333</strong></div>
-                            <div className="statement-row"><span>Mar</span><strong>₦333,333</strong></div>
-                            <div className="statement-row net-row"><span>Remaining Life</span><strong>54 Months</strong></div>
+                            <div className="statement-row"><span>Recorded schedules</span><strong>None</strong></div>
+                            <div className="statement-row net-row"><span>Accumulated Depreciation</span><strong>{formatCurrency(accumulatedDepreciation)}</strong></div>
                         </div>
                     </div>
 
@@ -254,9 +251,7 @@ export default function AssetSchedulePage() {
                             </div>
                         </div>
                         <div className="statement-block compact">
-                            <div className="statement-row"><span>Toyota Hilux</span><strong>Due in 10 days</strong></div>
-                            <div className="statement-row"><span>Generator</span><strong>Due in 20 days</strong></div>
-                            <div className="statement-row"><span>Server</span><strong>Due next month</strong></div>
+                            <div className="statement-row"><span>Maintenance records</span><strong>{maintenanceCount}</strong></div>
                         </div>
                     </div>
                 </div>
@@ -270,10 +265,7 @@ export default function AssetSchedulePage() {
                             </div>
                         </div>
                         <div className="statement-block compact">
-                            <div className="statement-row"><span>Old Printer</span><strong>Sold</strong></div>
-                            <div className="statement-row"><span>Sale Value</span><strong>₦200,000</strong></div>
-                            <div className="statement-row"><span>Book Value</span><strong>₦100,000</strong></div>
-                            <div className="statement-row net-row"><span>Gain</span><strong>₦100,000</strong></div>
+                            <div className="statement-row"><span>Disposed assets</span><strong>{disposedCount}</strong></div>
                         </div>
                     </div>
 
@@ -285,9 +277,7 @@ export default function AssetSchedulePage() {
                             </div>
                         </div>
                         <div className="ai-panel">
-                            <p>Your delivery vehicles have maintenance costs 40% higher than last year.</p>
-                            <p>Replacing 2 vehicles may reduce operating costs.</p>
-                            <p>Your Dell server assets are fully depreciated but still operational.</p>
+                            <p>No asset intelligence is available from the current register.</p>
                         </div>
                     </div>
                 </div>

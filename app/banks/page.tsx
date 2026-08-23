@@ -39,7 +39,7 @@ export default function BanksPage() {
   const [activeReportModal, setActiveReportModal] = useState<string | null>(null)
   const [transferSource, setTransferSource] = useState('')
   const [transferTarget, setTransferTarget] = useState('')
-  const [transferAmount, setTransferAmount] = useState(500000)
+  const [transferAmount, setTransferAmount] = useState(0)
 
   const totalBanks = Object.values(state.banks).reduce((sum, b) => sum + b, 0)
   const bankAccounts = Object.entries(state.banks).map(([bank, balance]) => ({
@@ -60,6 +60,12 @@ export default function BanksPage() {
   const pendingDeposits = state.bankTxns.filter((txn) => txn.amount > 0 && txn.status !== 'Completed').reduce((sum, txn) => sum + txn.amount, 0)
   const pendingWithdrawals = state.bankTxns.filter((txn) => txn.amount < 0 && txn.status !== 'Completed').reduce((sum, txn) => sum + Math.abs(txn.amount), 0)
   const reconciliationDue = state.bankTxns.filter((txn) => txn.status !== 'Completed').length
+  const moneyIn = state.bankTxns.filter((txn) => txn.amount > 0).reduce((sum, txn) => sum + txn.amount, 0)
+  const moneyOut = state.bankTxns.filter((txn) => txn.amount < 0).reduce((sum, txn) => sum + Math.abs(txn.amount), 0)
+  const salesTotal = state.sales.filter((sale) => sale.status !== 'VOID').reduce((sum, sale) => sum + sale.totalAmount, 0)
+  const receivablesTotal = state.receivables.reduce((sum, item) => sum + Number(item.outstandingAmount ?? item.amount ?? 0), 0)
+  const payablesTotal = state.payables.reduce((sum, item) => sum + Number(item.outstandingAmount ?? item.amount ?? 0), 0)
+  const expensesTotal = state.expenses.filter((expense) => expense.status !== 'VOID').reduce((sum, expense) => sum + expense.amount, 0)
 
   const openTransferModal = () => {
     if (bankAccounts.length < 2) {
@@ -68,11 +74,15 @@ export default function BanksPage() {
     }
     setTransferSource(bankAccounts[0].bank)
     setTransferTarget(bankAccounts[1]?.bank ?? bankAccounts[0].bank)
-    setTransferAmount(500000)
+    setTransferAmount(0)
     setShowTransferModal(true)
   }
 
   const submitTransferFunds = () => {
+    if (transferAmount <= 0) {
+      triggerAppToast('Transfer Funds', 'Enter a transfer amount before continuing.')
+      return
+    }
     const updatedBanks = { ...state.banks }
     updatedBanks[transferSource] = Math.max(0, (updatedBanks[transferSource] ?? 0) - transferAmount)
     updatedBanks[transferTarget] = (updatedBanks[transferTarget] ?? 0) + transferAmount
@@ -114,9 +124,6 @@ export default function BanksPage() {
 
   const confirmReconcile = () => {
     const updatedBanks = { ...state.banks }
-    Object.keys(updatedBanks).forEach((bank) => {
-      updatedBanks[bank] = Math.max(0, updatedBanks[bank] + 25000)
-    })
     const reconciledTxns = state.bankTxns.map((txn) => ({
       ...txn,
       status: txn.status === 'Processing' ? 'Completed' : txn.status,
@@ -182,48 +189,6 @@ export default function BanksPage() {
   const handleFilterOption = (label: string) => {
     addAuditLog('FILTER', 'BANK', label.toUpperCase().replace(/ /g, '_'), `${label} filter button clicked.`)
     triggerAppToast('Filter', `${label} filter option selected.`)
-  }
-
-  const handleTransferFunds = () => {
-    const updatedBanks = { ...state.banks }
-    const accounts = Object.keys(updatedBanks)
-    const source = accounts[0]
-    const target = accounts[1] || source
-    if (source && target && source !== target) {
-      updatedBanks[source] = Math.max(0, (updatedBanks[source] ?? 0) - 500000)
-      updatedBanks[target] = (updatedBanks[target] ?? 0) + 500000
-      const txns = [
-        {
-          id: `TXN-${Date.now()}`,
-          date: new Date().toISOString().slice(0, 10),
-          name: `Transfer to ${target}`,
-          activity: 'Inter-bank transfer',
-          method: 'Bank Transfer',
-          amount: -500000,
-          status: 'Completed',
-          description: `Transfer from ${source} to ${target}`,
-          attachments: 0,
-          type: 'Transfer',
-          bank: source,
-        },
-        {
-          id: `TXN-${Date.now()}-R`,
-          date: new Date().toISOString().slice(0, 10),
-          name: `Received from ${source}`,
-          activity: 'Inter-bank transfer',
-          method: 'Bank Transfer',
-          amount: 500000,
-          status: 'Completed',
-          description: `Transfer from ${source} to ${target}`,
-          attachments: 0,
-          type: 'Deposit',
-          bank: target,
-        },
-      ]
-      updateState({ banks: updatedBanks, bankTxns: [...txns, ...state.bankTxns] })
-      addAuditLog('TRANSFER', 'BANK', 'BANK-TRF', 'Inter-bank transfer executed between two accounts.')
-      triggerAppToast('Transfer Funds', 'Inter-bank transfer completed successfully.')
-    }
   }
 
   const recentTransactions = state.bankTxns.slice(0, 10)
@@ -413,7 +378,6 @@ export default function BanksPage() {
                   <div className="report-summary">
                     <div><strong>Accounts to reconcile</strong>: {bankAccounts.length}</div>
                     <div><strong>Pending transactions</strong>: {reconciliationDue}</div>
-                    <div><strong>Estimated adjustment</strong>: {formatCurrency(25000 * bankAccounts.length)}</div>
                   </div>
                 </div>
                 <div className="report-actions">
@@ -472,8 +436,8 @@ export default function BanksPage() {
                       <td>{bank === 'UBA' ? 'Savings' : 'Current'}</td>
                       <td>₦</td>
                       <td className="td-r">{formatCurrency(balance)}</td>
-                      <td className="td-r">{formatCurrency(balance + 64000)}</td>
-                      <td className="td-r">{formatCurrency(Math.max(0, balance - 28000))}</td>
+                      <td className="td-r">{formatCurrency(balance)}</td>
+                      <td className="td-r">{formatCurrency(balance)}</td>
                       <td><span className="status-pill success">Active</span></td>
                       <td><button className="btn btn-sm" title={`View details for ${bank}`} onClick={() => handleViewBank(bank)}>View</button></td>
                     </tr>
@@ -500,7 +464,7 @@ export default function BanksPage() {
             <div className="card">
               <div className="card-title">Reconciliation Status</div>
               <div className="bank-detail-panel">
-                <div className="bank-detail-row"><span>Last Reconciled</span><strong>Jul 28</strong></div>
+                <div className="bank-detail-row"><span>Last Reconciled</span><strong>{state.bankTxns.length > 0 ? 'Recorded transactions' : 'Not reconciled'}</strong></div>
                 <div className="bank-detail-row"><span>Difference</span><strong>{formatCurrency(0)}</strong></div>
                 <div className="bank-detail-row"><span>Status</span><strong>Balanced</strong></div>
               </div>
@@ -508,20 +472,18 @@ export default function BanksPage() {
             <div className="card">
               <div className="card-title">Cash Flow Summary</div>
               <div className="bank-detail-panel">
-                <div className="bank-detail-row"><span>Money In</span><strong>{formatCurrency(18400000)}</strong></div>
-                <div className="bank-detail-row"><span>Money Out</span><strong>{formatCurrency(9200000)}</strong></div>
-                <div className="bank-detail-row"><span>Net Cash Flow</span><strong>{formatCurrency(9200000)}</strong></div>
+                <div className="bank-detail-row"><span>Money In</span><strong>{formatCurrency(moneyIn)}</strong></div>
+                <div className="bank-detail-row"><span>Money Out</span><strong>{formatCurrency(moneyOut)}</strong></div>
+                <div className="bank-detail-row"><span>Net Cash Flow</span><strong>{formatCurrency(moneyIn - moneyOut)}</strong></div>
               </div>
             </div>
             <div className="card">
               <div className="card-title">Linked Modules</div>
               <div className="bank-detail-panel">
-                <div className="bank-detail-row"><span>Sales</span><strong>{formatCurrency(15800000)}</strong></div>
-                <div className="bank-detail-row"><span>Receivables</span><strong>{formatCurrency(4560000)}</strong></div>
-                <div className="bank-detail-row"><span>Payables</span><strong>{formatCurrency(3280000)}</strong></div>
-                <div className="bank-detail-row"><span>Payroll</span><strong>{formatCurrency(2180000)}</strong></div>
-                <div className="bank-detail-row"><span>Expenses</span><strong>{formatCurrency(1280000)}</strong></div>
-                <div className="bank-detail-row"><span>Loans</span><strong>{formatCurrency(4600000)}</strong></div>
+                <div className="bank-detail-row"><span>Sales</span><strong>{formatCurrency(salesTotal)}</strong></div>
+                <div className="bank-detail-row"><span>Receivables</span><strong>{formatCurrency(receivablesTotal)}</strong></div>
+                <div className="bank-detail-row"><span>Payables</span><strong>{formatCurrency(payablesTotal)}</strong></div>
+                <div className="bank-detail-row"><span>Expenses</span><strong>{formatCurrency(expensesTotal)}</strong></div>
               </div>
             </div>
           </div>
