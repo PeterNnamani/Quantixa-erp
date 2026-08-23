@@ -9,6 +9,8 @@ test('super admin has provisioning/oversight permissions, not transactional', ()
     assert.equal(canAccessRoute(superAdmin, '/backup'), true)
     assert.equal(canAccessRoute(superAdmin, '/banks'), true)
     assert.equal(canAccessRoute(superAdmin, '/bank-txn'), true)
+    assert.equal(canAccessRoute(superAdmin, '/asset-schedule'), true)
+    assert.ok(getVisibleNavigationItems(superAdmin).some((item) => item.href === '/asset-schedule'))
     assert.equal(canEditPermission(superAdmin, 'banks'), false)
     assert.equal(canEditPermission(superAdmin, 'bankTxn'), false)
     // Should NOT have transactional posting permissions

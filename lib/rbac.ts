@@ -109,7 +109,7 @@ export const RBAC_TEMPLATES: RoleDefinition[] = [
         name: 'Super Admin',
         description: 'Platform provisioning and oversight (no transactional posting)',
         permissions: ['dashboard', 'reports', 'admin', 'settings'],
-        visibleMenus: ['dashboard', 'reports', 'admin', 'settings', 'bankTxn', 'banks'],
+        visibleMenus: ['dashboard', 'reports', 'admin', 'settings', 'bankTxn', 'banks', 'assetSchedule'],
         dataScope: 'all',
         template: 'Super Admin',
     },
