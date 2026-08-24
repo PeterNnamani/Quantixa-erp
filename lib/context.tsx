@@ -287,6 +287,7 @@ export interface AppState {
   expenseCategories: string[]
   inventory: InventoryItem[]
   banks: Record<string, number>
+  bankAccounts: BankAccount[]
   bankTxns: any[]
   receivables: any[]
   payables: any[]
@@ -303,6 +304,20 @@ export interface AppState {
   accountingPeriods: any[]
   journalEntries: JournalEntry[]
   journalLines: JournalLine[]
+}
+
+export interface BankAccount {
+  id: string
+  name: string
+  institution: string
+  accountNumber: string
+  accountType: string
+  currency: string
+  branch: string
+  openingBalance: number
+  openingBalanceDate: string
+  balance: number
+  status: string
 }
 
 export interface AccountingContextType {
@@ -327,6 +342,7 @@ const defaultState: AppState = {
   expenseCategories: [],
   inventory: [],
   banks: {},
+  bankAccounts: [],
   bankTxns: [],
   receivables: [],
   payables: [],
@@ -523,7 +539,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
           supabase.from('products').select('*').eq('company_id', companyId).order('updated_at', { ascending: false }).limit(200),
           supabase.from('prepayments').select('*, prepayment_schedules(*)').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
           supabase.from('contacts').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
-          supabase.from('bank_accounts').select('id,name,balance').eq('company_id', companyId).order('created_at', { ascending: false }).limit(100),
+          supabase.from('bank_accounts').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(100),
           supabase.from('bank_transactions').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
           supabase.from('loans').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
           supabase.from('receivables').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
@@ -601,10 +617,25 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
 
         if (banksData && banksData.length > 0) {
           const banksMap: Record<string, number> = {}
-          banksData.forEach((b: any) => { banksMap[b.name] = Number(b.balance || 0) })
-          setState((prev) => ({ ...prev, banks: banksMap }))
+          const bankAccounts = banksData.map((b: any) => {
+            banksMap[b.name] = Number(b.balance || 0)
+            return {
+              id: b.id,
+              name: b.name,
+              institution: b.institution || '',
+              accountNumber: b.account_number || '',
+              accountType: b.account_type || 'Current',
+              currency: b.currency || 'NGN',
+              branch: b.branch || '',
+              openingBalance: Number(b.opening_balance || 0),
+              openingBalanceDate: b.opening_balance_date || '',
+              balance: Number(b.balance || 0),
+              status: b.status || 'active',
+            }
+          })
+          setState((prev) => ({ ...prev, banks: banksMap, bankAccounts }))
         } else if (!banksErr) {
-          setState((prev) => ({ ...prev, banks: {} }))
+          setState((prev) => ({ ...prev, banks: {}, bankAccounts: [] }))
         }
 
         if (txnsData && txnsData.length > 0) {
@@ -808,6 +839,26 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
           if (normalizedUpdates.banks) {
             const banksArray = Object.entries(normalizedUpdates.banks).map(([name, balance]) => ({ company_id: companyId, name, institution: name, balance }))
             await supabase.from('bank_accounts').upsert(banksArray, { onConflict: 'name' })
+          }
+
+          if (normalizedUpdates.bankAccounts) {
+            const bankRows = (normalizedUpdates.bankAccounts as BankAccount[]).map((account) => ({
+              id: account.id,
+              company_id: companyId,
+              name: account.name,
+              institution: account.institution,
+              account_number: account.accountNumber || null,
+              account_type: account.accountType,
+              currency: account.currency,
+              branch: account.branch || null,
+              opening_balance: account.openingBalance,
+              opening_balance_date: account.openingBalanceDate || null,
+              balance: account.balance,
+              status: account.status.toLowerCase(),
+              updated_at: new Date().toISOString(),
+            }))
+            const { error: bankAccountsPersistErr } = await supabase.from('bank_accounts').upsert(bankRows, { onConflict: 'id' })
+            if (bankAccountsPersistErr) throw bankAccountsPersistErr
           }
 
           if (normalizedUpdates.bankTxns) {
