@@ -135,7 +135,7 @@ function buildSupplierName(row: ImportRecord): string {
 }
 
 function buildProductName(row: ImportRecord): string {
-    return stringValue(row['product'] || row['item'] || row['name'] || row['description'] || row['product name'] || row['product_name'])
+    return stringValue(row['product'] || row['item'] || row['items'] || row['name'] || row['description'] || row['product name'] || row['product_name'])
 }
 
 function buildContactType(row: ImportRecord): string {
@@ -163,8 +163,8 @@ function normalizeSaleRow(row: ImportRecord) {
     const discount = Math.max(0, parseNumeric(row['discount'] || 0))
     const shipping = Math.max(0, parseNumeric(row['shipping'] || row['shipping amount'] || 0))
     const totalAmount = Math.max(0, parseNumeric(row['total amount'] || row['total_amount'] || row['total'] || subtotal))
-    const amountPaid = Math.max(0, parseNumeric(row['amount paid'] || row['amount_paid'] || row['paid'] || totalAmount))
-    const balance = Math.max(0, parseNumeric(row['balance'] || totalAmount - amountPaid || 0))
+    const amountPaid = Math.max(0, parseNumeric(row['amount paid'] || row['paid amount'] || row['amount_paid'] || row['paid'] || totalAmount))
+    const balance = Math.max(0, parseNumeric(row['balance'] || row['balance amount'] || row['balance_amount'] || totalAmount - amountPaid || 0))
 
     return {
         id: makeID('SL'),

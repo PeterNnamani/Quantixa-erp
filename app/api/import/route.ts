@@ -19,7 +19,8 @@ type SupabaseWriteResult = { data: any; error: any }
 
 function missingSchemaColumn(error: unknown, values: Record<string, unknown>): string | null {
     const message = typeof error === 'object' && error !== null && 'message' in error ? String((error as any).message) : String(error || '')
-    const match = message.match(/(?:column|field) ['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?/i)
+    const match = message.match(/['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?\s+(?:column|field)\b/i)
+        || message.match(/(?:column|field)(?:\s+of)?\s+['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?/i)
     const column = match?.[1]
     return column && Object.prototype.hasOwnProperty.call(values, column) ? column : null
 }
