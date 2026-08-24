@@ -62,9 +62,11 @@ export default function BulkImport({ label = 'Bulk upload', tableColumns, onImpo
             const prepared = prepareGenericImportPayload(rows)
             setSummary(prepared.summary)
             const totalRecords = prepared.summary.sales + prepared.summary.purchases + prepared.summary.expenses + prepared.summary.products + prepared.summary.staff + prepared.summary.contacts
+            let simulatedSavedCount = 0
             progressTimer.current = window.setInterval(() => {
-                setProgress((current) => current === null ? current : Math.min(94, current + 1))
-                setSavedCount((current) => Math.min(Math.max(0, totalRecords - 1), current + 1))
+                simulatedSavedCount = Math.min(Math.max(0, totalRecords - 1), simulatedSavedCount + 1)
+                setSavedCount(simulatedSavedCount)
+                setProgress(totalRecords > 0 ? Math.round((simulatedSavedCount / totalRecords) * 100) : 0)
             }, 180)
             const result = await new Promise<any>((resolve, reject) => {
                 const request = new XMLHttpRequest()
