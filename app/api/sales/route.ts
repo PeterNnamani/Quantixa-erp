@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase.server'
 
+function isMissingDeviceUsedColumn(error: unknown): boolean {
+    return typeof error === 'object' && error !== null
+        && (error as { code?: string }).code === 'PGRST204'
+        && /device_used/i.test(String((error as { message?: string }).message || ''))
+}
+
+async function upsertSaleWithSchemaFallback(saleRow: Record<string, unknown>) {
+    let result = await supabaseAdmin!.from('sales').upsert(saleRow, { onConflict: 'reference' }).select('id').single()
+    if (isMissingDeviceUsedColumn(result.error)) {
+        const { device_used: _deviceUsed, ...compatibleSaleRow } = saleRow
+        result = await supabaseAdmin!.from('sales').upsert(compatibleSaleRow, { onConflict: 'reference' }).select('id').single()
+    }
+    return result
+}
+
 export async function POST(request: Request) {
     try {
         if (!supabaseAdmin) {
@@ -53,11 +68,7 @@ export async function POST(request: Request) {
             sales_rep: sale.enteredBy || null,
             device_used: sale.deviceUsed || null,
         }
-        const { data: storedSale, error: saleError } = await supabaseAdmin
-            .from('sales')
-            .upsert(saleRow, { onConflict: 'reference' })
-            .select('id')
-            .single()
+        const { data: storedSale, error: saleError } = await upsertSaleWithSchemaFallback(saleRow)
         if (saleError) throw saleError
 
         const itemRows = sale.items.map((item: any) => ({

@@ -4,6 +4,21 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from './supabase.browser'
 import { getDefaultRoles, type AccessLevels, type PermissionKey, type RoleDefinition } from '@/lib/rbac'
 
+function isMissingDeviceUsedColumn(error: unknown): boolean {
+  return typeof error === 'object' && error !== null
+    && (error as { code?: string }).code === 'PGRST204'
+    && /device_used/i.test(String((error as { message?: string }).message || ''))
+}
+
+async function upsertSaleWithSchemaFallback(saleRow: Record<string, unknown>) {
+  let result = await supabase!.from('sales').upsert(saleRow, { onConflict: 'reference' }).select('id').single()
+  if (isMissingDeviceUsedColumn(result.error)) {
+    const { device_used: _deviceUsed, ...compatibleSaleRow } = saleRow
+    result = await supabase!.from('sales').upsert(compatibleSaleRow, { onConflict: 'reference' }).select('id').single()
+  }
+  return result
+}
+
 function enrichStoredUser(raw: any) {
   if (!raw || typeof raw !== 'object') return raw
   let roleId = typeof raw.role === 'string' ? raw.role.toLowerCase().replace(/\s+/g, '-') : raw.role
@@ -821,7 +836,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
                 amount_paid: sale.amountPaid ?? (sale.paymentStatus === 'PAID' ? sale.totalAmount : 0),
                 balance: sale.balance ?? (sale.paymentStatus === 'PAID' ? 0 : sale.totalAmount),
               }
-              const { data: storedSale, error: saleError } = await supabase.from('sales').upsert(saleRow, { onConflict: 'reference' }).select('id').single()
+              const { data: storedSale, error: saleError } = await upsertSaleWithSchemaFallback(saleRow)
               if (saleError) throw saleError
               const { error: deleteItemsError } = await supabase.from('sale_items').delete().eq('sale_id', storedSale.id)
               if (deleteItemsError) throw deleteItemsError
