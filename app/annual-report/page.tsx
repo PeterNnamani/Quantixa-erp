@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
 import { calculateVAT, triggerAppToast, formatCurrency } from '@/lib/utils'
-import { downloadPdf } from '@/lib/export-utils'
+import { downloadFinancialReportPdf } from '@/lib/export-utils'
 
 const statements = ['Profit & Loss', 'Balance Sheet', 'Cash Flow', 'Trial Balance', 'General Ledger', 'Tax Summary']
 
@@ -36,15 +36,9 @@ export default function AnnualReportPage() {
     const loansBalance = state.loans.reduce((sum, loan) => sum + Number(loan.balance ?? loan.amount ?? 0), 0)
     const payablesBalance = state.payables.reduce((sum, item) => sum + Number(item.outstanding_amount ?? item.outstandingAmount ?? item.amount ?? 0), 0)
     const reportVAT = includeVAT ? calculateVAT(annualRevenue) : 0
-    const reportExportData = {
-        reportType: 'annual',
-        mode: reportMode,
-        selectedStatement,
-        annualRevenue,
-        annualExpenses,
-        annualPurchases,
-        ...(includeVAT ? { VAT: reportVAT, totalIncludingVAT: annualRevenue + reportVAT } : {}),
-    }
+    const totalAssets = bankBalance + cashAccountBalance + inventoryValue
+    const totalLiabilities = loansBalance + payablesBalance
+    const transactionCount = annualSales.length + annualPurchaseRows.length + annualExpenseRows.length
     const annualCards = [
         { label: 'Annual Revenue', value: formatCurrency(annualRevenue) },
         { label: 'Annual Expenses', value: formatCurrency(annualExpenses) },
@@ -72,12 +66,17 @@ export default function AnnualReportPage() {
     const handleAction = (action: string) => {
         triggerAppToast(action, 'The report workflow has been prepared for the current year.')
         if (action === 'Export PDF') {
-            downloadPdf(
-                'annual-report.pdf',
-                'Annual Report',
-                [{ ...reportExportData }],
-                'QUANTIXA'
-            )
+            void downloadFinancialReportPdf({
+                filename: 'annual-report.pdf', reportTitle: 'Annual Report', periodLabel: currentYear,
+                highlights: [{ label: 'Revenue', value: formatCurrency(annualRevenue) }, { label: 'Net profit', value: formatCurrency(annualNetProfit) }, { label: 'Total assets', value: formatCurrency(totalAssets) }, { label: 'Cash movement', value: formatCurrency(cashReceived - cashPaid) }],
+                sections: [
+                    { title: 'Profit and Loss Statement', columns: ['Description', 'Amount'], rows: [['Revenue', annualRevenue], ['Cost of purchases', annualPurchases], ['Operating expenses', annualExpenses], ...(includeVAT ? [['VAT on revenue', reportVAT] as [string, number]] : [])], total: ['Net profit', annualNetProfit] },
+                    { title: 'Statement of Financial Position', columns: ['Description', 'Amount'], rows: [['Bank accounts', bankBalance], ['Cash account', cashAccountBalance], ['Inventory', inventoryValue], ['Loans', loansBalance], ['Payables', payablesBalance]], total: ['Net assets', totalAssets - totalLiabilities] },
+                    { title: 'Cash Flow Statement', columns: ['Description', 'Amount'], rows: [['Cash received', cashReceived], ['Cash paid', -cashPaid]], total: ['Net movement', cashReceived - cashPaid] },
+                    { title: 'Activity Schedule', columns: ['Description', 'Count', 'Amount'], rows: [['Sales', annualSales.length, annualRevenue], ['Purchases', annualPurchaseRows.length, annualPurchases], ['Expenses', annualExpenseRows.length, annualExpenses]], total: ['Total activity', transactionCount, annualRevenue + annualPurchases + annualExpenses] },
+                ],
+                notes: [`Report mode: ${reportMode}; selected statement: ${selectedStatement}.`, `VAT is ${includeVAT ? 'included in the report calculation.' : 'not included in this export.'}`, 'Amounts are calculated from non-void records in the current accounting year.'],
+            })
         }
     }
 

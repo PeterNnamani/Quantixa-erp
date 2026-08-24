@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import AppLayout from '@/components/layout/app-layout'
 import { useAccounting } from '@/lib/context'
-import { downloadExcel, downloadPdf } from '@/lib/export-utils'
+import { downloadExcel, downloadFinancialReportPdf } from '@/lib/export-utils'
 import { calculateVAT, formatCurrency, triggerAppToast } from '@/lib/utils'
 
 const expenseCategories = ['Salary', 'Rent', 'Fuel', 'Marketing', 'Utilities', 'Operations']
@@ -21,8 +21,8 @@ export default function MonthlyReportPage() {
     const monthlyTransactions = useMemo(() => state.bankTxns.filter((txn) => txn.date?.startsWith(currentMonth)), [state.bankTxns, currentMonth])
     const totalRevenue = useMemo(() => monthlySales.reduce((sum, sale) => sum + sale.totalAmount, 0), [monthlySales])
     const totalExpenses = useMemo(() => monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0), [monthlyExpenses])
-    const netProfit = totalRevenue - totalExpenses
     const totalPurchases = useMemo(() => monthlyPurchases.reduce((sum, purchase) => sum + purchase.total, 0), [monthlyPurchases])
+    const netProfit = totalRevenue - totalPurchases - totalExpenses
     const inventoryValue = useMemo(() => state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0), [state.inventory])
     const bankAccounts = Object.entries(state.banks)
     const totalBankBalance = bankAccounts.reduce((sum, [, balance]) => sum + Number(balance || 0), 0)
@@ -34,14 +34,6 @@ export default function MonthlyReportPage() {
     const cashReceived = monthlyTransactions.filter((txn) => Number(txn.amount) > 0).reduce((sum, txn) => sum + Number(txn.amount), 0)
     const cashPaid = monthlyTransactions.filter((txn) => Number(txn.amount) < 0).reduce((sum, txn) => sum + Math.abs(Number(txn.amount)), 0)
     const reportVAT = includeVAT ? calculateVAT(totalRevenue) : 0
-    const reportExportData = {
-        action: 'Report export',
-        range: activeRange,
-        totalRevenue,
-        totalExpenses,
-        totalPurchases,
-        ...(includeVAT ? { VAT: reportVAT, totalIncludingVAT: totalRevenue + reportVAT } : {}),
-    }
 
     const overviewCards = [
         { label: 'Total Revenue', value: formatCurrency(totalRevenue), change: 'Database-backed' },
@@ -76,12 +68,17 @@ export default function MonthlyReportPage() {
         setStatusMessage(`${action} completed for this month.`)
         triggerAppToast(action, `${action} completed for the current month.`)
         if (action === 'Export PDF') {
-            downloadPdf(
-                `monthly-report-${activeRange.toLowerCase()}.pdf`,
-                'Monthly Report',
-                [{ ...reportExportData, action }],
-                'QUANTIXA'
-            )
+            void downloadFinancialReportPdf({
+                filename: `monthly-report-${activeRange.toLowerCase()}.pdf`, reportTitle: 'Monthly Report', periodLabel: `${currentMonth} | ${activeRange} view`,
+                highlights: [{ label: 'Revenue', value: formatCurrency(totalRevenue) }, { label: 'Net profit', value: formatCurrency(netProfit) }, { label: 'Inventory value', value: formatCurrency(inventoryValue) }, { label: 'Cash movement', value: formatCurrency(cashReceived - cashPaid) }],
+                sections: [
+                    { title: 'Profit and Loss Statement', columns: ['Description', 'Amount'], rows: [['Sales revenue', totalRevenue], ['Purchases', totalPurchases], ['Operating expenses', totalExpenses], ...(includeVAT ? [['VAT on revenue', reportVAT] as [string, number]] : [])], total: ['Net profit', netProfit] },
+                    { title: 'Statement of Financial Position', columns: ['Description', 'Amount'], rows: [['Bank accounts', totalBankBalance], ['Cash account', cashAccountBalance], ['Inventory', inventoryValue]], total: ['Current assets', totalBankBalance + cashAccountBalance + inventoryValue] },
+                    { title: 'Cash Flow Statement', columns: ['Description', 'Amount'], rows: [['Cash received', cashReceived], ['Cash paid', -cashPaid]], total: ['Net movement', cashReceived - cashPaid] },
+                    { title: 'Activity Schedule', columns: ['Description', 'Count', 'Amount'], rows: [['Sales', monthlySales.length, totalRevenue], ['Purchases', monthlyPurchases.length, totalPurchases], ['Expenses', monthlyExpenses.length, totalExpenses]], total: ['Total activity', monthlySales.length + monthlyPurchases.length + monthlyExpenses.length, totalRevenue + totalPurchases + totalExpenses] },
+                ],
+                notes: [`Report range: ${activeRange}.`, `VAT is ${includeVAT ? 'included in the report calculation.' : 'not included in this export.'}`, 'Amounts are calculated from non-void records in the selected calendar month.'],
+            })
         }
 
         if (action === 'Export Excel') {
