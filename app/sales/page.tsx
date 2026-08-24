@@ -167,7 +167,7 @@ export default function SalesPage() {
     })
   }
 
-  const handleSaveSale = () => {
+  const handleSaveSale = async () => {
     if (!formData.customer || formData.items.some((i) => !i.product || !i.qty || !i.unitPrice)) {
       alert('Please fill in all fields')
       return
@@ -205,6 +205,17 @@ export default function SalesPage() {
       notes: formData.notes,
       status: 'ACTIVE',
       enteredBy: user?.name || 'System',
+    }
+
+    const response = await fetch('/api/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId: user?.companyId, sale }),
+    })
+    const result = await response.json()
+    if (!response.ok || !result.success) {
+      alert(result.error || 'Unable to save sale.')
+      return
     }
 
     updateState({ sales: [...state.sales, sale], inventory: inventoryUpdates })

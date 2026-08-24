@@ -1,6 +1,33 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase.server'
 
+type SupabaseWriteResult = { error: { message?: string } | null }
+
+function missingSchemaColumn(error: unknown, values: Record<string, unknown>): string | null {
+    const message = typeof error === 'object' && error !== null && 'message' in error
+        ? String((error as { message?: unknown }).message)
+        : String(error || '')
+    const match = message.match(/['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?\s+(?:column|field)\b/i)
+        || message.match(/(?:column|field)(?:\s+of)?\s+['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?/i)
+    const column = match?.[1]
+    return column && Object.prototype.hasOwnProperty.call(values, column) ? column : null
+}
+
+async function writeWithSchemaFallback(
+    values: Record<string, unknown>,
+    operation: (values: Record<string, unknown>) => Promise<SupabaseWriteResult>,
+): Promise<SupabaseWriteResult> {
+    const compatibleValues = { ...values }
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+        const result = await operation(compatibleValues)
+        if (!result.error) return result
+        const unsupportedColumn = missingSchemaColumn(result.error, compatibleValues)
+        if (!unsupportedColumn) return result
+        delete compatibleValues[unsupportedColumn]
+    }
+    return { error: { message: 'Unable to match the users table schema.' } }
+}
+
 export async function POST(request: Request) {
     try {
         const payload = await request.json()
@@ -40,10 +67,10 @@ export async function POST(request: Request) {
             const matchId = (existingByUsername && existingByUsername.length > 0)
                 ? existingByUsername[0].id
                 : existingByStaffId![0].id
-            const updateResult = await supabaseAdmin.from('users').update(insertData).eq('id', matchId)
+            const updateResult = await writeWithSchemaFallback(insertData, async (values) => supabaseAdmin!.from('users').update(values).eq('id', matchId))
             error = updateResult.error
         } else {
-            const insertResult = await supabaseAdmin.from('users').insert(insertData)
+            const insertResult = await writeWithSchemaFallback(insertData, async (values) => supabaseAdmin!.from('users').insert(values))
             error = insertResult.error
         }
 
