@@ -2608,6 +2608,16 @@ html[data-theme='dark'] .topbar {
   border-bottom: 2px solid var(--text);
 }
 
+.invoice-header-side {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.invoice-customer-summary {
+  display: none;
+}
+
 .invoice-brand {
   font-size: 24px;
   font-weight: 800;
@@ -6124,6 +6134,22 @@ html[data-theme='dark'] .pricing-row span {
     border-bottom-width: 1px;
   }
 
+  .invoice-document .invoice-header-side {
+    max-width: 48%;
+    gap: 2px;
+  }
+
+  .invoice-document .invoice-customer-summary {
+    display: block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    color: #111;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: right;
+  }
+
   .invoice-document .invoice-brand {
     font-size: 18px;
   }
@@ -6138,6 +6164,10 @@ html[data-theme='dark'] .pricing-row span {
     gap: 4px;
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  .invoice-document .invoice-customer-section {
+    display: none;
   }
 
   .invoice-document .detail-section-title {

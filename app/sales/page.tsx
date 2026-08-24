@@ -676,7 +676,10 @@ export default function SalesPage() {
           <div className="detail-panel invoice-document">
             <div className="invoice-header">
               <div><div className="invoice-brand">QUANTIXA</div><div className="invoice-label">Sales invoice</div></div>
-              <button className="btn btn-primary invoice-print-button" type="button" onClick={handlePrintInvoice}>Print invoice</button>
+              <div className="invoice-header-side">
+                <div className="invoice-customer-summary">Cust: {selectedSale?.customer || '-'}</div>
+                <button className="btn btn-primary invoice-print-button" type="button" onClick={handlePrintInvoice}>Print invoice</button>
+              </div>
             </div>
             <div className="detail-section">
               <div className="detail-section-title">Invoice Details</div>
@@ -689,7 +692,7 @@ export default function SalesPage() {
               <div className="detail-row"><span>Device used</span><strong>{selectedSale?.deviceUsed || '-'}</strong></div>
             </div>
 
-            <div className="detail-section">
+            <div className="detail-section invoice-customer-section">
               <div className="detail-section-title">Customer Information</div>
               <div className="detail-row"><span>Customer</span><strong>{selectedSale?.customer || '-'}</strong></div>
               <div className="detail-row"><span>Phone</span><strong>{selectedSale?.customerDetails?.phone || '-'}</strong></div>
