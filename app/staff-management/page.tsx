@@ -119,10 +119,37 @@ export default function StaffManagementPage() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10))
   const [paymentReference, setPaymentReference] = useState('')
   const [paymentProcessing, setPaymentProcessing] = useState(false)
+  const [payrollOpen, setPayrollOpen] = useState(false)
 
   const selectedPaymentStaff = staffMembers.find((member) => member.staffId === paymentStaffId)
   const paymentTotal = Math.max(0, Number(baseAmount || 0) + Number(incentiveAmount || 0) - Number(deductions || 0))
   const formatMoney = (amount: number, currency = paymentCurrency) => new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount)
+
+  const latestPaymentByStaff = useMemo(() => {
+    const payments = new Map<string, PayrollPayment>()
+    payrollPayments.forEach((payment) => {
+      const current = payments.get(payment.staffId)
+      if (!current || payment.payDate > current.payDate) payments.set(payment.staffId, payment)
+    })
+    return payments
+  }, [payrollPayments])
+
+  const addPaymentMonth = (dateString: string) => {
+    const date = new Date(`${dateString}T12:00:00`)
+    date.setMonth(date.getMonth() + 1)
+    return date.toISOString().slice(0, 10)
+  }
+
+  const getPayrollStatus = (staffId: string) => {
+    const latestPayment = latestPaymentByStaff.get(staffId)
+    if (!latestPayment) return { label: 'Owing', tone: 'b-red', nextDate: 'No payment recorded' }
+    const nextDate = addPaymentMonth(latestPayment.payDate)
+    const today = new Date().toISOString().slice(0, 10)
+    const daysUntilDue = Math.ceil((new Date(`${nextDate}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000)
+    if (daysUntilDue < 0) return { label: 'Overdue', tone: 'b-red', nextDate }
+    if (daysUntilDue <= 5) return { label: 'Due soon', tone: 'b-yellow', nextDate }
+    return { label: 'Paid', tone: 'b-green', nextDate }
+  }
 
   const selectedRole = useMemo(() => roles.find((role) => role.id === selectedRoleId) || roles[0], [roles, selectedRoleId])
 
@@ -309,7 +336,7 @@ export default function StaffManagementPage() {
   useEffect(() => {
     if (!paymentStaffId) return
     const staffSalary = selectedPaymentStaff?.salary
-    if (staffSalary && !baseAmount) setBaseAmount(staffSalary)
+    if (staffSalary && !baseAmount) setBaseAmount(staffSalary.replace(/[^0-9.-]/g, ''))
   }, [paymentStaffId, selectedPaymentStaff, baseAmount])
 
   const resetPaymentForm = () => {
@@ -568,19 +595,26 @@ export default function StaffManagementPage() {
         {inlineNotice && <div className={`staff-inline-notice ${inlineNotice.tone}`} role="status">{inlineNotice.message}</div>}
 
         <div className="panel-card" style={{ marginBottom: 20 }}>
-          <div className="panel-head">
+          <div className="panel-head" style={{ marginBottom: payrollOpen ? undefined : 0 }}>
             <div>
               <div className="panel-title"><Calculator size={20} style={{ marginRight: 8, verticalAlign: 'middle' }} /> Payroll & Incentives</div>
-              <div className="page-subtitle">Calculate gross pay, KPI rewards, commissions, and deductions in the employee's operating currency.</div>
+              <div className="page-subtitle">{payrollOpen ? 'Calculate gross pay, KPI rewards, commissions, and deductions in the employee\'s operating currency.' : 'Review payment status or record the next salary payment.'}</div>
             </div>
-            <span className="badge b-blue">{payrollPayments.length} payments recorded</span>
+            <div className="inline-actions">
+              <span className="badge b-blue">{payrollPayments.length} payments recorded</span>
+              <button className="action-btn allow-readonly" type="button" onClick={() => setPayrollOpen((current) => !current)} aria-expanded={payrollOpen} title={payrollOpen ? 'Collapse payroll calculator' : 'Open payroll calculator'}>
+                <ChevronDown size={18} style={{ transform: payrollOpen ? 'rotate(180deg)' : undefined }} />
+                {payrollOpen ? 'Close' : 'Record payment'}
+              </button>
+            </div>
           </div>
+          {payrollOpen && <>
           <div className="form-grid two-up">
             <div className="fg"><label>Staff member</label><select className="allow-readonly" value={paymentStaffId} onChange={(event) => { setPaymentStaffId(event.target.value); setBaseAmount('') }}><option value="">Select staff member</option>{staffMembers.filter((member) => member.status === 'active').map((member) => <option key={member.id} value={member.staffId}>{member.name} · {member.staffId}</option>)}</select></div>
             <div className="fg"><label>Pay date</label><input className="allow-readonly" type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} /></div>
-            <div className="fg"><label>Paying bank account</label><select className="allow-readonly" value={paymentBankId} onChange={(event) => setPaymentBankId(event.target.value)}><option value="">Select bank account</option>{bankAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {formatMoney(account.balance, account.currency)}</option>)}</select></div>
+            <div className="fg"><label>Paying bank account</label><select className="allow-readonly" value={paymentBankId} onChange={(event) => { const account = bankAccounts.find((item) => item.id === event.target.value); setPaymentBankId(event.target.value); if (account?.currency) setPaymentCurrency(account.currency) }}><option value="">Select bank account</option>{bankAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {formatMoney(account.balance, account.currency)}</option>)}</select></div>
             <div className="fg"><label>Currency</label><select className="allow-readonly" value={paymentCurrency} onChange={(event) => setPaymentCurrency(event.target.value)}><option value="NGN">NGN · Nigerian naira</option><option value="USD">USD · US dollar</option><option value="GBP">GBP · British pound</option><option value="EUR">EUR · Euro</option></select></div>
-            <div className="fg"><label>Base pay</label><input className="allow-readonly" type="number" min="0" step="0.01" value={baseAmount} onChange={(event) => setBaseAmount(event.target.value)} placeholder={selectedPaymentStaff?.salary || '0.00'} /></div>
+            <div className="fg"><label>Base salary</label><input className="allow-readonly" type="number" min="0" step="0.01" value={baseAmount} onChange={(event) => setBaseAmount(event.target.value)} placeholder={selectedPaymentStaff?.salary || '0.00'} /></div>
             <div className="fg"><label>Incentive type</label><select className="allow-readonly" value={incentiveType} onChange={(event) => setIncentiveType(event.target.value)}><option>KPI bonus</option><option>Commission</option><option>Performance bonus</option><option>Spot award</option><option>Other incentive</option></select></div>
             <div className="fg"><label>Incentive amount</label><input className="allow-readonly" type="number" min="0" step="0.01" value={incentiveAmount} onChange={(event) => setIncentiveAmount(event.target.value)} placeholder="0.00" /></div>
             <div className="fg"><label>Deductions</label><input className="allow-readonly" type="number" min="0" step="0.01" value={deductions} onChange={(event) => setDeductions(event.target.value)} placeholder="0.00" /></div>
@@ -592,11 +626,12 @@ export default function StaffManagementPage() {
             <button className="action-btn primary allow-readonly" type="button" onClick={processStaffPayment} disabled={paymentProcessing || bankAccounts.length === 0}>{paymentProcessing ? 'Processing...' : <><CreditCard size={16} /> Pay staff</>}</button>
           </div>
           {bankAccounts.length === 0 && <div className="metric-note" style={{ marginTop: 12 }}>Add an active bank account in Settings before processing payroll.</div>}
+          </>}
         </div>
 
         {payrollPayments.length > 0 && <div className="panel-card" style={{ marginBottom: 20 }}>
           <div className="panel-head"><div><div className="panel-title">Recent payroll activity</div><div className="page-subtitle">Every payment is linked to its bank withdrawal, salary expense, and journal entry.</div></div></div>
-          <div className="table-wrap"><table className="data-table"><thead><tr><th>Date</th><th>Staff</th><th>Incentive</th><th>Bank</th><th>Net paid</th><th>Status</th></tr></thead><tbody>{payrollPayments.slice(0, 8).map((payment) => <tr key={payment.id}><td>{payment.payDate}</td><td><strong>{payment.staffName}</strong><div className="metric-note">{payment.reference || payment.staffId}</div></td><td>{payment.incentiveAmount > 0 ? `${payment.incentiveType || 'Incentive'} · ${formatMoney(payment.incentiveAmount, payment.currency)}` : '—'}</td><td>{payment.bankName}</td><td><strong>{formatMoney(payment.totalAmount, payment.currency)}</strong></td><td><span className="badge b-green">{payment.status}</span></td></tr>)}</tbody></table></div>
+          <div className="table-wrap"><table className="data-table"><thead><tr><th>Date</th><th>Staff</th><th>Incentive</th><th>Bank</th><th>Net paid</th><th>Next payment</th><th>Status</th></tr></thead><tbody>{payrollPayments.slice(0, 8).map((payment) => { const schedule = getPayrollStatus(payment.staffId); return <tr key={payment.id}><td>{payment.payDate}</td><td><strong>{payment.staffName}</strong><div className="metric-note">{payment.reference || payment.staffId}</div></td><td>{payment.incentiveAmount > 0 ? `${payment.incentiveType || 'Incentive'} · ${formatMoney(payment.incentiveAmount, payment.currency)}` : '—'}</td><td>{payment.bankName}</td><td><strong>{formatMoney(payment.totalAmount, payment.currency)}</strong></td><td>{schedule.nextDate}</td><td><span className={`badge ${schedule.tone}`}>{schedule.label}</span></td></tr> })}</tbody></table></div>
         </div>}
 
         <div className="panel-card">
@@ -647,6 +682,8 @@ export default function StaffManagementPage() {
                   <th>PIN</th>
                   <th>Role</th>
                   <th>Branch</th>
+                  <th>Payroll</th>
+                  <th>Next payment</th>
                   <th>Status</th>
                   <th>Last Login</th>
                   <th>Action</th>
@@ -655,7 +692,7 @@ export default function StaffManagementPage() {
               <tbody>
                 {filteredStaff.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: 20 }}>
+                    <td colSpan={10} style={{ textAlign: 'center', padding: 20 }}>
                       No staff match your search.
                     </td>
                   </tr>
@@ -682,6 +719,10 @@ export default function StaffManagementPage() {
                       </td>
                       <td>{member.roleName}</td>
                       <td>{member.branch || '—'}</td>
+                      <td>
+                        {(() => { const schedule = getPayrollStatus(member.staffId); return <span className={`badge ${schedule.tone}`}>{schedule.label}</span> })()}
+                      </td>
+                      <td>{getPayrollStatus(member.staffId).nextDate}</td>
                       <td>
                         <span className={`badge ${member.status === 'active' ? 'b-green' : 'b-red'}`}>
                           {member.status === 'active' ? 'Active' : 'Suspended'}
