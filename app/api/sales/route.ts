@@ -51,6 +51,7 @@ export async function POST(request: Request) {
             amount_paid: sale.paymentStatus === 'PAID' ? Number(sale.totalAmount || 0) : 0,
             balance: sale.paymentStatus === 'PAID' ? 0 : Number(sale.totalAmount || 0),
             sales_rep: sale.enteredBy || null,
+            device_used: sale.deviceUsed || null,
         }
         const { data: storedSale, error: saleError } = await supabaseAdmin
             .from('sales')

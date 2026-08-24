@@ -183,6 +183,7 @@ export default function SalesPage() {
     }
 
     const totalAmount = formData.items.reduce((sum, item) => sum + item.total, 0)
+    const deviceUsed: Sale['deviceUsed'] = /android|iphone|ipad|mobile/i.test(navigator.userAgent) ? 'Phone' : 'PC'
     const sale: Sale = {
       id: makeID('INV'),
       date: formData.date,
@@ -194,6 +195,7 @@ export default function SalesPage() {
       notes: formData.notes,
       status: 'ACTIVE',
       enteredBy: user?.name || 'System',
+      deviceUsed,
     }
 
     const response = await fetch('/api/sales', {
@@ -682,6 +684,7 @@ export default function SalesPage() {
               <div className="detail-row"><span>Order Status</span><strong>{selectedSale?.orderStatus || '-'}</strong></div>
               <div className="detail-row"><span>Branch</span><strong>{selectedSale?.branch || '-'}</strong></div>
               <div className="detail-row"><span>Sales Rep</span><strong>{selectedSale?.salesRep || '-'}</strong></div>
+              <div className="detail-row"><span>Device used</span><strong>{selectedSale?.deviceUsed || '-'}</strong></div>
             </div>
 
             <div className="detail-section">
@@ -735,15 +738,6 @@ export default function SalesPage() {
               <div className="detail-row"><span>Balance</span><strong>{formatCurrency(selectedSale?.balance ?? 0)}</strong></div>
             </div>
 
-            <div className="workflow-panel">
-              <div className="detail-section-title">Sales Workflow</div>
-              {['Sale Created', 'Invoice Generated', 'Inventory Reduced', 'Receivable Created', 'Payment Received', 'GL Updated', 'Daily Close Updated', 'Audit Logged'].map((step) => (
-                <div key={step} className="workflow-step">
-                  <strong>{step}</strong>
-                  <span>Completed</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 

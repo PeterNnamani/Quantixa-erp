@@ -97,6 +97,7 @@ export interface Sale {
   balance?: number
   branch?: string
   orderStatus?: string
+  deviceUsed?: 'Phone' | 'PC'
   customerDetails?: {
     phone?: string
     email?: string
@@ -390,6 +391,7 @@ function normalizeRemoteSales(data: any[], saleItems: any[] = []): AppState['sal
     balance: Number(item.balance ?? Math.max(0, Number(item.total_amount || 0) - Number(item.amount_paid || 0))),
     branch: item.branch || '',
     orderStatus: item.order_status || '',
+    deviceUsed: item.device_used || undefined,
   }))
 }
 
@@ -809,6 +811,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
                 customer_id: customer.id,
                 branch: sale.branch || null,
                 sales_rep: sale.enteredBy || null,
+                device_used: sale.deviceUsed || null,
                 payment_method: sale.paymentMethod || 'Transfer',
                 payment_status: sale.paymentStatus || 'PAID',
                 status: sale.status || 'ACTIVE',
