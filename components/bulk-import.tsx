@@ -106,7 +106,7 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
 
             prepared.payload.products.forEach((product: any) => {
                 const productIndex = findInventoryIndex(product)
-                const inventoryProduct = { product: String(product.name || product.product), sku: String(product.sku || ''), description: String(product.description || ''), branch: String(product.branch || ''), dept: String(product.category || 'General'), openQty: Number(product.stock_qty || 0), purchased: Number(product.purchased || 0), sold: Number(product.sold || 0), unitCost: Number(product.unit_cost || 0), sellingPrice: Number(product.unit_price || 0), closing: Number(product.stock_qty || 0) }
+                const inventoryProduct = { product: String(product.name || product.product), sku: String(product.sku || ''), description: String(product.description || ''), branch: String(product.branch || ''), dept: String(product.category || 'General'), openQty: Number(product.stock_qty ?? product.openQty ?? 0), purchased: Number(product.purchased || 0), sold: Number(product.sold || 0), unitCost: Number(product.unit_cost ?? product.unitCost ?? 0), sellingPrice: Number(product.unit_price ?? product.sellingPrice ?? 0), closing: Number(product.stock_qty ?? product.openQty ?? product.closing ?? 0) }
                 if (productIndex >= 0) {
                     nextInventory[productIndex] = { ...nextInventory[productIndex], ...inventoryProduct }
                 } else {
@@ -182,7 +182,7 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
             <div className="bulk-import-progress">
                 <div className="bulk-import-progress-ring" style={{ '--progress': `${progress}%` } as CSSProperties}><span>{progress}%</span></div>
                 <strong>{progress === 100 ? 'Import complete' : 'Saving imported records'}</strong>
-                    <span>{savedCount} of {summary ? summary.sales + summary.purchases + summary.expenses + summary.products + summary.staff + summary.contacts : 0} records saved</span>
+                <span>{savedCount} of {summary ? summary.sales + summary.purchases + summary.expenses + summary.products + summary.staff + summary.contacts : 0} records saved</span>
                 <span>{fileName}</span>
             </div>
         </div>}

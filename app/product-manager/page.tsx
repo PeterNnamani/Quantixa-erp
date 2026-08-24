@@ -167,22 +167,22 @@ export default function ProductManagerPage() {
     const processProductImport = () => {
         const normalizedProducts = importRows
             .map((row, index) => {
-                const product = String(row['Product'] || row['Name'] || row['Item'] || '').trim()
+                const product = String(row['product'] || row['name'] || row['item'] || row['product name'] || '').trim()
                 if (!product) {
                     return null
                 }
-                const dept = String(row['Category'] || row['Dept'] || row['Department'] || 'Uncategorized').trim() || 'Uncategorized'
-                const unitCost = parseNumeric(row['Cost Price'] || row['Unit Cost'] || row['UnitCost'] || row['Cost'] || 0)
-                const sellingPrice = parseNumeric(row['Selling Price'] || row['SellingPrice'] || row['Unit Price'] || row['Price'] || 0)
-                const closing = parseNumeric(row['Closing'] || row['Stock'] || row['Quantity'] || row['Qty'] || 0)
-                const openQty = parseNumeric(row['OpenQty'] || row['Opening Qty'] || row['OpeningQuantity'] || row['Opening Stock'] || closing)
-                const purchased = parseNumeric(row['Purchased'] || row['Purchase Qty'] || 0)
-                const sold = parseNumeric(row['Sold'] || row['Sold Qty'] || 0)
-                const expiryDate = String(row['Expiry Date'] || row['ExpiryDate'] || row['Expiry'] || '').trim()
-                const damagedExpired = parseNumeric(row['Damaged/Expired'] || row['Damaged Expired'] || row['DamagedExpired'] || 0)
-                const sku = String(row['SKU'] || row['Sku'] || row['sku'] || row['Product Code'] || row['Product code'] || row['Item Code'] || row['Item code'] || '').trim()
-                const description = String(row['Description'] || row['description'] || row['Product Description'] || row['Product description'] || '').trim()
-                const branch = String(row['Branch'] || row['branch'] || '').trim()
+                const dept = String(row['category'] || row['dept'] || row['department'] || 'Uncategorized').trim() || 'Uncategorized'
+                const unitCost = parseNumeric(row['cost price'] || row['unit cost'] || row['unitcost'] || row['cost'] || 0)
+                const sellingPrice = parseNumeric(row['selling price'] || row['sellingprice'] || row['unit price'] || row['price'] || 0)
+                const closing = parseNumeric(row['items in stock'] || row['closing'] || row['stock'] || row['quantity'] || row['qty'] || 0)
+                const openQty = parseNumeric(row['openqty'] || row['opening qty'] || row['openingquantity'] || row['opening stock'] || closing)
+                const purchased = parseNumeric(row['purchased'] || row['purchase qty'] || 0)
+                const sold = parseNumeric(row['sold'] || row['sold qty'] || 0)
+                const expiryDate = String(row['expiry date'] || row['expirydate'] || row['expiry'] || '').trim()
+                const damagedExpired = parseNumeric(row['damaged/expired'] || row['damaged expired'] || row['damagedexpired'] || 0)
+                const sku = String(row['sku'] || row['product code'] || row['item code'] || '').trim()
+                const description = String(row['description'] || row['product description'] || '').trim()
+                const branch = String(row['branch'] || '').trim()
 
                 return {
                     product,

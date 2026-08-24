@@ -256,9 +256,9 @@ function normalizeProductRow(row: ImportRecord, existingSkus: string[]) {
         sku = makeID('SKU')
     }
     const category = stringValue(row['category'] || row['dept'] || row['department'] || row['sheetCategory'] || 'General') || 'General'
-    const stockQty = Math.max(0, parseNumeric(row['march stock count'] || row['stock qty'] || row['closing'] || row['quantity'] || row['qty'] || row['opening stock qty'] || 0))
-    const unitCost = Math.max(0, parseNumeric(row['unit cost'] || row['unit_cost'] || row['unit price'] || row['cost'] || 0))
-    const unitPrice = Math.max(0, parseNumeric(row['selling price'] || row['unit selling price'] || row['unit price'] || row['unit_price'] || row['price'] || 0))
+    const stockQty = Math.max(0, parseNumeric(row['march stock count'] || row['items in stock'] || row['stock qty'] || row['closing'] || row['quantity'] || row['qty'] || row['opening stock qty'] || 0))
+    const unitCost = Math.max(0, parseNumeric(row['unit cost'] || row['unit_cost'] || row['cost price'] || row['cost'] || 0))
+    const unitPrice = Math.max(0, parseNumeric(row['selling price'] || row['unit selling price'] || row['sellingprice'] || row['unit price'] || row['unit_price'] || row['price'] || 0))
     const purchased = Math.max(0, parseNumeric(row['purchased'] || row['purchase qty'] || row['purchased qty'] || row['no. purchased'] || 0))
     const sold = Math.max(0, parseNumeric(row['sold'] || row['sold qty'] || row['qty sold'] || 0))
     const description = stringValue(row['description'] || row['product description'] || '')
@@ -282,6 +282,7 @@ function normalizeProductRow(row: ImportRecord, existingSkus: string[]) {
         purchased,
         sold,
         unitCost,
+        sellingPrice: unitPrice,
         closing: stockQty,
     }
 }
