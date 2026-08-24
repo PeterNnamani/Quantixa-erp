@@ -6082,6 +6082,11 @@ html[data-theme='dark'] .pricing-row span {
 }
 
 @media print {
+  @page {
+    size: 76mm auto;
+    margin: 0;
+  }
+
   body * {
     visibility: hidden !important;
   }
@@ -6095,8 +6100,9 @@ html[data-theme='dark'] .pricing-row span {
     position: absolute;
     inset: 0;
     display: grid;
-    width: 100%;
-    padding: 28px;
+    width: 76mm;
+    min-height: 100%;
+    padding: 5mm;
     border: 0;
     border-radius: 0;
     box-shadow: none;

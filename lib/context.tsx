@@ -386,7 +386,7 @@ function normalizeRemoteSales(data: any[], saleItems: any[] = []): AppState['sal
     paymentStatus: item.payment_status || '',
     notes: item.notes || '',
     status: item.status || '',
-    enteredBy: item.created_by || 'System',
+    enteredBy: item.sales_rep || item.created_by || 'System',
     amountPaid: Number(item.amount_paid || 0),
     balance: Number(item.balance ?? Math.max(0, Number(item.total_amount || 0) - Number(item.amount_paid || 0))),
     branch: item.branch || '',

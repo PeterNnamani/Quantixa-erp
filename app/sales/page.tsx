@@ -40,7 +40,7 @@ export default function SalesPage() {
   const salesWithMetadata = useMemo(() => {
     return sales.map((sale) => {
       const branch = (sale as any).branch || 'Head Office'
-      const salesRep = sale.enteredBy || 'Peter'
+      const salesRep = sale.enteredBy || 'System'
       const category = (sale.items?.[0]?.dept as string) || 'Retail'
       const paymentMethod = sale.paymentMethod || 'Transfer'
       const orderStatus = (sale as any).orderStatus || (sale.paymentStatus === 'PAID' ? 'Completed' : 'Pending')
@@ -62,7 +62,7 @@ export default function SalesPage() {
   }, [sales])
 
   const uniqueCustomers = useMemo(() => ['All Customers', ...Array.from(new Set(sales.map((sale) => sale.customer)))], [sales])
-  const uniqueSalesReps = useMemo(() => ['All Sales Reps', ...Array.from(new Set(sales.map((sale) => sale.enteredBy || 'Peter')))], [sales])
+  const uniqueSalesReps = useMemo(() => ['All Sales Reps', ...Array.from(new Set(sales.map((sale) => sale.enteredBy || 'System')))], [sales])
   const uniqueCategories = useMemo(() => ['All Categories', ...Array.from(new Set(salesWithMetadata.map((sale) => sale.category)))], [salesWithMetadata])
 
   const filteredSales = useMemo(() => {
@@ -293,6 +293,7 @@ export default function SalesPage() {
       const notes = String(row['notes'] || row['memo'] || row['description'] || '').trim()
       const branch = String(row['branch'] || row['location'] || 'Head Office').trim() || 'Head Office'
       const salesRep = String(row['sales rep'] || row['salesrep'] || row['entered by'] || user?.name || 'System').trim()
+      const deviceUsed: Sale['deviceUsed'] = /android|iphone|ipad|mobile/i.test(navigator.userAgent) ? 'Phone' : 'PC'
 
       const itemProduct = String(row['product'] || row['item'] || row['description'] || '').trim()
       const requestedDept = String(row['category'] || row['dept'] || row['department'] || '').trim()
@@ -323,6 +324,7 @@ export default function SalesPage() {
         notes,
         status: paymentStatus === 'CREDIT' || paymentStatus === 'OVERDUE' ? 'PENDING' : 'ACTIVE',
         enteredBy: salesRep,
+        deviceUsed,
       }
 
       importedSales.push(sale)
