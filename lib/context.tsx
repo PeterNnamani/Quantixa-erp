@@ -513,7 +513,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       if (!supabase || !user?.companyId) return
       const companyId = user.companyId
       try {
-        const [{ data: salesData, error: salesErr }, { data: purchasesData, error: purchasesErr }, { data: expensesData, error: expensesErr }, { data: categoriesData, error: categoriesErr }, { data: inventoryData, error: inventoryErr }, { data: prepaymentsData, error: prepaymentsErr }, { data: contactsData, error: contactsErr }, { data: banksData, error: banksErr }, { data: txnsData, error: txnsErr }] = await Promise.all([
+        const [{ data: salesData, error: salesErr }, { data: purchasesData, error: purchasesErr }, { data: expensesData, error: expensesErr }, { data: categoriesData, error: categoriesErr }, { data: inventoryData, error: inventoryErr }, { data: prepaymentsData, error: prepaymentsErr }, { data: contactsData, error: contactsErr }, { data: banksData, error: banksErr }, { data: txnsData, error: txnsErr }, { data: loansData, error: loansErr }, { data: receivablesData, error: receivablesErr }, { data: payablesData, error: payablesErr }, { data: accountsData, error: accountsErr }, { data: entriesData, error: entriesErr }, { data: linesData, error: linesErr }] = await Promise.all([
           supabase.from('sales').select('*').eq('company_id', companyId).order('sale_date', { ascending: false }).limit(200),
           supabase.from('purchases').select('*').eq('company_id', companyId).order('purchase_date', { ascending: false }).limit(200),
           supabase.from('expenses').select('*').eq('company_id', companyId).order('expense_date', { ascending: false }).limit(200),
@@ -523,6 +523,12 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
           supabase.from('contacts').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
           supabase.from('bank_accounts').select('id,name,balance').eq('company_id', companyId).order('created_at', { ascending: false }).limit(100),
           supabase.from('bank_transactions').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
+          supabase.from('loans').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
+          supabase.from('receivables').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
+          supabase.from('payables').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
+          supabase.from('chart_of_accounts').select('*').eq('company_id', companyId).order('code'),
+          supabase.from('journal_entries').select('*').eq('company_id', companyId).order('entry_date', { ascending: false }).limit(1000),
+          supabase.from('journal_lines').select('*').eq('company_id', companyId).limit(5000),
         ])
 
         if (salesErr) console.error('Error loading sales from Supabase', salesErr)
@@ -540,6 +546,12 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         if (contactsErr) console.error('Error loading contacts from Supabase', contactsErr)
         if (banksErr) console.error('Error loading bank accounts from Supabase', banksErr)
         if (txnsErr) console.error('Error loading bank transactions from Supabase', txnsErr)
+        if (loansErr) console.error('Error loading loans from Supabase', loansErr)
+        if (receivablesErr) console.error('Error loading receivables from Supabase', receivablesErr)
+        if (payablesErr) console.error('Error loading payables from Supabase', payablesErr)
+        if (accountsErr) console.error('Error loading chart of accounts from Supabase', accountsErr)
+        if (entriesErr) console.error('Error loading journal entries from Supabase', entriesErr)
+        if (linesErr) console.error('Error loading journal lines from Supabase', linesErr)
 
         if (!mounted) return
 
@@ -555,24 +567,41 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             : []
         const { supplierList, customerList } = normalizeRemoteContacts(contactsData || [])
 
-        if (remoteSales.length > 0 || remotePurchases.length > 0 || remoteExpenses.length > 0 || remoteInventory.length > 0 || remotePrepayments.length > 0 || supplierList.length > 0 || customerList.length > 0) {
-          setState((prev) => ({
-            ...prev,
-            sales: remoteSales.length > 0 ? remoteSales : prev.sales,
-            purchases: remotePurchases.length > 0 ? remotePurchases : prev.purchases,
-            expenses: remoteExpenses.length > 0 ? remoteExpenses : prev.expenses,
-            expenseCategories: remoteExpenseCategories.length > 0 ? remoteExpenseCategories : prev.expenseCategories,
-            inventory: remoteInventory.length > 0 ? remoteInventory : prev.inventory,
-            prepayments: remotePrepayments.length > 0 ? remotePrepayments : prev.prepayments,
-            supplierList: supplierList.length > 0 ? supplierList : prev.supplierList,
-            customerList: customerList.length > 0 ? customerList : prev.customerList,
-          }))
-        }
+        setState((prev) => ({
+          ...prev,
+          sales: salesErr ? prev.sales : remoteSales,
+          purchases: purchasesErr ? prev.purchases : remotePurchases,
+          expenses: expensesErr ? prev.expenses : remoteExpenses,
+          expenseCategories: categoriesErr ? prev.expenseCategories : remoteExpenseCategories,
+          inventory: inventoryErr ? prev.inventory : remoteInventory,
+          prepayments: prepaymentsErr && prepaymentsErr.code !== 'PGRST205' ? prev.prepayments : remotePrepayments,
+          supplierList: contactsErr ? prev.supplierList : supplierList,
+          customerList: contactsErr ? prev.customerList : customerList,
+          loans: loansErr ? prev.loans : (loansData || []),
+          receivables: receivablesErr ? prev.receivables : (receivablesData || []),
+          payables: payablesErr ? prev.payables : (payablesData || []),
+          chartOfAccounts: accountsErr ? prev.chartOfAccounts : (accountsData || []).map((account: any) => ({
+            id: account.id, code: account.code, name: account.name, accountType: account.account_type,
+            accountSubType: account.account_subtype, normalBalance: account.normal_balance,
+            isControlAccount: account.is_control_account, isActive: account.is_active, currency: account.currency,
+          })),
+          journalEntries: entriesErr ? prev.journalEntries : (entriesData || []).map((entry: any) => ({
+            id: entry.id, entryDate: entry.entry_date, periodId: entry.period_id, reference: entry.reference || '',
+            description: entry.description || '', sourceModule: entry.source_module, sourceId: entry.source_id,
+            status: entry.status, createdBy: entry.created_by || 'System', createdAt: entry.created_at,
+          })),
+          journalLines: linesErr ? prev.journalLines : (linesData || []).map((line: any) => ({
+            id: line.id, entryId: line.entry_id, accountId: line.account_id, debit: Number(line.debit || 0),
+            credit: Number(line.credit || 0), description: line.description || '',
+          })),
+        }))
 
         if (banksData && banksData.length > 0) {
           const banksMap: Record<string, number> = {}
           banksData.forEach((b: any) => { banksMap[b.name] = Number(b.balance || 0) })
-          setState((prev) => ({ ...prev, banks: { ...prev.banks, ...banksMap } }))
+          setState((prev) => ({ ...prev, banks: banksMap }))
+        } else if (!banksErr) {
+          setState((prev) => ({ ...prev, banks: {} }))
         }
 
         if (txnsData && txnsData.length > 0) {
@@ -590,7 +619,9 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             bank: t.bank_account_id,
             created_at: t.created_at,
           }))
-          setState((prev) => ({ ...prev, bankTxns: normalized.concat(prev.bankTxns) }))
+          setState((prev) => ({ ...prev, bankTxns: normalized }))
+        } else if (!txnsErr) {
+          setState((prev) => ({ ...prev, bankTxns: [] }))
         }
       } catch (err) {
         console.error('Unable to load remote accounting data', err)

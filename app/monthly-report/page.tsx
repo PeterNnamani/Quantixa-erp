@@ -14,11 +14,25 @@ export default function MonthlyReportPage() {
     const [statusMessage, setStatusMessage] = useState('Report generated for the current month.')
     const [includeVAT, setIncludeVAT] = useState(false)
 
-    const totalRevenue = useMemo(() => state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0), [state.sales])
-    const totalExpenses = useMemo(() => state.expenses.reduce((sum, expense) => sum + expense.amount, 0), [state.expenses])
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    const monthlySales = useMemo(() => state.sales.filter((sale) => sale.date?.startsWith(currentMonth) && sale.status !== 'VOID'), [state.sales, currentMonth])
+    const monthlyPurchases = useMemo(() => state.purchases.filter((purchase) => purchase.date?.startsWith(currentMonth) && purchase.status !== 'VOID'), [state.purchases, currentMonth])
+    const monthlyExpenses = useMemo(() => state.expenses.filter((expense) => expense.date?.startsWith(currentMonth) && expense.status !== 'VOID'), [state.expenses, currentMonth])
+    const monthlyTransactions = useMemo(() => state.bankTxns.filter((txn) => txn.date?.startsWith(currentMonth)), [state.bankTxns, currentMonth])
+    const totalRevenue = useMemo(() => monthlySales.reduce((sum, sale) => sum + sale.totalAmount, 0), [monthlySales])
+    const totalExpenses = useMemo(() => monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0), [monthlyExpenses])
     const netProfit = totalRevenue - totalExpenses
-    const totalPurchases = useMemo(() => state.purchases.reduce((sum, purchase) => sum + purchase.total, 0), [state.purchases])
+    const totalPurchases = useMemo(() => monthlyPurchases.reduce((sum, purchase) => sum + purchase.total, 0), [monthlyPurchases])
     const inventoryValue = useMemo(() => state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0), [state.inventory])
+    const bankAccounts = Object.entries(state.banks)
+    const totalBankBalance = bankAccounts.reduce((sum, [, balance]) => sum + Number(balance || 0), 0)
+    const cashAccount = state.chartOfAccounts.find((account) => account.name.toLowerCase().includes('cash') && !account.name.toLowerCase().includes('bank'))
+    const monthlyPostedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && entry.entryDate?.startsWith(currentMonth)).map((entry) => entry.id))
+    const cashAccountBalance = cashAccount
+        ? state.journalLines.filter((line) => line.accountId === cashAccount.id && monthlyPostedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+        : 0
+    const cashReceived = monthlyTransactions.filter((txn) => Number(txn.amount) > 0).reduce((sum, txn) => sum + Number(txn.amount), 0)
+    const cashPaid = monthlyTransactions.filter((txn) => Number(txn.amount) < 0).reduce((sum, txn) => sum + Math.abs(Number(txn.amount)), 0)
     const reportVAT = includeVAT ? calculateVAT(totalRevenue) : 0
     const reportExportData = {
         action: 'Report export',
@@ -34,7 +48,7 @@ export default function MonthlyReportPage() {
         { label: 'Total Expenses', value: formatCurrency(totalExpenses), change: 'Database-backed' },
         { label: 'Net Profit', value: formatCurrency(netProfit), change: 'Database-backed' },
         { label: 'Purchases', value: formatCurrency(totalPurchases), change: 'Database-backed' },
-        { label: 'Transactions', value: String(state.sales.length + state.purchases.length + state.expenses.length), change: 'Database-backed' },
+        { label: 'Transactions', value: String(monthlySales.length + monthlyPurchases.length + monthlyExpenses.length), change: 'Database-backed' },
         { label: 'Inventory Value', value: formatCurrency(inventoryValue), change: 'Database-backed' },
     ]
 
@@ -46,8 +60,8 @@ export default function MonthlyReportPage() {
 
     const salesCards = [
         { label: 'Total Sales', value: formatCurrency(totalRevenue) },
-        { label: 'Orders', value: String(state.sales.length) },
-        { label: 'Average Order Value', value: state.sales.length > 0 ? formatCurrency(totalRevenue / state.sales.length) : formatCurrency(0) },
+        { label: 'Orders', value: String(monthlySales.length) },
+        { label: 'Average Order Value', value: monthlySales.length > 0 ? formatCurrency(totalRevenue / monthlySales.length) : formatCurrency(0) },
         { label: 'Best Product', value: state.inventory[0]?.product || 'Not available' },
     ]
 
@@ -235,16 +249,26 @@ export default function MonthlyReportPage() {
                         <div className="statement-block compact">
                             <div className="statement-row">
                                 <span>Cash Received</span>
-                                <strong>₦60M</strong>
+                                <strong>{formatCurrency(cashReceived)}</strong>
                             </div>
                             <div className="statement-row">
                                 <span>Cash Paid</span>
-                                <strong>₦35M</strong>
+                                <strong>{formatCurrency(cashPaid)}</strong>
                             </div>
                             <div className="statement-row net-row">
                                 <span>Net Movement</span>
-                                <strong>₦25M</strong>
+                                <strong>{formatCurrency(cashReceived - cashPaid)}</strong>
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="report-card">
+                        <div className="card-hd"><div><div className="card-title">Bank Accounts</div><div className="section-subtitle">Live balances from the database</div></div></div>
+                        <div className="statement-block compact">
+                            {bankAccounts.map(([bank, balance]) => <div key={bank} className="statement-row"><span>{bank}</span><strong>{formatCurrency(Number(balance))}</strong></div>)}
+                            {bankAccounts.length === 0 && <div className="statement-row"><span>No bank accounts configured</span><strong>{formatCurrency(0)}</strong></div>}
+                            <div className="statement-row total-row"><span>Total Bank Balance</span><strong>{formatCurrency(totalBankBalance)}</strong></div>
+                            <div className="statement-row"><span>Cash Account (Ledger)</span><strong>{formatCurrency(cashAccountBalance)}</strong></div>
                         </div>
                     </div>
 
@@ -258,10 +282,8 @@ export default function MonthlyReportPage() {
                         <div className="ai-panel">
                             <p><strong>Monthly Intelligence</strong></p>
                             <p>{statusMessage}</p>
-                            <p>Your revenue increased 18%.</p>
-                            <p><strong>Main growth driver:</strong> Electronics category.</p>
-                            <p><strong>Warning:</strong> Fuel expenses increased 22%.</p>
-                            <p><strong>Recommendation:</strong> Review transport costs.</p>
+                            <p>{monthlySales.length} sales, {monthlyExpenses.length} expenses, and {monthlyTransactions.length} bank transactions were loaded for {currentMonth}.</p>
+                            <p><strong>Bank balance:</strong> {formatCurrency(totalBankBalance)} across {bankAccounts.length} account{bankAccounts.length === 1 ? '' : 's'}.</p>
                         </div>
                     </div>
                 </div>

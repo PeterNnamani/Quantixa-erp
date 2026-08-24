@@ -14,10 +14,27 @@ export default function AnnualReportPage() {
     const [selectedStatement, setSelectedStatement] = useState('Profit & Loss')
     const [includeVAT, setIncludeVAT] = useState(false)
 
-    const annualRevenue = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0)
-    const annualExpenses = state.expenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const annualPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.total, 0)
+    const currentYear = new Date().getUTCFullYear().toString()
+    const annualSales = state.sales.filter((sale) => sale.date?.startsWith(currentYear) && sale.status !== 'VOID')
+    const annualPurchaseRows = state.purchases.filter((purchase) => purchase.date?.startsWith(currentYear) && purchase.status !== 'VOID')
+    const annualExpenseRows = state.expenses.filter((expense) => expense.date?.startsWith(currentYear) && expense.status !== 'VOID')
+    const annualBankTransactions = state.bankTxns.filter((txn) => txn.date?.startsWith(currentYear))
+    const annualRevenue = annualSales.reduce((sum, sale) => sum + sale.totalAmount, 0)
+    const annualExpenses = annualExpenseRows.reduce((sum, expense) => sum + expense.amount, 0)
+    const annualPurchases = annualPurchaseRows.reduce((sum, purchase) => sum + purchase.total, 0)
     const annualNetProfit = annualRevenue - annualPurchases - annualExpenses
+    const bankAccounts = Object.entries(state.banks)
+    const bankBalance = bankAccounts.reduce((sum, [, balance]) => sum + Number(balance || 0), 0)
+    const cashReceived = annualBankTransactions.filter((txn) => Number(txn.amount) > 0).reduce((sum, txn) => sum + Number(txn.amount), 0)
+    const cashPaid = annualBankTransactions.filter((txn) => Number(txn.amount) < 0).reduce((sum, txn) => sum + Math.abs(Number(txn.amount)), 0)
+    const cashAccount = state.chartOfAccounts.find((account) => account.name.toLowerCase().includes('cash') && !account.name.toLowerCase().includes('bank'))
+    const postedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && entry.entryDate?.startsWith(currentYear)).map((entry) => entry.id))
+    const cashAccountBalance = cashAccount
+        ? state.journalLines.filter((line) => line.accountId === cashAccount.id && postedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+        : 0
+    const inventoryValue = state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0)
+    const loansBalance = state.loans.reduce((sum, loan) => sum + Number(loan.balance ?? loan.amount ?? 0), 0)
+    const payablesBalance = state.payables.reduce((sum, item) => sum + Number(item.outstanding_amount ?? item.outstandingAmount ?? item.amount ?? 0), 0)
     const reportVAT = includeVAT ? calculateVAT(annualRevenue) : 0
     const reportExportData = {
         reportType: 'annual',
@@ -33,14 +50,14 @@ export default function AnnualReportPage() {
         { label: 'Annual Expenses', value: formatCurrency(annualExpenses) },
         { label: 'Net Profit', value: formatCurrency(annualNetProfit) },
         { label: 'Purchases', value: formatCurrency(annualPurchases) },
-        { label: 'Inventory Value', value: formatCurrency(state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0)) },
-        { label: 'Transactions', value: String(state.sales.length + state.purchases.length + state.expenses.length) },
+        { label: 'Inventory Value', value: formatCurrency(inventoryValue) },
+        { label: 'Transactions', value: String(annualSales.length + annualPurchaseRows.length + annualExpenseRows.length) },
     ]
 
     const scorecard = [
         ['Revenue Growth', annualRevenue > 0 ? '★★★★★' : '—'],
         ['Profitability', annualNetProfit !== 0 || (annualRevenue > 0 || annualExpenses > 0 || annualPurchases > 0) ? '★★★★★' : '—'],
-        ['Cash Management', state.banks && Object.keys(state.banks).length > 0 ? '★★★★☆' : '—'],
+        ['Cash Management', bankAccounts.length > 0 || cashAccount ? '★★★★☆' : '—'],
         ['Debt Control', '—'],
         ['Inventory Efficiency', state.inventory.length > 0 ? '★★★★★' : '—'],
     ]
@@ -102,7 +119,7 @@ export default function AnnualReportPage() {
                             <div className="year-bars">
                                 <div className="year-pill">Current<br />{formatCurrency(annualRevenue)}</div>
                                 <div className="year-pill active">Net Profit<br />{formatCurrency(annualNetProfit)}</div>
-                                <div className="year-pill">Transactions<br />{String(state.sales.length + state.purchases.length + state.expenses.length)}</div>
+                                <div className="year-pill">Transactions<br />{String(annualSales.length + annualPurchaseRows.length + annualExpenseRows.length)}</div>
                             </div>
                         </div>
                     </div>
@@ -136,15 +153,15 @@ export default function AnnualReportPage() {
                         <div className="statement-block">
                             <div className="statement-section">
                                 <div className="statement-title">Assets</div>
-                                <div className="statement-row"><span>Cash</span><strong>{formatCurrency(Object.values(state.banks).reduce((sum, balance) => sum + balance, 0))}</strong></div>
-                                <div className="statement-row"><span>Inventory</span><strong>{formatCurrency(state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0))}</strong></div>
-                                <div className="statement-row"><span>Transactions</span><strong>{String(state.sales.length + state.purchases.length + state.expenses.length)}</strong></div>
-                                <div className="statement-row total-row"><span>Total Assets</span><strong>{formatCurrency(Object.values(state.banks).reduce((sum, balance) => sum + balance, 0) + state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0))}</strong></div>
+                                <div className="statement-row"><span>Bank Accounts</span><strong>{formatCurrency(bankBalance)}</strong></div>
+                                <div className="statement-row"><span>Cash Account (Ledger)</span><strong>{formatCurrency(cashAccountBalance)}</strong></div>
+                                <div className="statement-row"><span>Inventory</span><strong>{formatCurrency(inventoryValue)}</strong></div>
+                                <div className="statement-row total-row"><span>Total Assets</span><strong>{formatCurrency(bankBalance + cashAccountBalance + inventoryValue)}</strong></div>
                             </div>
                             <div className="statement-section">
                                 <div className="statement-title">Liabilities</div>
-                                <div className="statement-row"><span>Loans</span><strong>{formatCurrency(0)}</strong></div>
-                                <div className="statement-row"><span>Payables</span><strong>{formatCurrency(0)}</strong></div>
+                                <div className="statement-row"><span>Loans</span><strong>{formatCurrency(loansBalance)}</strong></div>
+                                <div className="statement-row"><span>Payables</span><strong>{formatCurrency(payablesBalance)}</strong></div>
                                 <div className="statement-row net-row"><span>Equity</span><strong>{formatCurrency(annualNetProfit)}</strong></div>
                             </div>
                         </div>
@@ -170,6 +187,26 @@ export default function AnnualReportPage() {
 
                 <div className="report-grid two-col">
                     <div className="report-card">
+                        <div className="card-hd"><div><div className="card-title">Bank Accounts</div><div className="section-subtitle">Live balances from the database</div></div></div>
+                        <div className="statement-block compact">
+                            {bankAccounts.map(([bank, balance]) => <div key={bank} className="statement-row"><span>{bank}</span><strong>{formatCurrency(Number(balance))}</strong></div>)}
+                            {bankAccounts.length === 0 && <div className="statement-row"><span>No bank accounts configured</span><strong>{formatCurrency(0)}</strong></div>}
+                            <div className="statement-row total-row"><span>Total Bank Balance</span><strong>{formatCurrency(bankBalance)}</strong></div>
+                            <div className="statement-row"><span>Cash Account (Ledger)</span><strong>{formatCurrency(cashAccountBalance)}</strong></div>
+                        </div>
+                    </div>
+                    <div className="report-card">
+                        <div className="card-hd"><div><div className="card-title">Cash Flow</div><div className="section-subtitle">Bank transactions for {currentYear}</div></div></div>
+                        <div className="statement-block compact">
+                            <div className="statement-row"><span>Cash Received</span><strong>{formatCurrency(cashReceived)}</strong></div>
+                            <div className="statement-row"><span>Cash Paid</span><strong>{formatCurrency(cashPaid)}</strong></div>
+                            <div className="statement-row net-row"><span>Net Movement</span><strong>{formatCurrency(cashReceived - cashPaid)}</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="report-grid two-col">
+                    <div className="report-card">
                         <div className="card-hd">
                             <div>
                                 <div className="card-title">Business Growth Analytics</div>
@@ -181,7 +218,7 @@ export default function AnnualReportPage() {
                             {statementRows.map((row) => (
                                 <div key={row} className="statement-row">
                                     <span>{row}</span>
-                                    <strong>{row === 'Margins' ? '0%' : 'Ready'}</strong>
+                                    <strong>{row === 'Margins' ? formatCurrency(annualRevenue > 0 ? (annualNetProfit / annualRevenue) * 100 : 0) + '%' : row === 'Revenue' ? formatCurrency(annualRevenue) : row === 'Expenses' ? formatCurrency(annualExpenses) : row === 'Net Profit' ? formatCurrency(annualNetProfit) : '—'}</strong>
                                 </div>
                             ))}
                         </div>
@@ -198,7 +235,7 @@ export default function AnnualReportPage() {
                             <p><strong>Business Review</strong></p>
                             <p>{annualRevenue > 0 ? 'Revenue data is available from the database.' : 'No revenue records are present yet.'}</p>
                             <p>{annualExpenses > 0 ? 'Expense data is available from the database.' : 'No expense records are present yet.'}</p>
-                            <p><strong>Recommendation:</strong> Add accounting records to populate this report.</p>
+                            <p><strong>Bank position:</strong> {formatCurrency(bankBalance)} across {bankAccounts.length} account{bankAccounts.length === 1 ? '' : 's'}.</p>
                         </div>
                     </div>
                 </div>
