@@ -198,12 +198,34 @@
 
 .bulk-import-progress {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 18px;
-  color: var(--text2);
+  gap: 10px;
+  color: var(--text);
   font-size: 0.9rem;
+}
+
+.bulk-import-progress-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 28, 58, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.bulk-import-progress strong {
+  font-size: 1rem;
+}
+
+.bulk-import-progress > span {
+  max-width: min(90vw, 520px);
+  overflow: hidden;
+  color: var(--text2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bulk-import-progress-ring {
@@ -214,6 +236,7 @@
   border-radius: 50%;
   background: conic-gradient(var(--royal) var(--progress), var(--royal-light) 0);
   position: relative;
+  transition: background 180ms linear;
 }
 
 .bulk-import-progress-ring::after {

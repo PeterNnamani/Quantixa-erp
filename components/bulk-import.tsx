@@ -52,7 +52,7 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
         }
         setBusy(true)
         setError('')
-        setProgress(8)
+        setProgress(0)
         try {
             const prepared = prepareGenericImportPayload(rows)
             setSummary(prepared.summary)
@@ -61,7 +61,7 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
                 request.open('POST', '/api/import')
                 request.setRequestHeader('Content-Type', 'application/json')
                 request.upload.onprogress = (event) => {
-                    if (event.lengthComputable) setProgress(Math.max(8, Math.round((event.loaded / event.total) * 75)))
+                    if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 80))
                 }
                 request.onload = () => {
                     if (request.status < 200 || request.status >= 300) {
@@ -143,19 +143,22 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
 
     return <>
         <button className="btn btn-secondary" type="button" onClick={() => setOpen(true)}><FileUp size={15} /> {label}</button>
-        {open && <div className="bulk-import-backdrop" role="dialog" aria-modal="true" aria-label="Bulk upload">
+        {open && progress === null && <div className="bulk-import-backdrop" role="dialog" aria-modal="true" aria-label="Bulk upload">
             <section className="bulk-import-modal">
                 <div className="card-hd"><div><div className="card-title">Intelligent bulk upload</div><div className="section-subtitle">Upload a file with headings. QUANTIXA identifies sales, expenses, staff, inventory, purchases, and contacts, then saves each row to the matching database table.</div></div><button className="icon-button" type="button" onClick={close} aria-label="Close"><X size={18} /></button></div>
                 <label className="bulk-import-dropzone">Choose Excel, CSV, or Word table<input type="file" accept=".csv,.xls,.xlsx,.docx" onChange={handleFile} /></label>
                 {fileName && <div className="metric-note">{fileName} · {rows.length} row{rows.length === 1 ? '' : 's'} detected</div>}
                 {error && <div className="staff-inline-notice error">{error}</div>}
                 {summary && !error && <div className="bulk-import-summary">Detected: {summary.sales} sales · {summary.purchases} purchases · {summary.expenses} expenses · {summary.products} products · {summary.staff} staff · {summary.contacts} contacts</div>}
-                {progress !== null && <div className="bulk-import-progress" role="status" aria-live="polite" aria-label={`Import progress ${progress}%`}>
-                    <div className="bulk-import-progress-ring" style={{ '--progress': `${progress}%` } as CSSProperties}><span>{progress}%</span></div>
-                    <span>{progress === 100 ? 'Import complete' : 'Saving imported records'}</span>
-                </div>}
                 <div className="btn-group"><button className="btn btn-secondary" type="button" onClick={close} disabled={busy}>Cancel</button><button className="btn btn-primary" type="button" disabled={!rows.length || busy} onClick={() => void upload()}>{busy ? 'Saving...' : 'Analyze and save'}</button></div>
             </section>
+        </div>}
+        {open && progress !== null && <div className="bulk-import-progress-overlay" role="status" aria-live="polite" aria-label={`Import progress ${progress}%`}>
+            <div className="bulk-import-progress">
+                <div className="bulk-import-progress-ring" style={{ '--progress': `${progress}%` } as CSSProperties}><span>{progress}%</span></div>
+                <strong>{progress === 100 ? 'Import complete' : 'Saving imported records'}</strong>
+                <span>{fileName}</span>
+            </div>
         </div>}
     </>
 }
