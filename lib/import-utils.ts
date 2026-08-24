@@ -47,7 +47,7 @@ function normalizeRowKeys(row: ImportRecord): ImportRecord {
     }, {} as ImportRecord)
 }
 
-function dateValue(value: unknown): string {
+export function parseImportDate(value: unknown): string {
     const raw = stringValue(value)
     if (!raw) return new Date().toISOString().slice(0, 10)
 
@@ -144,7 +144,7 @@ function normalizeExpenseRow(row: ImportRecord) {
     const department = stringValue(row['department'] || row['dept'] || '')
     const payment = stringValue(row['payment method'] || row['method'] || '')
     const notes = [vendor && `Vendor: ${vendor}`, department && `Department: ${department}`, payment && `Payment: ${payment}`, stringValue(row['notes'] || row['memo'] || '')].filter(Boolean).join(' | ')
-    return { id: makeID('EXP'), reference, date: dateValue(row['expense date'] || row['date'] || row['transaction date']), description, category, amount, status, notes, bank: stringValue(row['bank'] || row['account'] || row['payment account'] || '') }
+    return { id: makeID('EXP'), reference, date: parseImportDate(row['expense date'] || row['date'] || row['transaction date']), description, category, amount, status, notes, bank: stringValue(row['bank'] || row['account'] || row['payment account'] || '') }
 }
 
 function buildCustomerName(row: ImportRecord): string {
@@ -170,7 +170,7 @@ function normalizeSaleRow(row: ImportRecord) {
     const customer = buildCustomerName(row) || 'Walk-in Customer'
     const paymentMethod = stringValue(row['payment method'] || row['payment_method'] || row['method'] || 'Transfer') || 'Transfer'
     const paymentStatus = stringValue(row['payment status'] || row['payment_status'] || row['status'] || 'PAID').toUpperCase() || 'PAID'
-    const saleDate = dateValue(row['sale date'] || row['sale_date'] || row['date'] || row['transaction date'] || row['transaction_date'])
+    const saleDate = parseImportDate(row['sale date'] || row['sale_date'] || row['date'] || row['transaction date'] || row['transaction_date'])
     const reference = stringValue(row['reference'] || row['invoice number'] || row['invoice_number'] || row['invoice'] || makeID('SL'))
     const notes = stringValue(row['notes'] || row['memo'] || row['description'] || '')
     const branch = stringValue(row['branch'] || row['location'] || 'Head Office') || 'Head Office'
@@ -220,7 +220,7 @@ function normalizeSaleRow(row: ImportRecord) {
 
 function normalizePurchaseRow(row: ImportRecord) {
     const supplier = buildSupplierName(row) || 'Unknown Supplier'
-    const purchaseDate = dateValue(row['purchase date'] || row['purchase_date'] || row['date'] || row['transaction date'] || row['transaction_date'])
+    const purchaseDate = parseImportDate(row['purchase date'] || row['purchase_date'] || row['date'] || row['transaction date'] || row['transaction_date'])
     const reference = stringValue(row['reference'] || row['invoice number'] || row['invoice_number'] || row['invoice'] || makeID('PUR'))
     const invoiceNumber = stringValue(row['invoice number'] || row['invoice_number'] || row['invoice'] || '')
     const purchaseOrder = stringValue(row['purchase order'] || row['purchase_order'] || '')

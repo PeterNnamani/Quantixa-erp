@@ -7,7 +7,7 @@ import { useAccounting } from '@/lib/context'
 import { Sale } from '@/lib/context'
 import { formatCurrency, makeID, getCurrentDate, PAYMENT_TERMS, canEdit, parseNumeric } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
-import { parseExcelFile } from '@/lib/import-utils'
+import { parseExcelFile, parseImportDate } from '@/lib/import-utils'
 
 const branchOptions = ['All Branches', 'Head Office', 'Retail Outlet', 'Warehouse 01', 'Warehouse 02']
 const paymentMethods = ['All Payment Methods', 'Cash', 'Transfer', 'Cheque', 'Mobile Money', 'POS', 'Credit']
@@ -289,7 +289,7 @@ export default function SalesPage() {
       const customer = String(row['customer'] || row['client'] || row['customer name'] || 'Walk-in Customer').trim()
       const paymentMethod = String(row['payment method'] || row['paymentmethod'] || row['method'] || 'Transfer').trim() || 'Transfer'
       const paymentStatus = String(row['payment status'] || row['paymentstatus'] || row['status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
-      const date = String(row['sale date'] || row['date'] || getCurrentDate()).trim() || getCurrentDate()
+      const date = parseImportDate(row['sale date'] || row['date'])
       const notes = String(row['notes'] || row['memo'] || row['description'] || '').trim()
       const branch = String(row['branch'] || row['location'] || 'Head Office').trim() || 'Head Office'
       const salesRep = String(row['sales rep'] || row['salesrep'] || row['entered by'] || user?.name || 'System').trim()
