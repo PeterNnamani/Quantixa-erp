@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
-import { FileUp, X } from 'lucide-react'
+import { FileUp, ListOrdered, X } from 'lucide-react'
 import { useAccounting } from '@/lib/context'
 import { parseSpreadsheetFile, prepareGenericImportPayload, type ImportSummary } from '@/lib/import-utils'
 
@@ -171,6 +171,13 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
         {open && progress === null && <div className="bulk-import-backdrop" role="dialog" aria-modal="true" aria-label="Bulk upload">
             <section className="bulk-import-modal">
                 <div className="card-hd"><div><div className="card-title">Intelligent bulk upload</div><div className="section-subtitle">Upload a file with headings. QUANTIXA identifies sales, expenses, staff, inventory, purchases, and contacts, then saves each row to the matching database table.</div></div><button className="icon-button" type="button" onClick={close} aria-label="Close"><X size={18} /></button></div>
+                <div className="bulk-import-guide" role="note">
+                    <div className="bulk-import-guide-heading"><ListOrdered size={16} /><strong>Recommended table order</strong><span>Order is flexible</span></div>
+                    <ol className="bulk-import-order">
+                        <li>Contacts</li><li>Staff</li><li>Products</li><li>Purchases</li><li>Sales</li><li>Expenses</li>
+                    </ol>
+                    <p>Use one sheet per table and place column headings in the first row. Clear headings help QUANTIXA match each row correctly.</p>
+                </div>
                 <label className="bulk-import-dropzone">Choose Excel, CSV, or Word table<input type="file" accept=".csv,.xls,.xlsx,.docx" onChange={handleFile} /></label>
                 {fileName && <div className="metric-note">{fileName} · {rows.length} row{rows.length === 1 ? '' : 's'} detected</div>}
                 {error && <div className="staff-inline-notice error">{error}</div>}

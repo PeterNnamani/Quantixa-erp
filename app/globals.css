@@ -168,6 +168,51 @@
   box-shadow: var(--shadow-lg);
 }
 
+.bulk-import-guide {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  padding: 11px 13px;
+  border: 1px solid rgba(201, 162, 39, 0.28);
+  border-radius: var(--r);
+  background: var(--gold-xlight);
+  color: var(--text2);
+  font-size: 0.78rem;
+}
+
+.bulk-import-guide-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--royal-dark);
+}
+
+.bulk-import-guide-heading span {
+  margin-left: auto;
+  color: var(--text3);
+  font-size: 0.72rem;
+}
+
+.bulk-import-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 22px;
+  margin: 0;
+  padding: 0 0 0 22px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.bulk-import-order li {
+  padding-left: 1px;
+}
+
+.bulk-import-guide p {
+  margin: 0;
+  color: var(--text2);
+  line-height: 1.4;
+}
+
 .bulk-import-dropzone {
   display: grid;
   gap: 8px;
