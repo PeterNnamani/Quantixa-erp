@@ -89,6 +89,11 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'e
         contact: contactScore,
     }
 
+    const hasSaleIdentity = hasKey(row, ['sale date', 'invoice', 'receipt', 'payment method', 'payment status', 'total amount'])
+    if (hasSaleIdentity && saleScore >= 2) {
+        return 'sales'
+    }
+
     const winner = (Object.keys(scores) as Array<keyof typeof scores>).reduce((best, current) =>
         scores[current] > scores[best] ? current : best,
         'contact' as keyof typeof scores

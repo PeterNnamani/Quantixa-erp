@@ -282,17 +282,17 @@ export default function SalesPage() {
     const importErrors: string[] = []
 
     importRows.forEach((row) => {
-      const customer = String(row['Customer'] || row['customer'] || row['Client'] || 'Walk-in Customer').trim()
-      const paymentMethod = String(row['Payment Method'] || row['paymentMethod'] || row['Method'] || 'Transfer').trim() || 'Transfer'
-      const paymentStatus = String(row['Payment Status'] || row['paymentStatus'] || row['Status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
-      const date = String(row['Date'] || row['date'] || getCurrentDate()).trim() || getCurrentDate()
-      const notes = String(row['Notes'] || row['Memo'] || row['Description'] || '').trim()
-      const branch = String(row['Branch'] || row['branch'] || 'Head Office').trim() || 'Head Office'
-      const salesRep = String(row['Sales Rep'] || row['SalesRep'] || row['Entered By'] || user?.name || 'System').trim()
+      const customer = String(row['customer'] || row['client'] || row['customer name'] || 'Walk-in Customer').trim()
+      const paymentMethod = String(row['payment method'] || row['paymentmethod'] || row['method'] || 'Transfer').trim() || 'Transfer'
+      const paymentStatus = String(row['payment status'] || row['paymentstatus'] || row['status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
+      const date = String(row['sale date'] || row['date'] || getCurrentDate()).trim() || getCurrentDate()
+      const notes = String(row['notes'] || row['memo'] || row['description'] || '').trim()
+      const branch = String(row['branch'] || row['location'] || 'Head Office').trim() || 'Head Office'
+      const salesRep = String(row['sales rep'] || row['salesrep'] || row['entered by'] || user?.name || 'System').trim()
 
-      const itemProduct = String(row['Product'] || row['Item'] || row['Description'] || '').trim()
-      const requestedDept = String(row['Category'] || row['Dept'] || row['Department'] || '').trim()
-      const qty = Math.max(0, parseNumeric(row['Quantity'] || row['Qty'] || row['quantity'] || 1))
+      const itemProduct = String(row['product'] || row['item'] || row['description'] || '').trim()
+      const requestedDept = String(row['category'] || row['dept'] || row['department'] || '').trim()
+      const qty = Math.max(0, parseNumeric(row['quantity'] || row['qty'] || row['units'] || 1))
       const inventoryIndex = inventoryUpdates.findIndex((item) => item.product?.toLowerCase() === itemProduct.toLowerCase())
       const inventoryItem = inventoryIndex >= 0 ? inventoryUpdates[inventoryIndex] : undefined
       if (!inventoryItem) {
@@ -304,7 +304,7 @@ export default function SalesPage() {
         return
       }
       const itemDept = inventoryItem.dept || requestedDept || 'General'
-      const importedUnitPrice = parseNumeric(row['Unit Price'] || row['UnitPrice'] || row['Price'] || 0)
+      const importedUnitPrice = parseNumeric(row['unit price'] || row['unitprice'] || row['price'] || 0)
       const unitPrice = Math.max(0, importedUnitPrice || inventoryItem.sellingPrice || inventoryItem.unitCost || 0)
       const subtotal = qty * unitPrice
       const totalAmount = subtotal
