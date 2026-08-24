@@ -243,6 +243,10 @@ export default function StaffManagementPage() {
   }, [saveConfirmation])
 
   useEffect(() => {
+    setStaffMembers(state.staffMembers)
+  }, [state.staffMembers])
+
+  useEffect(() => {
     // Fetch staff list from DB for the current company and merge into state
     const loadFromDb = async () => {
       try {
