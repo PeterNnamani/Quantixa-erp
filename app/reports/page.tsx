@@ -76,6 +76,42 @@ export default function ReportsPage() {
             <div className="metric-value pos">{formatCurrency(totalBanks)}</div>
           </div>
         </div>
+
+        <div className="card" style={{ marginTop: '20px' }}>
+          <div className="card-hd">
+            <div>
+              <div className="card-title">Bank Balances</div>
+              <div className="card-subtitle">Balance by company bank account</div>
+            </div>
+          </div>
+          <div className="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bank Account</th>
+                  <th className="td-r">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(state.banks).map(([bank, balance]) => (
+                  <tr key={bank}>
+                    <td>{bank}</td>
+                    <td className="td-r">{formatCurrency(balance)}</td>
+                  </tr>
+                ))}
+                {Object.keys(state.banks).length === 0 && (
+                  <tr>
+                    <td colSpan={2}>No bank accounts configured.</td>
+                  </tr>
+                )}
+                <tr style={{ fontWeight: 800 }}>
+                  <td>Total Bank Balance</td>
+                  <td className="td-r">{formatCurrency(totalBanks)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </AppLayout>
   )
