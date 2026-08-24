@@ -101,6 +101,12 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'e
     const expenseScore = makeScore(expenseKeys) + (lowerValues.includes('expense') ? 2 : 0)
     const contactScore = makeScore(contactKeys) + (lowerValues.includes('customer') || lowerValues.includes('supplier') || lowerValues.includes('vendor') ? 1 : 0)
 
+    const isPurchaseRegister = hasKey(row, ['purchase id']) || (hasKey(row, ['supplier']) && hasKey(row, ['invoice']) && hasKey(row, ['total']))
+    const isExpenseRegister = hasKey(row, ['expense', 'expense number', 'expense date']) && hasKey(row, ['amount', 'total'])
+
+    if (isPurchaseRegister) return 'purchases'
+    if (isExpenseRegister) return 'expenses'
+
     const scores = {
         staff: staffScore,
         inventory: inventoryScore,
@@ -135,16 +141,19 @@ export function classifyImportRow(row: ImportRecord): 'sales' | 'purchases' | 'e
 }
 
 function normalizeExpenseRow(row: ImportRecord) {
-    const reference = stringValue(row['reference'] || row['expense number'] || row['expense no'] || row['number'] || makeID('EXP'))
+    const reference = stringValue(row['reference'] || row['expense number'] || row['expense no'] || row['expense'] || row['number'] || makeID('EXP'))
     const description = stringValue(row['description'] || row['expense description'] || row['expense'] || row['details'] || row['name']) || 'Imported expense'
     const category = stringValue(row['category'] || row['expense category'] || row['expense account'] || 'General') || 'General'
     const amount = Math.max(0, parseNumeric(row['amount'] || row['total'] || row['expense amount'] || row['value'] || 0))
-    const status = stringValue(row['status'] || 'Pending Approval') || 'Pending Approval'
+    const rawStatus = stringValue(row['status'] || 'Pending Approval') || 'Pending Approval'
+    const status = rawStatus.toLowerCase() === 'paid' ? 'ACTIVE' : rawStatus
     const vendor = stringValue(row['vendor'] || row['payee'] || row['supplier'] || '')
     const department = stringValue(row['department'] || row['dept'] || '')
-    const payment = stringValue(row['payment method'] || row['method'] || '')
-    const notes = [vendor && `Vendor: ${vendor}`, department && `Department: ${department}`, payment && `Payment: ${payment}`, stringValue(row['notes'] || row['memo'] || '')].filter(Boolean).join(' | ')
-    return { id: makeID('EXP'), reference, date: parseImportDate(row['expense date'] || row['date'] || row['transaction date']), description, category, amount, status, notes, bank: stringValue(row['bank'] || row['account'] || row['payment account'] || '') }
+    const payment = stringValue(row['payment method'] || row['payment'] || row['method'] || '')
+    const account = stringValue(row['account'] || row['payment account'] || row['bank'] || '')
+    const tax = parseNumeric(row['tax'] || row['tax amount'] || 0)
+    const notes = [vendor && `Vendor: ${vendor}`, department && `Department: ${department}`, payment && `Payment: ${payment}`, account && `Account: ${account}`, tax ? `Tax: ${tax}` : '', stringValue(row['notes'] || row['memo'] || '')].filter(Boolean).join(' | ')
+    return { id: makeID('EXP'), reference, date: parseImportDate(row['expense date'] || row['date'] || row['transaction date']), description, category, amount, status, notes, bank: account }
 }
 
 function buildCustomerName(row: ImportRecord): string {
@@ -221,15 +230,16 @@ function normalizeSaleRow(row: ImportRecord) {
 function normalizePurchaseRow(row: ImportRecord) {
     const supplier = buildSupplierName(row) || 'Unknown Supplier'
     const purchaseDate = parseImportDate(row['purchase date'] || row['purchase_date'] || row['date'] || row['transaction date'] || row['transaction_date'])
-    const reference = stringValue(row['reference'] || row['invoice number'] || row['invoice_number'] || row['invoice'] || makeID('PUR'))
+    const reference = stringValue(row['reference'] || row['purchase id'] || row['purchase_id'] || row['invoice number'] || row['invoice_number'] || row['invoice'] || makeID('PUR'))
     const invoiceNumber = stringValue(row['invoice number'] || row['invoice_number'] || row['invoice'] || '')
     const purchaseOrder = stringValue(row['purchase order'] || row['purchase_order'] || '')
-    const paymentMethod = stringValue(row['payment method'] || row['payment_method'] || row['method'] || 'Cash') || 'Cash'
-    const paymentStatus = stringValue(row['payment status'] || row['payment_status'] || row['status'] || 'PAID').toUpperCase() || 'PAID'
+    const paymentMethod = stringValue(row['payment method'] || row['payment'] || row['payment_method'] || row['method'] || 'Cash') || 'Cash'
+    const rawPaymentStatus = stringValue(row['payment status'] || row['payment_status'] || row['status'] || 'PAID').toUpperCase() || 'PAID'
+    const paymentStatus = rawPaymentStatus === 'OUTSTANDING' ? 'CREDIT' : rawPaymentStatus
     const notes = stringValue(row['notes'] || row['memo'] || row['description'] || '')
     const branch = stringValue(row['branch'] || row['location'] || 'Head Office') || 'Head Office'
-    const itemName = buildProductName(row)
-    const qty = Math.max(0, parseNumeric(row['quantity'] || row['qty'] || row['units'] || 1))
+    const itemName = stringValue(row['product'] || row['item'] || row['description'] || row['product name'] || row['product_name'])
+    const qty = Math.max(0, parseNumeric(row['quantity'] || row['qty'] || row['units'] || row['items'] || 1))
     const unitPrice = parseNumeric(row['unit price'] || row['unit_price'] || row['price'] || 0)
     const subtotal = Math.max(0, parseNumeric(row['subtotal'] || row['amount'] || qty * unitPrice))
     const tax = Math.max(0, parseNumeric(row['tax'] || row['tax amount'] || 0))
@@ -263,12 +273,12 @@ function normalizePurchaseRow(row: ImportRecord) {
         payment_method: paymentMethod,
         items: [
             {
-                product: itemName || 'Item',
+                product: itemName || 'Imported Item',
                 qty,
                 unitPrice,
                 discount,
                 tax,
-                total: Math.max(0, qty * unitPrice - discount + tax),
+                total: Math.max(0, parseNumeric(row['line total'] || row['item total'] || 0) || qty * unitPrice - discount + tax),
             },
         ],
     }
@@ -453,7 +463,7 @@ export function prepareGenericImportPayload(rows: ImportRecord[]): { payload: Ge
         products: payload.products.length,
         staff: payload.staff.length,
         contacts: payload.contacts.length,
-        unknown: Math.max(0, rows.length - (payload.sales.length + payload.purchases.length + payload.products.length + payload.staff.length + payload.contacts.length)),
+        unknown: Math.max(0, rows.length - (payload.sales.length + payload.purchases.length + payload.expenses.length + payload.products.length + payload.staff.length + payload.contacts.length)),
     }
 
     return { payload, summary }
