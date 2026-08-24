@@ -494,7 +494,7 @@ export default function SalesPage() {
             <div className="module-subtitle">Create invoices, manage customer orders, monitor revenue, and track sales performance.</div>
           </div>
           <div className="module-actions">
-            <BulkImport label="Bulk upload" />
+            <BulkImport label="Bulk upload" tableColumns={['Invoice', 'Customer', 'Date', 'Items', 'Total', 'Paid', 'Balance', 'Status', 'Order', 'Sales Rep', 'Actions']} />
             <button className="btn btn-primary" type="button" onClick={() => setShowForm((prev) => !prev)}>{showForm ? 'Close' : '+ New Sale'}</button>
             <button className="btn btn-secondary" type="button" onClick={() => setShowImportModal(true)}>Import</button>
             <button className="btn btn-secondary" type="button" onClick={handleNewInvoice}>+ New Invoice</button>

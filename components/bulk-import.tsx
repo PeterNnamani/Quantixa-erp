@@ -5,7 +5,7 @@ import { FileUp, ListOrdered, X } from 'lucide-react'
 import { useAccounting } from '@/lib/context'
 import { parseSpreadsheetFile, prepareGenericImportPayload, type ImportSummary } from '@/lib/import-utils'
 
-export default function BulkImport({ label = 'Bulk upload' }: { label?: string }) {
+export default function BulkImport({ label = 'Bulk upload', tableColumns }: { label?: string; tableColumns: string[] }) {
     const { state, updateState, user, addAuditLog } = useAccounting()
     const [open, setOpen] = useState(false)
     const [fileName, setFileName] = useState('')
@@ -172,11 +172,11 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
             <section className="bulk-import-modal">
                 <div className="card-hd"><div><div className="card-title">Intelligent bulk upload</div><div className="section-subtitle">Upload a file with headings. QUANTIXA identifies sales, expenses, staff, inventory, purchases, and contacts, then saves each row to the matching database table.</div></div><button className="icon-button" type="button" onClick={close} aria-label="Close"><X size={18} /></button></div>
                 <div className="bulk-import-guide" role="note">
-                    <div className="bulk-import-guide-heading"><ListOrdered size={16} /><strong>Exact page table order</strong></div>
+                    <div className="bulk-import-guide-heading"><ListOrdered size={16} /><strong>Table column order</strong><span>Match the page table</span></div>
                     <ol className="bulk-import-order">
-                        <li>Sales</li><li>Purchases</li><li>Expenses</li><li>Inventory</li><li>Staff</li><li>Contacts</li>
+                        {tableColumns.map((column) => <li key={column}>{column}</li>)}
                     </ol>
-                    <p>Use one sheet per table and place column headings in the first row.</p>
+                    <p>Use the page table column headings in this order and place them in the first row.</p>
                 </div>
                 <label className="bulk-import-dropzone">Choose Excel, CSV, or Word table<input type="file" accept=".csv,.xls,.xlsx,.docx" onChange={handleFile} /></label>
                 {fileName && <div className="metric-note">{fileName} · {rows.length} row{rows.length === 1 ? '' : 's'} detected</div>}

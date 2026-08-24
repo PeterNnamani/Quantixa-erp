@@ -8,7 +8,7 @@ import { formatCurrency, formatNumber, parseNumeric } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
 import { parseExcelFile } from '@/lib/import-utils'
 import { generateSku } from '@/lib/sku'
-import InventorySheetTable, { type InventorySheet } from '@/components/inventory/inventory-sheet-table'
+import InventorySheetTable, { inventorySheetHeaders, type InventorySheet } from '@/components/inventory/inventory-sheet-table'
 
 export default function ProductManagerPage() {
     const { state, updateState, addAuditLog } = useAccounting()
@@ -276,7 +276,7 @@ export default function ProductManagerPage() {
                         <div className="pg-subtitle">Manage products, pricing, categories, variants, suppliers, and product settings.</div>
                     </div>
                     <div className="product-manager-actions">
-                        <BulkImport label="Bulk upload" />
+                        <BulkImport label="Bulk upload" tableColumns={inventorySheetHeaders[selectedSheet]} />
                         <button className="product-manager-btn secondary" type="button" onClick={() => setShowProductForm(true)}>+ Add Product</button>
                         <button className="product-manager-btn secondary" type="button" onClick={handleImportProducts}>Import Products</button>
                         <button className="product-manager-btn secondary allow-readonly" type="button" onClick={handleExportProducts}>Export Products</button>

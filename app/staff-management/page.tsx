@@ -587,7 +587,7 @@ export default function StaffManagementPage() {
             <p className="page-subtitle">Manage people, branches, roles, and access from a single polished workspace.</p>
           </div>
           <div className="page-actions">
-            <BulkImport label="Bulk upload" />
+            <BulkImport label="Bulk upload" tableColumns={['Name', 'Staff ID', 'PIN', 'Role', 'Branch', 'Payroll', 'Next payment', 'Status', 'Last Login', 'Action']} />
             <button className="action-btn primary allow-readonly" onClick={() => setDrawerOpen(true)}>Add Staff</button>
           </div>
         </div>

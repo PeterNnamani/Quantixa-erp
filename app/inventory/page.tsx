@@ -6,7 +6,7 @@ import BulkImport from '@/components/bulk-import'
 import { useAccounting } from '@/lib/context'
 import { formatCurrency, formatNumber, triggerAppToast } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
-import InventorySheetTable, { type InventorySheet } from '@/components/inventory/inventory-sheet-table'
+import InventorySheetTable, { inventorySheetHeaders, type InventorySheet } from '@/components/inventory/inventory-sheet-table'
 
 export default function InventoryPage() {
   const { state, updateState, deleteInventoryItems, addAuditLog } = useAccounting()
@@ -114,7 +114,7 @@ export default function InventoryPage() {
             <div className="pg-subtitle">Monitor stock levels, warehouse activities, inventory movements, and stock valuation.</div>
           </div>
           <div className="inventory-actions">
-            <BulkImport label="Bulk upload" />
+            <BulkImport label="Bulk upload" tableColumns={inventorySheetHeaders[selectedSheet]} />
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Stock Adjustment')}>+ Stock Adjustment</button>
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Stock Transfer')}>+ Stock Transfer</button>
             <button className="inventory-btn secondary" onClick={() => handleInventoryAction('+ Receive Stock')}>+ Receive Stock</button>

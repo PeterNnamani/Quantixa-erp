@@ -445,7 +445,7 @@ export default function SettingsPage() {
             <h1 className="page-title">Settings</h1>
             <p className="page-subtitle">Fine-tune your company profile, operational defaults, security posture, and automation in one place.</p>
           </div>
-          <BulkImport label="Import data" />
+          <BulkImport label="Import data" tableColumns={['Sales', 'Purchases', 'Inventory', 'Staff', 'Contacts']} />
         </div>
 
         <div className="ai-insight">

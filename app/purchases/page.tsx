@@ -573,7 +573,7 @@ export default function PurchasesPage() {
             <div className="module-subtitle">Centralize supplier orders, manage procurement approvals, and keep outstanding payables in control.</div>
           </div>
           <div className="module-actions">
-            <BulkImport label="Bulk upload" />
+            <BulkImport label="Bulk upload" tableColumns={['Purchase ID', 'Date', 'Supplier', 'Invoice', 'Items', 'Total', 'Paid', 'Balance', 'Status', 'Payment', 'Actions']} />
             <button className="btn btn-secondary" onClick={() => setShowFilters((prev) => !prev)}>
               {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>

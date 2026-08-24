@@ -7,6 +7,13 @@ import type { AuditLog, InventoryItem, Purchase, Sale } from '@/lib/context'
 
 export type InventorySheet = 'product-master' | 'stock-movement' | 'stock-count' | 'inventory-dashboard'
 
+export const inventorySheetHeaders: Record<InventorySheet, string[]> = {
+    'product-master': ['SKU', 'Product Name', 'Brand', 'Category', 'Pack Size', 'Unit Cost', 'Selling Price', 'Reorder Level', 'Reorder Quantity', 'Stock Status'],
+    'stock-movement': ['Date', 'Reference No.', 'SKU', 'Product Name', 'Transaction Type', 'Quantity In', 'Quantity Out', 'Location', 'Staff/Rep', 'Remarks'],
+    'stock-count': ['Date', 'SKU', 'Product Name', 'Book Stock', 'Physical Stock', 'Variance', 'Unit Cost', 'Variance Value', 'Reason', 'Verified By'],
+    'inventory-dashboard': ['Metric', 'Value'],
+}
+
 type InventorySheetTableProps = {
     sheet: InventorySheet
     onSheetChange: (sheet: InventorySheet) => void
@@ -60,7 +67,7 @@ export default function InventorySheetTable({ sheet, onSheetChange, inventory, p
             await onDeleteInventoryItems(skus)
             setSelectedSkus((current) => current.filter((sku) => !skus.includes(sku)))
         }
-        return <SheetFrame title="Product Master" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={['SKU', 'Product Name', 'Brand', 'Category', 'Pack Size', 'Unit Cost', 'Selling Price', 'Reorder Level', 'Reorder Quantity', 'Stock Status']} actions={onDeleteInventoryItems ? <div className="inventory-selection-actions"><label><input type="checkbox" checked={allVisibleSelected} onChange={(event) => setSelectedSkus(event.target.checked ? Array.from(new Set([...selectedSkus, ...visibleSkus])) : selectedSkus.filter((sku) => !visibleSkus.includes(sku)))} /> Select all</label><button type="button" className="inventory-btn secondary" disabled={selectedVisibleCount === 0} onClick={() => deleteRows(visibleSkus.filter((sku) => selectedSkus.includes(sku)))}>Delete selected</button><button type="button" className="inventory-btn danger" disabled={products.length === 0} onClick={() => deleteRows(products.map((item) => item.rowId))}>Delete all</button></div> : undefined}>
+        return <SheetFrame title="Product Master" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={inventorySheetHeaders['product-master']} actions={onDeleteInventoryItems ? <div className="inventory-selection-actions"><label><input type="checkbox" checked={allVisibleSelected} onChange={(event) => setSelectedSkus(event.target.checked ? Array.from(new Set([...selectedSkus, ...visibleSkus])) : selectedSkus.filter((sku) => !visibleSkus.includes(sku)))} /> Select all</label><button type="button" className="inventory-btn secondary" disabled={selectedVisibleCount === 0} onClick={() => deleteRows(visibleSkus.filter((sku) => selectedSkus.includes(sku)))}>Delete selected</button><button type="button" className="inventory-btn danger" disabled={products.length === 0} onClick={() => deleteRows(products.map((item) => item.rowId))}>Delete all</button></div> : undefined}>
             {rows.map((item) => <tr key={item.rowId}><td><input type="checkbox" aria-label={`Select ${item.product}`} checked={selectedSkus.includes(item.rowId)} onChange={(event) => setSelectedSkus((current) => event.target.checked ? [...current, item.rowId] : current.filter((sku) => sku !== item.rowId))} /> {item.rowId}</td><td>{item.product}</td><td>{item.brand}</td><td>{item.dept || '-'}</td><td>{item.packSize}</td><td>{formatCurrency(item.unitCost)}</td><td>{formatCurrency(item.sellingPrice ?? item.unitCost * 1.35)}</td><td>{item.reorderLevel}</td><td>{item.reorderQuantity}</td><td><StockStatus value={getStockStatus(item)} /></td></tr>)}
         </SheetFrame>
     }
@@ -69,14 +76,14 @@ export default function InventorySheetTable({ sheet, onSheetChange, inventory, p
         const purchaseRows = purchases.map((purchase) => ({ date: purchase.date, reference: purchase.invoiceNumber || purchase.id, sku: purchase.items?.[0]?.sku || '-', product: purchase.product, type: 'Purchase', in: purchase.qty, out: 0, location: purchase.branch || purchase.warehouse || '-', staff: purchase.enteredBy, remarks: purchase.notes }))
         const saleRows = sales.flatMap((sale) => sale.items.map((item) => ({ date: sale.date, reference: sale.id, sku: '-', product: item.product, type: 'Sale', in: 0, out: item.qty, location: '-', staff: sale.enteredBy, remarks: sale.notes })))
         const rows = [...purchaseRows, ...saleRows].filter((row) => matches([row.reference, row.sku, row.product, row.type, row.location, row.staff, row.remarks])).sort((a, b) => b.date.localeCompare(a.date))
-        return <SheetFrame title="Stock Movement" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={['Date', 'Reference No.', 'SKU', 'Product Name', 'Transaction Type', 'Quantity In', 'Quantity Out', 'Location', 'Staff/Rep', 'Remarks']}>
+        return <SheetFrame title="Stock Movement" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={inventorySheetHeaders['stock-movement']}>
             {rows.map((row, index) => <tr key={`${row.reference}-${index}`}><td>{displayValue(row.date)}</td><td>{row.reference}</td><td>{row.sku}</td><td>{row.product}</td><td><Status value={row.type} /></td><td>{row.in}</td><td>{row.out}</td><td>{row.location}</td><td>{row.staff}</td><td>{row.remarks || '-'}</td></tr>)}
         </SheetFrame>
     }
 
     if (sheet === 'stock-count') {
         const rows = products.filter((item) => matches([item.rowId, item.product, item.dept])).map((item) => ({ ...item, date: new Date().toISOString().slice(0, 10), physical: item.closing, variance: 0, reason: 'Pending physical count', verifiedBy: auditLogs.find((log) => log.type === 'INVENTORY')?.user || '-' }))
-        return <SheetFrame title="Stock Count" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={['Date', 'SKU', 'Product Name', 'Book Stock', 'Physical Stock', 'Variance', 'Unit Cost', 'Variance Value', 'Reason', 'Verified By']}>
+        return <SheetFrame title="Stock Count" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={inventorySheetHeaders['stock-count']}>
             {rows.map((row) => <tr key={row.rowId}><td>{row.date}</td><td>{row.rowId}</td><td>{row.product}</td><td>{row.closing}</td><td>{row.physical}</td><td>{row.variance}</td><td>{formatCurrency(row.unitCost)}</td><td>{formatCurrency(row.variance * row.unitCost)}</td><td>{row.reason}</td><td>{row.verifiedBy}</td></tr>)}
         </SheetFrame>
     }
@@ -88,7 +95,7 @@ export default function InventorySheetTable({ sheet, onSheetChange, inventory, p
     const dashboardRows = [
         ['Total SKUs', formatNumber(products.length)], ['Total Stock Value', formatCurrency(totalStockValue)], ['Low Stock Items', formatNumber(lowStock)], ['Out-of-Stock Items', formatNumber(outOfStock)], ['Overstock Items', '0'], ['Damaged/Expired Stock', formatNumber(damaged)], ['Stock Variance', formatCurrency(0)], ['Fast-Moving Products', formatNumber(products.filter((item) => item.sold > 0).length)], ['Slow-Moving Products', formatNumber(products.filter((item) => item.sold > 0 && item.sold <= 5).length)], ['Dead Stock', formatNumber(products.filter((item) => item.closing > 0 && item.sold === 0).length)],
     ]
-    return <SheetFrame title="Inventory Dashboard" count={dashboardRows.length} sheet={sheet} onSheetChange={onSheetChange} headers={['Metric', 'Value']}>
+    return <SheetFrame title="Inventory Dashboard" count={dashboardRows.length} sheet={sheet} onSheetChange={onSheetChange} headers={inventorySheetHeaders['inventory-dashboard']}>
         {dashboardRows.filter((row) => matches(row)).map(([label, value]) => <tr key={label}><td>{label}</td><td><strong>{value}</strong></td></tr>)}
     </SheetFrame>
 }
