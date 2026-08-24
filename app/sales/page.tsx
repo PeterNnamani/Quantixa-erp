@@ -119,9 +119,19 @@ export default function SalesPage() {
     customer: '',
     items: [{ product: '', dept: '', qty: 1, unitPrice: 0, total: 0 }],
     paymentMethod: 'Transfer',
+    paymentAccount: '',
     paymentStatus: 'PAID',
     notes: '',
   })
+
+  const accountOptions = useMemo(() => {
+    const configuredAccounts = state.bankAccounts.map((account) => account.name)
+    return configuredAccounts.length > 0 ? configuredAccounts : Object.keys(state.banks)
+  }, [state.bankAccounts, state.banks])
+  const selectedPaymentAccount = formData.paymentAccount || (accountOptions.length === 1 ? accountOptions[0] : '')
+  const isCashPayment = formData.paymentMethod === 'Cash'
+  const isPaidSale = formData.paymentStatus === 'PAID'
+  const requiresPaymentDestination = isPaidSale && !isCashPayment
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items]
@@ -161,6 +171,10 @@ export default function SalesPage() {
       alert('Please fill in all fields')
       return
     }
+    if (requiresPaymentDestination && !selectedPaymentAccount) {
+      alert('Select the account receiving this payment.')
+      return
+    }
 
     const inventoryUpdates = [...state.inventory]
     for (const item of formData.items) {
@@ -191,6 +205,7 @@ export default function SalesPage() {
       items: formData.items,
       totalAmount,
       paymentMethod: formData.paymentMethod,
+      paymentAccount: requiresPaymentDestination ? selectedPaymentAccount : '',
       paymentStatus: formData.paymentStatus,
       notes: formData.notes,
       status: 'ACTIVE',
@@ -209,7 +224,37 @@ export default function SalesPage() {
       return
     }
 
-    updateState({ sales: [...state.sales, sale], inventory: inventoryUpdates })
+    const updatedBanks = { ...state.banks }
+    const destination = isCashPayment ? 'Cash' : sale.paymentAccount
+    const updatedBankAccounts = state.bankAccounts.map((account) => {
+      if (!isPaidSale || account.name !== destination) return account
+      const balance = account.balance + totalAmount
+      updatedBanks[account.name] = balance
+      return { ...account, balance }
+    })
+    if (isPaidSale && updatedBankAccounts.every((account) => account.name !== destination) && destination) {
+      updatedBanks[destination] = (updatedBanks[destination] ?? 0) + totalAmount
+    }
+    const paymentTxn = isPaidSale ? [{
+      id: `TXN-${sale.id}`,
+      date: sale.date,
+      name: sale.customer,
+      activity: `Payment received for ${sale.id}`,
+      method: sale.paymentMethod,
+      amount: totalAmount,
+      status: 'Completed',
+      description: `Payment received for sale ${sale.id}`,
+      attachments: 0,
+      type: 'Deposit',
+      bank: destination,
+    }] : []
+    updateState({
+      sales: [...state.sales, sale],
+      inventory: inventoryUpdates,
+      banks: updatedBanks,
+      bankAccounts: updatedBankAccounts,
+      bankTxns: [...paymentTxn, ...state.bankTxns],
+    })
     setSelectedSaleId(sale.id)
     setCurrentPage(1)
     addAuditLog('CREATE', 'SALE', sale.id, `Sale created for ${sale.customer}: ${formatCurrency(totalAmount)}`)
@@ -219,6 +264,7 @@ export default function SalesPage() {
       customer: '',
       items: [{ product: '', dept: '', qty: 1, unitPrice: 0, total: 0 }],
       paymentMethod: 'Transfer',
+      paymentAccount: '',
       paymentStatus: 'PAID',
       notes: '',
     })
@@ -441,6 +487,18 @@ export default function SalesPage() {
                   ))}
                 </select>
               </div>
+              {requiresPaymentDestination && (
+                <div className="fg">
+                  <label>Payment Destination *</label>
+                  {accountOptions.length === 0 ? (
+                    <div className="field-hint">Create a bank account in Settings before recording this payment.</div>
+                  ) : (
+                    <select value={selectedPaymentAccount} onChange={(e) => setFormData({ ...formData, paymentAccount: e.target.value })} disabled={accountOptions.length === 1}>
+                      {accountOptions.map((account) => <option key={account} value={account}>{account}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
               <div className="fg">
                 <label>Payment Status *</label>
                 <select value={formData.paymentStatus} onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}>
@@ -686,6 +744,7 @@ export default function SalesPage() {
               <div className="detail-row"><span>Invoice</span><strong>{selectedSale?.id || '-'}</strong></div>
               <div className="detail-row"><span>Date</span><strong>{selectedSale?.date || '-'}</strong></div>
               <div className="detail-row"><span>Status</span><strong>{selectedSale?.paymentStatus || '-'}</strong></div>
+              <div className="detail-row"><span>Payment destination</span><strong>{selectedSale?.paymentAccount || (selectedSale?.paymentMethod === 'Cash' ? 'Cash' : '-')}</strong></div>
               <div className="detail-row"><span>Order Status</span><strong>{selectedSale?.orderStatus || '-'}</strong></div>
               <div className="detail-row"><span>Branch</span><strong>{selectedSale?.branch || '-'}</strong></div>
               <div className="detail-row"><span>Sales Rep</span><strong>{selectedSale?.salesRep || '-'}</strong></div>

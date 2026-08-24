@@ -64,6 +64,7 @@ export async function POST(request: Request) {
             sale_date: sale.date,
             customer_id: customer.id,
             payment_method: sale.paymentMethod || 'Transfer',
+            payment_account: sale.paymentAccount || null,
             payment_status: sale.paymentStatus || 'PAID',
             status: sale.status || 'ACTIVE',
             notes: sale.notes || null,

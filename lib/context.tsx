@@ -110,6 +110,7 @@ export interface Sale {
   }>
   totalAmount: number
   paymentMethod: string
+  paymentAccount?: string
   paymentStatus: string
   notes: string
   status: string
@@ -404,6 +405,7 @@ function normalizeRemoteSales(data: any[], saleItems: any[] = []): AppState['sal
     items: itemsBySale.get(item.id) || [],
     totalAmount: Number(item.total_amount || 0),
     paymentMethod: item.payment_method || '',
+    paymentAccount: item.payment_account || '',
     paymentStatus: item.payment_status || '',
     notes: item.notes || '',
     status: item.status || '',
@@ -834,6 +836,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
                 sales_rep: sale.enteredBy || null,
                 device_used: sale.deviceUsed || null,
                 payment_method: sale.paymentMethod || 'Transfer',
+                payment_account: sale.paymentAccount || null,
                 payment_status: sale.paymentStatus || 'PAID',
                 status: sale.status || 'ACTIVE',
                 notes: sale.notes || null,

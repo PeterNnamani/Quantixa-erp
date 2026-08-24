@@ -1,6 +1,7 @@
 -- Keep accounting writes compatible with databases created before tenancy and sale-device fields were added.
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS device_used text;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS payment_account text;
 ALTER TABLE purchases ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES companies(id) ON DELETE CASCADE;
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES companies(id) ON DELETE CASCADE;
 
