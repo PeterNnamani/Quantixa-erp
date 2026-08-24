@@ -235,6 +235,8 @@ export interface LedgerAccount {
   isControlAccount?: boolean
   isActive?: boolean
   currency?: string
+  openingBalance?: number
+  openingBalanceDate?: string | null
 }
 
 export interface JournalEntry {
@@ -584,6 +586,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             id: account.id, code: account.code, name: account.name, accountType: account.account_type,
             accountSubType: account.account_subtype, normalBalance: account.normal_balance,
             isControlAccount: account.is_control_account, isActive: account.is_active, currency: account.currency,
+            openingBalance: Number(account.opening_balance || 0), openingBalanceDate: account.opening_balance_date,
           })),
           journalEntries: entriesErr ? prev.journalEntries : (entriesData || []).map((entry: any) => ({
             id: entry.id, entryDate: entry.entry_date, periodId: entry.period_id, reference: entry.reference || '',
@@ -781,6 +784,25 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
               .map((name) => ({ company_id: companyId, name, updated_at: new Date().toISOString() }))
             const { error: categoriesPersistErr } = await supabase.from('expense_categories').upsert(categoryRows, { onConflict: 'company_id,name' })
             if (categoriesPersistErr && categoriesPersistErr.code !== 'PGRST205') throw categoriesPersistErr
+          }
+
+          if (normalizedUpdates.chartOfAccounts) {
+            const accountRows = (normalizedUpdates.chartOfAccounts as LedgerAccount[]).map((account) => ({
+              id: account.id,
+              code: account.code,
+              name: account.name,
+              account_type: account.accountType,
+              account_subtype: account.accountSubType || null,
+              normal_balance: account.normalBalance,
+              is_control_account: account.isControlAccount || false,
+              is_active: account.isActive !== false,
+              currency: account.currency || 'NGN',
+              opening_balance: account.openingBalance || 0,
+              opening_balance_date: account.openingBalanceDate || null,
+              updated_at: new Date().toISOString(),
+            }))
+            const { error: accountsPersistErr } = await supabase.from('chart_of_accounts').upsert(accountRows, { onConflict: 'id' })
+            if (accountsPersistErr) throw accountsPersistErr
           }
 
           if (normalizedUpdates.banks) {

@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS chart_of_accounts (
   is_control_account boolean NOT NULL DEFAULT false,
   is_active boolean NOT NULL DEFAULT true,
   currency text NOT NULL DEFAULT 'NGN',
+  opening_balance numeric(18,2) NOT NULL DEFAULT 0,
+  opening_balance_date date,
   created_at timestamptz NOT NULL DEFAULT NOW(),
   updated_at timestamptz NOT NULL DEFAULT NOW()
 );

@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase.browser'
 const sidebarSections = [
   { id: 'company', label: 'Company', description: 'Profile, branding, and legal details' },
   { id: 'business', label: 'Business', description: 'Defaults, dates, and workflow' },
+  { id: 'opening-balances', label: 'Opening Balances', description: 'Opening position for assets, liabilities, and equity' },
   { id: 'notifications', label: 'Notifications', description: 'Email, SMS, and push' },
   { id: 'security', label: 'Security', description: 'Auth, sessions, and policies' },
   { id: 'integrations', label: 'Integrations', description: 'Payments, storage, and APIs' },
@@ -32,6 +33,8 @@ export default function SettingsPage() {
   const normalizedRole = String(user?.role || user?.roleId || user?.roleName || '').toLowerCase().replace(/[_\s]+/g, '-')
   const isSuperAdmin = normalizedRole === 'super-admin'
   const [openingCapital, setOpeningCapital] = useState(state.openingCapital)
+  const [openingBalanceDrafts, setOpeningBalanceDrafts] = useState<Record<string, number>>({})
+  const [openingDateDrafts, setOpeningDateDrafts] = useState<Record<string, string>>({})
   const [activeSection, setActiveSection] = useState(isSuperAdmin ? 'bank-management' : 'company')
   const [newBankName, setNewBankName] = useState('')
   const [manualBankName, setManualBankName] = useState('')
@@ -66,6 +69,22 @@ export default function SettingsPage() {
   const handleSaveOpeningCapital = () => {
     updateState({ openingCapital: parseFloat(openingCapital as any) || 0 })
     alert('Opening capital saved!')
+  }
+
+  const financialPositionAccounts = state.chartOfAccounts.filter((account) => ['ASSET', 'LIABILITY', 'EQUITY'].includes(account.accountType))
+
+  const handleSaveOpeningBalances = () => {
+    const chartOfAccounts = state.chartOfAccounts.map((account) => {
+      if (!['ASSET', 'LIABILITY', 'EQUITY'].includes(account.accountType)) return account
+      return {
+        ...account,
+        openingBalance: openingBalanceDrafts[account.id] ?? account.openingBalance ?? 0,
+        openingBalanceDate: openingDateDrafts[account.id] ?? account.openingBalanceDate ?? null,
+      }
+    })
+    updateState({ chartOfAccounts })
+    addAuditLog('UPDATE', 'ACCOUNTING', 'OPENING_BALANCES', 'Financial-position opening balances updated.')
+    alert('Opening balances saved!')
   }
 
   const handleAddBank = async () => {
@@ -438,6 +457,30 @@ export default function SettingsPage() {
                     </div>
                     <div className="metric-note">Current: {formatCurrency(state.openingCapital)}</div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'opening-balances' && (
+              <div className="panel-card">
+                <div className="panel-head">
+                  <div>
+                    <div className="panel-title">Financial-position opening balances</div>
+                    <div className="panel-subtitle">Enter the balances brought forward for every asset, liability, and equity account.</div>
+                  </div>
+                  <button className="action-btn primary" type="button" onClick={handleSaveOpeningBalances}>Save opening balances</button>
+                </div>
+                <div className="bank-account-register">
+                  <div className="bank-register-row bank-register-head"><span>Account</span><span>Type</span><span>Opening balance</span><span>Balance date</span></div>
+                  {financialPositionAccounts.map((account) => (
+                    <div className="bank-register-row" key={account.id}>
+                      <span><strong>{account.code} - {account.name}</strong><small>{account.accountSubType || 'Financial position'}</small></span>
+                      <span>{account.accountType}</span>
+                      <span><input type="number" min={0} step="0.01" value={openingBalanceDrafts[account.id] ?? account.openingBalance ?? 0} onChange={(event) => setOpeningBalanceDrafts((current) => ({ ...current, [account.id]: Number(event.target.value || 0) }))} /></span>
+                      <span><input type="date" value={openingDateDrafts[account.id] ?? account.openingBalanceDate ?? ''} onChange={(event) => setOpeningDateDrafts((current) => ({ ...current, [account.id]: event.target.value }))} /></span>
+                    </div>
+                  ))}
+                  {financialPositionAccounts.length === 0 && <div className="metric-note bank-empty-state">No financial-position accounts are available yet. Complete chart-of-accounts setup first.</div>}
                 </div>
               </div>
             )}

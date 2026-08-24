@@ -29,7 +29,7 @@ export default function MonthlyReportPage() {
     const cashAccount = state.chartOfAccounts.find((account) => account.name.toLowerCase().includes('cash') && !account.name.toLowerCase().includes('bank'))
     const monthlyPostedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && entry.entryDate?.startsWith(currentMonth)).map((entry) => entry.id))
     const cashAccountBalance = cashAccount
-        ? state.journalLines.filter((line) => line.accountId === cashAccount.id && monthlyPostedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+        ? Number(cashAccount.openingBalance || 0) + state.journalLines.filter((line) => line.accountId === cashAccount.id && monthlyPostedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
         : 0
     const cashReceived = monthlyTransactions.filter((txn) => Number(txn.amount) > 0).reduce((sum, txn) => sum + Number(txn.amount), 0)
     const cashPaid = monthlyTransactions.filter((txn) => Number(txn.amount) < 0).reduce((sum, txn) => sum + Math.abs(Number(txn.amount)), 0)

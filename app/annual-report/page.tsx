@@ -30,7 +30,7 @@ export default function AnnualReportPage() {
     const cashAccount = state.chartOfAccounts.find((account) => account.name.toLowerCase().includes('cash') && !account.name.toLowerCase().includes('bank'))
     const postedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && entry.entryDate?.startsWith(currentYear)).map((entry) => entry.id))
     const cashAccountBalance = cashAccount
-        ? state.journalLines.filter((line) => line.accountId === cashAccount.id && postedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+        ? Number(cashAccount.openingBalance || 0) + state.journalLines.filter((line) => line.accountId === cashAccount.id && postedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
         : 0
     const inventoryValue = state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0)
     const loansBalance = state.loans.reduce((sum, loan) => sum + Number(loan.balance ?? loan.amount ?? 0), 0)

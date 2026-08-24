@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users, ThumbsUp, ChevronDown } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Lock, Unlock, Trash2, Search, Users, ThumbsUp, ChevronDown, Calculator, CreditCard } from 'lucide-react'
 import AppLayout from '@/components/layout/app-layout'
 import BulkImport from '@/components/bulk-import'
 import { useAccounting } from '@/lib/context'
@@ -40,6 +40,23 @@ const permissionOptions: { key: PermissionKey; label: string }[] = [
   { key: 'admin', label: 'Admin Tools' },
   { key: 'settings', label: 'Settings & Security' },
 ]
+
+type PayrollPayment = {
+  id: string
+  staffId: string
+  staffName: string
+  bankName: string
+  payDate: string
+  currency: string
+  baseAmount: number
+  incentiveAmount: number
+  deductions: number
+  totalAmount: number
+  incentiveType?: string
+  kpiScore?: number
+  reference?: string
+  status: string
+}
 
 const getRoleAccessLevels = (role: RoleDefinition | undefined): AccessLevels => {
   if (!role) return { dashboard: 'edit' }
@@ -89,6 +106,23 @@ export default function StaffManagementPage() {
   const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({})
   const [saveConfirmation, setSaveConfirmation] = useState<{ name: string; staffId: string; pin: string; saved: boolean } | null>(null)
   const [inlineNotice, setInlineNotice] = useState<{ message: string; tone: 'error' | 'success' } | null>(null)
+  const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; name: string; balance: number; currency: string }>>([])
+  const [payrollPayments, setPayrollPayments] = useState<PayrollPayment[]>([])
+  const [paymentStaffId, setPaymentStaffId] = useState('')
+  const [paymentBankId, setPaymentBankId] = useState('')
+  const [paymentCurrency, setPaymentCurrency] = useState('NGN')
+  const [baseAmount, setBaseAmount] = useState('')
+  const [incentiveAmount, setIncentiveAmount] = useState('')
+  const [deductions, setDeductions] = useState('')
+  const [incentiveType, setIncentiveType] = useState('KPI bonus')
+  const [kpiScore, setKpiScore] = useState('')
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10))
+  const [paymentReference, setPaymentReference] = useState('')
+  const [paymentProcessing, setPaymentProcessing] = useState(false)
+
+  const selectedPaymentStaff = staffMembers.find((member) => member.staffId === paymentStaffId)
+  const paymentTotal = Math.max(0, Number(baseAmount || 0) + Number(incentiveAmount || 0) - Number(deductions || 0))
+  const formatMoney = (amount: number, currency = paymentCurrency) => new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount)
 
   const selectedRole = useMemo(() => roles.find((role) => role.id === selectedRoleId) || roles[0], [roles, selectedRoleId])
 
@@ -241,6 +275,90 @@ export default function StaffManagementPage() {
     loadFromDb()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.companyId, roles])
+
+  useEffect(() => {
+    const loadPayrollData = async () => {
+      if (!user?.companyId) return
+      const supabase = getSupabaseClient()
+      if (!supabase) return
+      const [{ data: banks }, { data: payments }] = await Promise.all([
+        supabase.from('bank_accounts').select('id,name,balance,currency').eq('company_id', user.companyId).eq('status', 'active').order('name'),
+        supabase.from('staff_payments').select('*').eq('company_id', user.companyId).order('pay_date', { ascending: false }).limit(100),
+      ])
+      setBankAccounts((banks || []).map((bank: any) => ({ id: bank.id, name: bank.name, balance: Number(bank.balance || 0), currency: bank.currency || 'NGN' })))
+      setPayrollPayments((payments || []).map((payment: any) => ({
+        id: payment.id,
+        staffId: payment.staff_id,
+        staffName: staffMembers.find((member) => member.staffId === payment.staff_id)?.name || 'Staff member',
+        bankName: (banks || []).find((bank: any) => bank.id === payment.bank_account_id)?.name || 'Bank account',
+        payDate: payment.pay_date,
+        currency: payment.currency || 'NGN',
+        baseAmount: Number(payment.base_amount || 0),
+        incentiveAmount: Number(payment.incentive_amount || 0),
+        deductions: Number(payment.deductions || 0),
+        totalAmount: Number(payment.total_amount || 0),
+        incentiveType: payment.incentive_type || '',
+        kpiScore: payment.kpi_score == null ? undefined : Number(payment.kpi_score),
+        reference: payment.reference || '',
+        status: payment.status || 'PAID',
+      })))
+    }
+    loadPayrollData()
+  }, [user?.companyId, staffMembers])
+
+  useEffect(() => {
+    if (!paymentStaffId) return
+    const staffSalary = selectedPaymentStaff?.salary
+    if (staffSalary && !baseAmount) setBaseAmount(staffSalary)
+  }, [paymentStaffId, selectedPaymentStaff, baseAmount])
+
+  const resetPaymentForm = () => {
+    setPaymentStaffId('')
+    setPaymentBankId('')
+    setPaymentCurrency('NGN')
+    setBaseAmount('')
+    setIncentiveAmount('')
+    setDeductions('')
+    setIncentiveType('KPI bonus')
+    setKpiScore('')
+    setPaymentDate(new Date().toISOString().slice(0, 10))
+    setPaymentReference('')
+  }
+
+  const processStaffPayment = async () => {
+    if (!user?.companyId || !paymentStaffId || !paymentBankId || !paymentDate || paymentTotal <= 0) {
+      setInlineNotice({ message: 'Select a staff member and bank account, then enter a positive net pay amount.', tone: 'error' })
+      return
+    }
+    setPaymentProcessing(true)
+    try {
+      const response = await fetch('/api/staff-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId: user.companyId, staffId: paymentStaffId, bankAccountId: paymentBankId, payDate: paymentDate, currency: paymentCurrency, baseAmount, incentiveAmount, deductions, incentiveType, kpiScore, reference: paymentReference }),
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) throw new Error(result.error || 'Unable to process payment')
+
+      const payment = result.payment as PayrollPayment
+      const bank = bankAccounts.find((account) => account.id === paymentBankId)
+      setPayrollPayments((current) => [payment, ...current])
+      setBankAccounts((current) => current.map((account) => account.id === paymentBankId ? { ...account, balance: Number(result.bankBalance) } : account))
+      updateState({
+        banks: { ...state.banks, [bank?.name || payment.bankName]: Number(result.bankBalance) },
+        bankTxns: [result.bankTransaction, ...state.bankTxns],
+        expenses: [{ id: payment.id, date: payment.payDate, desc: `Payroll payment - ${payment.staffName}`, category: 'Salary', amount: payment.totalAmount, bank: payment.bankName, notes: payment.reference || '', status: 'Paid', enteredBy: user.name }, ...state.expenses],
+        journalEntries: result.journalEntry ? [result.journalEntry, ...state.journalEntries] : state.journalEntries,
+        journalLines: result.journalLines ? [...result.journalLines, ...state.journalLines] : state.journalLines,
+      })
+      setInlineNotice({ message: `${formatMoney(payment.totalAmount, payment.currency)} paid to ${payment.staffName}. ${payment.bankName} was updated.`, tone: 'success' })
+      resetPaymentForm()
+    } catch (error) {
+      setInlineNotice({ message: error instanceof Error ? error.message : 'Unable to process payment.', tone: 'error' })
+    } finally {
+      setPaymentProcessing(false)
+    }
+  }
 
   const handleSearchDismiss = (event: React.FocusEvent<HTMLFormElement>) => {
     const nextTarget = event.relatedTarget as HTMLElement | null
@@ -448,6 +566,38 @@ export default function StaffManagementPage() {
         </div>
 
         {inlineNotice && <div className={`staff-inline-notice ${inlineNotice.tone}`} role="status">{inlineNotice.message}</div>}
+
+        <div className="panel-card" style={{ marginBottom: 20 }}>
+          <div className="panel-head">
+            <div>
+              <div className="panel-title"><Calculator size={20} style={{ marginRight: 8, verticalAlign: 'middle' }} /> Payroll & Incentives</div>
+              <div className="page-subtitle">Calculate gross pay, KPI rewards, commissions, and deductions in the employee's operating currency.</div>
+            </div>
+            <span className="badge b-blue">{payrollPayments.length} payments recorded</span>
+          </div>
+          <div className="form-grid two-up">
+            <div className="fg"><label>Staff member</label><select className="allow-readonly" value={paymentStaffId} onChange={(event) => { setPaymentStaffId(event.target.value); setBaseAmount('') }}><option value="">Select staff member</option>{staffMembers.filter((member) => member.status === 'active').map((member) => <option key={member.id} value={member.staffId}>{member.name} · {member.staffId}</option>)}</select></div>
+            <div className="fg"><label>Pay date</label><input className="allow-readonly" type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} /></div>
+            <div className="fg"><label>Paying bank account</label><select className="allow-readonly" value={paymentBankId} onChange={(event) => setPaymentBankId(event.target.value)}><option value="">Select bank account</option>{bankAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {formatMoney(account.balance, account.currency)}</option>)}</select></div>
+            <div className="fg"><label>Currency</label><select className="allow-readonly" value={paymentCurrency} onChange={(event) => setPaymentCurrency(event.target.value)}><option value="NGN">NGN · Nigerian naira</option><option value="USD">USD · US dollar</option><option value="GBP">GBP · British pound</option><option value="EUR">EUR · Euro</option></select></div>
+            <div className="fg"><label>Base pay</label><input className="allow-readonly" type="number" min="0" step="0.01" value={baseAmount} onChange={(event) => setBaseAmount(event.target.value)} placeholder={selectedPaymentStaff?.salary || '0.00'} /></div>
+            <div className="fg"><label>Incentive type</label><select className="allow-readonly" value={incentiveType} onChange={(event) => setIncentiveType(event.target.value)}><option>KPI bonus</option><option>Commission</option><option>Performance bonus</option><option>Spot award</option><option>Other incentive</option></select></div>
+            <div className="fg"><label>Incentive amount</label><input className="allow-readonly" type="number" min="0" step="0.01" value={incentiveAmount} onChange={(event) => setIncentiveAmount(event.target.value)} placeholder="0.00" /></div>
+            <div className="fg"><label>Deductions</label><input className="allow-readonly" type="number" min="0" step="0.01" value={deductions} onChange={(event) => setDeductions(event.target.value)} placeholder="0.00" /></div>
+            <div className="fg"><label>KPI score <span className="metric-note">optional, 0-100</span></label><input className="allow-readonly" type="number" min="0" max="100" step="0.01" value={kpiScore} onChange={(event) => setKpiScore(event.target.value)} placeholder="Not assessed" /></div>
+            <div className="fg"><label>Reference</label><input className="allow-readonly" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} placeholder="Payroll run, month, or approval ID" /></div>
+          </div>
+          <div className="inline-actions" style={{ justifyContent: 'space-between', marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+            <div><div className="metric-note">Net pay = base pay + incentive - deductions</div><div style={{ fontSize: 22, fontWeight: 800 }}>{formatMoney(paymentTotal)}</div></div>
+            <button className="action-btn primary allow-readonly" type="button" onClick={processStaffPayment} disabled={paymentProcessing || bankAccounts.length === 0}>{paymentProcessing ? 'Processing...' : <><CreditCard size={16} /> Pay staff</>}</button>
+          </div>
+          {bankAccounts.length === 0 && <div className="metric-note" style={{ marginTop: 12 }}>Add an active bank account in Settings before processing payroll.</div>}
+        </div>
+
+        {payrollPayments.length > 0 && <div className="panel-card" style={{ marginBottom: 20 }}>
+          <div className="panel-head"><div><div className="panel-title">Recent payroll activity</div><div className="page-subtitle">Every payment is linked to its bank withdrawal, salary expense, and journal entry.</div></div></div>
+          <div className="table-wrap"><table className="data-table"><thead><tr><th>Date</th><th>Staff</th><th>Incentive</th><th>Bank</th><th>Net paid</th><th>Status</th></tr></thead><tbody>{payrollPayments.slice(0, 8).map((payment) => <tr key={payment.id}><td>{payment.payDate}</td><td><strong>{payment.staffName}</strong><div className="metric-note">{payment.reference || payment.staffId}</div></td><td>{payment.incentiveAmount > 0 ? `${payment.incentiveType || 'Incentive'} · ${formatMoney(payment.incentiveAmount, payment.currency)}` : '—'}</td><td>{payment.bankName}</td><td><strong>{formatMoney(payment.totalAmount, payment.currency)}</strong></td><td><span className="badge b-green">{payment.status}</span></td></tr>)}</tbody></table></div>
+        </div>}
 
         <div className="panel-card">
           <div className="panel-head">
