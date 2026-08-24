@@ -734,13 +734,10 @@ export default function SalesPage() {
 
             <div className="detail-section">
               <div className="detail-section-title">Payment Summary</div>
-              <div className="detail-row"><span>Subtotal</span><strong>{formatCurrency(selectedSale?.items?.reduce((sum, item) => sum + (item.total || 0), 0) ?? 0)}</strong></div>
-              <div className="detail-row"><span>Discount</span><strong>{formatCurrency(0)}</strong></div>
-              <div className="detail-row"><span>VAT</span><strong>{formatCurrency(0)}</strong></div>
-              <div className="detail-row"><span>Shipping</span><strong>{formatCurrency(0)}</strong></div>
-              <div className="detail-row"><span>Grand Total</span><strong>{formatCurrency(selectedSale?.totalAmount ?? 0)}</strong></div>
-              <div className="detail-row"><span>Amount Paid</span><strong>{formatCurrency(selectedSale?.paidAmount ?? 0)}</strong></div>
-              <div className="detail-row"><span>Balance</span><strong>{formatCurrency(selectedSale?.balance ?? 0)}</strong></div>
+              <div className="detail-row"><span>Charges</span><strong>{formatCurrency(selectedSale?.items?.reduce((sum, item) => sum + (item.total || 0), 0) ?? 0)}</strong></div>
+              <div className="detail-row"><span>Adjustments</span><strong>{formatCurrency(0)}</strong></div>
+              <div className="detail-row"><span>Total</span><strong>{formatCurrency(selectedSale?.totalAmount ?? 0)}</strong></div>
+              <div className="detail-row"><span>Settlement</span><strong>{formatCurrency(selectedSale?.paidAmount ?? 0)} paid · {formatCurrency(selectedSale?.balance ?? 0)} due</strong></div>
             </div>
 
           </div>
