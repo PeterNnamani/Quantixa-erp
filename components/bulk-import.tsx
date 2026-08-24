@@ -5,7 +5,7 @@ import { FileUp, ListOrdered, X } from 'lucide-react'
 import { useAccounting } from '@/lib/context'
 import { parseSpreadsheetFile, prepareGenericImportPayload, type ImportSummary } from '@/lib/import-utils'
 
-export default function BulkImport({ label = 'Bulk upload', tableColumns }: { label?: string; tableColumns: string[] }) {
+export default function BulkImport({ label = 'Bulk upload', tableColumns, onImportComplete }: { label?: string; tableColumns: string[]; onImportComplete?: () => void }) {
     const { state, updateState, user, addAuditLog } = useAccounting()
     const [open, setOpen] = useState(false)
     const [fileName, setFileName] = useState('')
@@ -142,6 +142,7 @@ export default function BulkImport({ label = 'Bulk upload', tableColumns }: { la
             if (importedCustomers.length > 0) updates.customerList = Array.from(new Set([...state.customerList, ...importedCustomers]))
             if (importedSuppliers.length > 0) updates.supplierList = Array.from(new Set([...state.supplierList, ...importedSuppliers]))
             updateState(updates, { persist: false })
+            onImportComplete?.()
             addAuditLog('IMPORT', 'BULK', fileName, `Imported ${prepared.summary.sales} sales, ${prepared.summary.purchases} purchases, ${prepared.summary.expenses} expenses, ${prepared.summary.products} products, ${prepared.summary.staff} staff, and ${prepared.summary.contacts} contacts.`)
             if (progressTimer.current !== null) window.clearInterval(progressTimer.current)
             progressTimer.current = null

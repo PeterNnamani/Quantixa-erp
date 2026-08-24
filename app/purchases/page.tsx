@@ -13,7 +13,7 @@ const branchOptions = ['All Branches', 'Head Office', 'Warehouse 01', 'Warehouse
 const paymentMethods = ['All', 'Cash', 'Bank Transfer', 'Card', 'Cheque', 'Mobile Money', 'Multiple']
 const purchaseStatuses = ['All', 'Completed', 'Pending', 'Cancelled', 'Returned']
 const categories = ['All Categories', 'Inventory', 'Office Supplies', 'Assets', 'Furniture', 'Electronics', 'Services', 'Fuel', 'Maintenance']
-const datePresets = ['This Month', 'Last 30 Days', 'This Quarter', 'This Year', 'Custom Date']
+const datePresets = ['All Dates', 'This Month', 'Last 30 Days', 'This Quarter', 'This Year', 'Custom Date']
 
 function getDateRange(preset: string, customFrom: string, customTo: string) {
   const today = new Date()
@@ -414,6 +414,7 @@ export default function PurchasesPage() {
     setImportRows([])
     setImportFileName('')
     setImportError('')
+    setSelectedDateRange('All Dates')
   }
 
   const handleCancelPurchase = (purchaseId: string) => {
@@ -573,7 +574,7 @@ export default function PurchasesPage() {
             <div className="module-subtitle">Centralize supplier orders, manage procurement approvals, and keep outstanding payables in control.</div>
           </div>
           <div className="module-actions">
-            <BulkImport label="Bulk upload" tableColumns={['Purchase ID', 'Date', 'Supplier', 'Invoice', 'Items', 'Total', 'Paid', 'Balance', 'Status', 'Payment', 'Actions']} />
+            <BulkImport label="Bulk upload" onImportComplete={() => setSelectedDateRange('All Dates')} tableColumns={['Purchase ID', 'Date', 'Supplier', 'Invoice', 'Items', 'Total', 'Paid', 'Balance', 'Status', 'Payment', 'Actions']} />
             <button className="btn btn-secondary" onClick={() => setShowFilters((prev) => !prev)}>
               {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>
