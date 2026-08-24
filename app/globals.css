@@ -196,6 +196,42 @@
   font-size: 0.9rem;
 }
 
+.bulk-import-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: var(--text2);
+  font-size: 0.9rem;
+}
+
+.bulk-import-progress-ring {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(var(--royal) var(--progress), var(--royal-light) 0);
+  position: relative;
+}
+
+.bulk-import-progress-ring::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.bulk-import-progress-ring span {
+  position: relative;
+  z-index: 1;
+  color: var(--royal-dark);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .pin-form {
   margin-top: 18px;
 }

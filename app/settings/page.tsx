@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
+import BulkImport from '@/components/bulk-import'
 import { useAccounting, type BankAccount } from '@/lib/context'
 import { formatCurrency } from '@/lib/utils'
 import { getDefaultRoles, saveRoles, type RoleDefinition, type PermissionKey } from '@/lib/rbac'
@@ -444,7 +445,7 @@ export default function SettingsPage() {
             <h1 className="page-title">Settings</h1>
             <p className="page-subtitle">Fine-tune your company profile, operational defaults, security posture, and automation in one place.</p>
           </div>
-          <button className="action-btn primary" type="button" onClick={openImportModal}>Import data</button>
+          <BulkImport label="Import data" />
         </div>
 
         <div className="ai-insight">

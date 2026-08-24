@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ChangeEvent } from 'react'
 import AppLayout from '@/components/layout/app-layout'
+import BulkImport from '@/components/bulk-import'
 import { useAccounting } from '@/lib/context'
 import { Purchase } from '@/lib/context'
 import { formatCurrency, makeID, getCurrentDate, PAYMENT_TERMS, canEdit, getStatusBadgeClass, parseNumeric } from '@/lib/utils'
@@ -572,6 +573,7 @@ export default function PurchasesPage() {
             <div className="module-subtitle">Centralize supplier orders, manage procurement approvals, and keep outstanding payables in control.</div>
           </div>
           <div className="module-actions">
+            <BulkImport label="Bulk upload" />
             <button className="btn btn-secondary" onClick={() => setShowFilters((prev) => !prev)}>
               {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>
