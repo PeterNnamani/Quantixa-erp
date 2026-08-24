@@ -686,7 +686,7 @@ export default function SalesPage() {
 
             <div className="detail-section">
               <div className="detail-section-title">Customer Information</div>
-              <div className="detail-row"><span>Customer</span><strong>{customerInfo?.customer || '-'}</strong></div>
+              <div className="detail-row"><span>Customer</span><strong>{selectedSale?.customer || '-'}</strong></div>
               <div className="detail-row"><span>Phone</span><strong>{selectedSale?.customerDetails?.phone || '-'}</strong></div>
               <div className="detail-row"><span>Email</span><strong>{selectedSale?.customerDetails?.email || '-'}</strong></div>
               <div className="detail-row"><span>Address</span><strong>{selectedSale?.customerDetails?.address || '-'}</strong></div>
