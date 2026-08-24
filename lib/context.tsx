@@ -324,6 +324,7 @@ export interface AccountingContextType {
   user: User | null
   state: AppState
   updateState: (updates: Partial<AppState>) => void
+  deleteInventoryItems: (skus: string[]) => Promise<void>
   login: (userData: User, remember: boolean) => void
   logout: () => void
   addAuditLog: (action: string, type: string, reference: string, details: string) => void
@@ -890,6 +891,23 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const deleteInventoryItems = async (skus: string[]) => {
+    const uniqueSkus = Array.from(new Set(skus.filter(Boolean)))
+    if (uniqueSkus.length === 0) return
+
+    if (supabase && user?.companyId) {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('company_id', user.companyId)
+        .in('sku', uniqueSkus)
+      if (error) throw error
+    }
+
+    const deleted = new Set(uniqueSkus)
+    updateState({ inventory: state.inventory.filter((item) => !deleted.has(item.sku || '')) })
+  }
+
   const login = (userData: User, remember: boolean) => {
     const enriched = enrichStoredUser(userData)
     setUser(enriched)
@@ -925,6 +943,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     user,
     state,
     updateState,
+    deleteInventoryItems,
     login,
     logout,
     addAuditLog,

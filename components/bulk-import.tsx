@@ -146,7 +146,14 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
             progressTimer.current = null
             setSavedCount(Number(result.counts?.total || totalRecords))
             setProgress(100)
-            window.setTimeout(() => setProgress(null), 450)
+            window.setTimeout(() => {
+                setProgress(null)
+                setOpen(false)
+                setRows([])
+                setFileName('')
+                setSummary(null)
+                setSavedCount(0)
+            }, 450)
         } catch (uploadError) {
             if (progressTimer.current !== null) window.clearInterval(progressTimer.current)
             progressTimer.current = null

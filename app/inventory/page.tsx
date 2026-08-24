@@ -9,7 +9,7 @@ import { downloadExcel } from '@/lib/export-utils'
 import InventorySheetTable, { type InventorySheet } from '@/components/inventory/inventory-sheet-table'
 
 export default function InventoryPage() {
-  const { state, updateState, addAuditLog } = useAccounting()
+  const { state, updateState, deleteInventoryItems, addAuditLog } = useAccounting()
   const [search, setSearch] = useState('')
   const [selectedWarehouse, setSelectedWarehouse] = useState('Main Warehouse')
   const [selectedCategory, setSelectedCategory] = useState('All Categories')
@@ -212,6 +212,16 @@ export default function InventoryPage() {
           auditLogs={state.auditLogs}
           supplierList={state.supplierList}
           search={search}
+          onDeleteInventoryItems={async (skus) => {
+            try {
+              await deleteInventoryItems(skus)
+              triggerAppToast('Inventory deleted', `${skus.length} inventory item${skus.length === 1 ? '' : 's'} deleted.`)
+              addAuditLog('DELETE', 'INVENTORY', skus.join(', '), `${skus.length} inventory item${skus.length === 1 ? '' : 's'} deleted.`)
+            } catch (error) {
+              console.error('Unable to delete inventory items', error)
+              triggerAppToast('Delete failed', 'Inventory could not be deleted from the database.')
+            }
+          }}
         />
       </div>
     </AppLayout>

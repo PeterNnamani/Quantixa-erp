@@ -4621,6 +4621,33 @@ html[data-theme='dark'] .sidebar-body {
   border: 1px solid var(--border);
 }
 
+.inventory-btn.danger {
+  background: #b42318;
+  color: #fff;
+}
+
+.inventory-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.inventory-sheet-controls,
+.inventory-selection-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inventory-selection-actions label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .inventory-summary-grid,
 .product-manager-summary-grid {
   display: grid;

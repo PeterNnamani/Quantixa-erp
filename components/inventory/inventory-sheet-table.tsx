@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import type { AuditLog, InventoryItem, Purchase, Sale } from '@/lib/context'
@@ -15,6 +16,7 @@ type InventorySheetTableProps = {
     auditLogs: AuditLog[]
     supplierList: string[]
     search?: string
+    onDeleteInventoryItems?: (skus: string[]) => Promise<void>
 }
 
 const sheetOptions: Array<{ value: InventorySheet; label: string }> = [
@@ -26,7 +28,8 @@ const sheetOptions: Array<{ value: InventorySheet; label: string }> = [
 
 const displayValue = (value: string | number | undefined | null) => value === '' || value === undefined || value === null ? '-' : value
 
-export default function InventorySheetTable({ sheet, onSheetChange, inventory, purchases, sales, auditLogs, supplierList, search = '' }: InventorySheetTableProps) {
+export default function InventorySheetTable({ sheet, onSheetChange, inventory, purchases, sales, auditLogs, supplierList, search = '', onDeleteInventoryItems }: InventorySheetTableProps) {
+    const [selectedSkus, setSelectedSkus] = useState<string[]>([])
     const query = search.trim().toLowerCase()
     const matches = (values: Array<string | number | undefined>) => !query || values.join(' ').toLowerCase().includes(query)
     const products = inventory.map((item, index) => ({
@@ -49,8 +52,16 @@ export default function InventorySheetTable({ sheet, onSheetChange, inventory, p
 
     if (sheet === 'product-master') {
         const rows = products.filter((item) => matches([item.rowId, item.product, item.brand, item.dept, getStockStatus(item)]))
-        return <SheetFrame title="Product Master" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={['SKU', 'Product Name', 'Brand', 'Category', 'Pack Size', 'Unit Cost', 'Selling Price', 'Reorder Level', 'Reorder Quantity', 'Stock Status']}>
-            {rows.map((item) => <tr key={item.rowId}><td>{item.rowId}</td><td>{item.product}</td><td>{item.brand}</td><td>{item.dept || '-'}</td><td>{item.packSize}</td><td>{formatCurrency(item.unitCost)}</td><td>{formatCurrency(item.sellingPrice ?? item.unitCost * 1.35)}</td><td>{item.reorderLevel}</td><td>{item.reorderQuantity}</td><td><StockStatus value={getStockStatus(item)} /></td></tr>)}
+        const visibleSkus = rows.map((item) => item.rowId)
+        const selectedVisibleCount = visibleSkus.filter((sku) => selectedSkus.includes(sku)).length
+        const allVisibleSelected = visibleSkus.length > 0 && selectedVisibleCount === visibleSkus.length
+        const deleteRows = async (skus: string[]) => {
+            if (!onDeleteInventoryItems || skus.length === 0 || !window.confirm(`Delete ${skus.length} inventory item${skus.length === 1 ? '' : 's'}?`)) return
+            await onDeleteInventoryItems(skus)
+            setSelectedSkus((current) => current.filter((sku) => !skus.includes(sku)))
+        }
+        return <SheetFrame title="Product Master" count={rows.length} sheet={sheet} onSheetChange={onSheetChange} headers={['SKU', 'Product Name', 'Brand', 'Category', 'Pack Size', 'Unit Cost', 'Selling Price', 'Reorder Level', 'Reorder Quantity', 'Stock Status']} actions={onDeleteInventoryItems ? <div className="inventory-selection-actions"><label><input type="checkbox" checked={allVisibleSelected} onChange={(event) => setSelectedSkus(event.target.checked ? Array.from(new Set([...selectedSkus, ...visibleSkus])) : selectedSkus.filter((sku) => !visibleSkus.includes(sku)))} /> Select all</label><button type="button" className="inventory-btn secondary" disabled={selectedVisibleCount === 0} onClick={() => deleteRows(visibleSkus.filter((sku) => selectedSkus.includes(sku)))}>Delete selected</button><button type="button" className="inventory-btn danger" disabled={products.length === 0} onClick={() => deleteRows(products.map((item) => item.rowId))}>Delete all</button></div> : undefined}>
+            {rows.map((item) => <tr key={item.rowId}><td><input type="checkbox" aria-label={`Select ${item.product}`} checked={selectedSkus.includes(item.rowId)} onChange={(event) => setSelectedSkus((current) => event.target.checked ? [...current, item.rowId] : current.filter((sku) => sku !== item.rowId))} /> {item.rowId}</td><td>{item.product}</td><td>{item.brand}</td><td>{item.dept || '-'}</td><td>{item.packSize}</td><td>{formatCurrency(item.unitCost)}</td><td>{formatCurrency(item.sellingPrice ?? item.unitCost * 1.35)}</td><td>{item.reorderLevel}</td><td>{item.reorderQuantity}</td><td><StockStatus value={getStockStatus(item)} /></td></tr>)}
         </SheetFrame>
     }
 
@@ -82,8 +93,8 @@ export default function InventorySheetTable({ sheet, onSheetChange, inventory, p
     </SheetFrame>
 }
 
-function SheetFrame({ title, count, sheet, onSheetChange, headers, children }: { title: string; count: number; sheet: InventorySheet; onSheetChange: (sheet: InventorySheet) => void; headers: string[]; children: ReactNode }) {
-    return <div className="inventory-sheet-card"><div className="section-head inventory-sheet-head"><div><div className="card-title">{title}</div><div className="section-subtitle">Showing {count} records. Select a sheet to change the table without leaving this page.</div></div><label className="inventory-sheet-selector"><span>Inventory sheet</span><select value={sheet} onChange={(event) => onSheetChange(event.target.value as InventorySheet)}>{sheetOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div><div className="inventory-table-wrap"><table className="inventory-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></div></div>
+function SheetFrame({ title, count, sheet, onSheetChange, headers, children, actions }: { title: string; count: number; sheet: InventorySheet; onSheetChange: (sheet: InventorySheet) => void; headers: string[]; children: ReactNode; actions?: ReactNode }) {
+    return <div className="inventory-sheet-card"><div className="section-head inventory-sheet-head"><div><div className="card-title">{title}</div><div className="section-subtitle">Showing {count} records. Select a sheet to change the table without leaving this page.</div></div><div className="inventory-sheet-controls">{actions}<label className="inventory-sheet-selector"><span>Inventory sheet</span><select value={sheet} onChange={(event) => onSheetChange(event.target.value as InventorySheet)}>{sheetOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div></div><div className="inventory-table-wrap"><table className="inventory-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{children}</tbody></table></div></div>
 }
 
 function Status({ value }: { value: string }) {
