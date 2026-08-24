@@ -350,7 +350,7 @@ export interface BankAccount {
 export interface AccountingContextType {
   user: User | null
   state: AppState
-  updateState: (updates: Partial<AppState>) => void
+  updateState: (updates: Partial<AppState>, options?: { persist?: boolean }) => void
   deleteInventoryItems: (skus: string[]) => Promise<void>
   login: (userData: User, remember: boolean) => void
   logout: () => void
@@ -748,7 +748,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [user?.companyId])
 
-  const updateState = (updates: Partial<AppState>) => {
+  const updateState = (updates: Partial<AppState>, options: { persist?: boolean } = {}) => {
     const companyId = user?.companyId
     setState((prev) => {
       const normalizedUpdates = updates.inventory
@@ -760,7 +760,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       }
       // Persist banks and bank transactions to Supabase where possible
       ; (async () => {
-        if (!supabase || !companyId) return
+        if (!supabase || !companyId || options.persist === false) return
 
         try {
           if (updates.prepayments) {

@@ -141,7 +141,7 @@ export default function BulkImport({ label = 'Bulk upload', tableColumns }: { la
             if (importedStaff.length > 0) updates.staffMembers = [...state.staffMembers, ...importedStaff]
             if (importedCustomers.length > 0) updates.customerList = Array.from(new Set([...state.customerList, ...importedCustomers]))
             if (importedSuppliers.length > 0) updates.supplierList = Array.from(new Set([...state.supplierList, ...importedSuppliers]))
-            updateState(updates)
+            updateState(updates, { persist: false })
             addAuditLog('IMPORT', 'BULK', fileName, `Imported ${prepared.summary.sales} sales, ${prepared.summary.purchases} purchases, ${prepared.summary.expenses} expenses, ${prepared.summary.products} products, ${prepared.summary.staff} staff, and ${prepared.summary.contacts} contacts.`)
             if (progressTimer.current !== null) window.clearInterval(progressTimer.current)
             progressTimer.current = null

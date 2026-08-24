@@ -355,7 +355,7 @@ export default function SettingsPage() {
         supplierList: nextSupplierList,
         customerList: nextCustomerList,
         staffMembers: nextStaff,
-      })
+      }, { persist: false })
 
       addAuditLog(
         'IMPORT',
