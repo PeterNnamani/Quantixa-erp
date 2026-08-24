@@ -319,23 +319,23 @@ export default function PurchasesPage() {
     const inventoryUpdates = [...state.inventory]
 
     importRows.forEach((row, index) => {
-      const supplier = String(row['Supplier'] || row['vendor'] || row['supplier'] || 'Unknown Supplier').trim()
-      const product = String(row['Product'] || row['Item'] || row['Description'] || '').trim()
-      const invoiceNumber = String(row['Invoice Number'] || row['InvoiceNo'] || row['Invoice'] || `IMP-${Date.now()}-${index}`).trim()
-      const purchaseOrder = String(row['Purchase Order'] || row['PO'] || row['Order Number'] || '').trim()
-      const date = String(row['Date'] || row['date'] || getCurrentDate()).trim()
-      const category = String(row['Category'] || row['Dept'] || row['Department'] || 'Inventory').trim() || 'Inventory'
-      const branch = String(row['Branch'] || row['Location'] || 'Head Office').trim() || 'Head Office'
-      const paymentMethod = String(row['Payment Method'] || row['Bank'] || 'Cash').trim() || 'Cash'
-      const paymentStatus = String(row['Payment Status'] || row['Status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
-      const qty = Math.max(0, parseNumeric(row['Quantity'] || row['Qty'] || row['quantity'] || 1))
-      const unitPrice = Math.max(0, parseNumeric(row['Unit Price'] || row['UnitPrice'] || row['Price'] || 0))
-      const discount = Math.max(0, parseNumeric(row['Discount'] || 0))
-      const tax = Math.max(0, parseNumeric(row['Tax'] || 0))
-      const shipping = Math.max(0, parseNumeric(row['Shipping'] || row['Freight'] || 0))
-      const amountPaid = Math.max(0, parseNumeric(row['Amount Paid'] || row['Paid'] || (paymentStatus === 'PAID' ? (qty * unitPrice - discount + tax + shipping) : 0)))
-      const dueDate = String(row['Due Date'] || row['dueDate'] || row['Due'] || getCurrentDate()).trim()
-      const notes = String(row['Notes'] || row['Memo'] || row['Description'] || '').trim()
+      const supplier = String(row['supplier'] || row['vendor'] || row['supplier name'] || 'Unknown Supplier').trim()
+      const product = String(row['product'] || row['item'] || row['description'] || '').trim()
+      const invoiceNumber = String(row['invoice number'] || row['invoiceno'] || row['invoice'] || `IMP-${Date.now()}-${index}`).trim()
+      const purchaseOrder = String(row['purchase order'] || row['po'] || row['order number'] || '').trim()
+      const date = String(row['purchase date'] || row['date'] || getCurrentDate()).trim()
+      const category = String(row['category'] || row['dept'] || row['department'] || 'Inventory').trim() || 'Inventory'
+      const branch = String(row['branch'] || row['location'] || 'Head Office').trim() || 'Head Office'
+      const paymentMethod = String(row['payment method'] || row['bank'] || 'Cash').trim() || 'Cash'
+      const paymentStatus = String(row['payment status'] || row['status'] || 'PAID').trim().toUpperCase() as 'PAID' | 'CREDIT' | 'PART PAYMENT' | 'OVERDUE'
+      const qty = Math.max(0, parseNumeric(row['quantity'] || row['qty'] || row['units'] || 1))
+      const unitPrice = Math.max(0, parseNumeric(row['unit price'] || row['unitprice'] || row['price'] || 0))
+      const discount = Math.max(0, parseNumeric(row['discount'] || 0))
+      const tax = Math.max(0, parseNumeric(row['tax'] || 0))
+      const shipping = Math.max(0, parseNumeric(row['shipping'] || row['freight'] || 0))
+      const amountPaid = Math.max(0, parseNumeric(row['amount paid'] || row['paid'] || (paymentStatus === 'PAID' ? (qty * unitPrice - discount + tax + shipping) : 0)))
+      const dueDate = String(row['due date'] || row['duedate'] || row['due'] || getCurrentDate()).trim()
+      const notes = String(row['notes'] || row['memo'] || row['description'] || '').trim()
 
       const subtotal = qty * unitPrice
       const total = subtotal - discount + tax + shipping
@@ -369,7 +369,7 @@ export default function PurchasesPage() {
         items: [
           {
             product,
-            sku: String(row['SKU'] || row['sku'] || ''),
+            sku: String(row['sku'] || row['product code'] || row['item code'] || ''),
             qty,
             unitPrice,
             discount,

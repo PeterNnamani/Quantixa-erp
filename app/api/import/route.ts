@@ -15,6 +15,39 @@ type GenericImportPayload = {
 
 type ContactMap = Record<string, string>
 
+type SupabaseWriteResult = { data: any; error: any }
+
+function missingSchemaColumn(error: unknown, values: Record<string, unknown>): string | null {
+    const message = typeof error === 'object' && error !== null && 'message' in error ? String((error as any).message) : String(error || '')
+    const match = message.match(/(?:column|field) ['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?/i)
+    const column = match?.[1]
+    return column && Object.prototype.hasOwnProperty.call(values, column) ? column : null
+}
+
+async function writeWithSchemaFallback(values: Record<string, unknown>, operation: (values: Record<string, unknown>) => Promise<SupabaseWriteResult>): Promise<SupabaseWriteResult> {
+    const compatibleValues = { ...values }
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+        const result = await operation(compatibleValues)
+        if (!result.error) return result
+        const unsupportedColumn = missingSchemaColumn(result.error, compatibleValues)
+        if (!unsupportedColumn) return result
+        delete compatibleValues[unsupportedColumn]
+    }
+    return { data: null, error: new Error('Import could not match the database schema.') }
+}
+
+async function writeRowsWithSchemaFallback(rows: Record<string, unknown>[], operation: (rows: Record<string, unknown>[]) => Promise<SupabaseWriteResult>): Promise<SupabaseWriteResult> {
+    const compatibleRows = rows.map((row) => ({ ...row }))
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+        const result = await operation(compatibleRows)
+        if (!result.error) return result
+        const unsupportedColumn = compatibleRows.reduce<string | null>((column, row) => column || missingSchemaColumn(result.error, row), null)
+        if (!unsupportedColumn) return result
+        compatibleRows.forEach((row) => delete row[unsupportedColumn])
+    }
+    return { data: null, error: new Error('Import could not match the database schema.') }
+}
+
 function normalizeContactType(value: string | undefined): string {
     const type = (value || '').toString().trim().toLowerCase()
     if (type.includes('supplier')) return 'supplier'
@@ -59,11 +92,11 @@ async function findOrCreateContact(contact: any, companyId: string): Promise<str
         updated_at: new Date().toISOString(),
     }
 
-    const { data: inserted, error: insertErr } = await supabaseAdmin
+    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
         .from('contacts')
-        .insert(insertData)
+        .insert(values)
         .select('id')
-        .limit(1)
+        .limit(1))
 
     if (insertErr) {
         throw insertErr
@@ -122,12 +155,12 @@ async function findOrCreateProduct(product: any, companyId: string): Promise<str
     }
 
     if (existing && existing.length > 0) {
-        const { data: updated, error: updateErr } = await supabaseAdmin
+        const { data: updated, error: updateErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
             .from('products')
-            .update(insertData)
+            .update(values)
             .eq('id', existing[0].id)
             .select('id')
-            .limit(1)
+            .limit(1))
 
         if (updateErr) {
             throw updateErr
@@ -135,11 +168,11 @@ async function findOrCreateProduct(product: any, companyId: string): Promise<str
         return updated?.[0]?.id || existing[0].id
     }
 
-    const { data: inserted, error: insertErr } = await supabaseAdmin
+    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
         .from('products')
-        .insert(insertData)
+        .insert(values)
         .select('id')
-        .limit(1)
+        .limit(1))
 
     if (insertErr) {
         throw insertErr
@@ -188,12 +221,12 @@ async function findOrCreateStaff(staff: any, companyId: string): Promise<string 
     }
 
     if (existing && existing.length > 0) {
-        const { data: updated, error: updateErr } = await supabaseAdmin
+        const { data: updated, error: updateErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
             .from('users')
-            .update(insertData)
+            .update(values)
             .eq('id', existing[0].id)
             .select('id')
-            .limit(1)
+            .limit(1))
 
         if (updateErr) {
             throw updateErr
@@ -201,11 +234,11 @@ async function findOrCreateStaff(staff: any, companyId: string): Promise<string 
         return updated?.[0]?.id || existing[0].id
     }
 
-    const { data: inserted, error: insertErr } = await supabaseAdmin
+    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
         .from('users')
-        .insert(insertData)
+        .insert(values)
         .select('id')
-        .limit(1)
+        .limit(1))
 
     if (insertErr) {
         throw insertErr
@@ -239,7 +272,7 @@ async function insertSaleRecords(sales: any[], contactMap: ContactMap, companyId
         updated_at: new Date().toISOString(),
     }))
 
-    const { error: salesErr } = await supabaseAdmin.from('sales').upsert(saleRows, { onConflict: 'reference' })
+    const { error: salesErr } = await writeRowsWithSchemaFallback(saleRows, (rows) => supabaseAdmin!.from('sales').upsert(rows, { onConflict: 'reference' }))
     if (salesErr) {
         throw salesErr
     }
@@ -276,7 +309,7 @@ async function insertSaleRecords(sales: any[], contactMap: ContactMap, companyId
     })
 
     if (saleItems.length > 0) {
-        const { error: saleItemsErr } = await supabaseAdmin.from('sale_items').insert(saleItems)
+        const { error: saleItemsErr } = await writeRowsWithSchemaFallback(saleItems, (rows) => supabaseAdmin!.from('sale_items').insert(rows))
         if (saleItemsErr) {
             throw saleItemsErr
         }
@@ -311,7 +344,7 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap, c
         updated_at: new Date().toISOString(),
     }))
 
-    const { error: purchasesErr } = await supabaseAdmin.from('purchases').upsert(purchaseRows, { onConflict: 'reference' })
+    const { error: purchasesErr } = await writeRowsWithSchemaFallback(purchaseRows, (rows) => supabaseAdmin!.from('purchases').upsert(rows, { onConflict: 'reference' }))
     if (purchasesErr) {
         throw purchasesErr
     }
@@ -348,7 +381,7 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap, c
     })
 
     if (purchaseItems.length > 0) {
-        const { error: purchaseItemsErr } = await supabaseAdmin.from('purchase_items').insert(purchaseItems)
+        const { error: purchaseItemsErr } = await writeRowsWithSchemaFallback(purchaseItems, (rows) => supabaseAdmin!.from('purchase_items').insert(rows))
         if (purchaseItemsErr) {
             throw purchaseItemsErr
         }
@@ -371,7 +404,7 @@ async function insertExpenseRecords(expenses: any[], companyId: string): Promise
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }))
-    const { error } = await supabaseAdmin.from('expenses').upsert(rows, { onConflict: 'reference' })
+    const { error } = await writeRowsWithSchemaFallback(rows, (compatibleRows) => supabaseAdmin!.from('expenses').upsert(compatibleRows, { onConflict: 'reference' }))
     if (error) throw error
 }
 
