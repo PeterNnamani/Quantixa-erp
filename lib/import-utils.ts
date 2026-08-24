@@ -50,8 +50,29 @@ function normalizeRowKeys(row: ImportRecord): ImportRecord {
 function dateValue(value: unknown): string {
     const raw = stringValue(value)
     if (!raw) return new Date().toISOString().slice(0, 10)
+
+    const fallback = new Date().toISOString().slice(0, 10)
+    const serial = typeof value === 'number' ? value : /^\d+(?:\.\d+)?$/.test(raw) ? Number(raw) : NaN
+    if (Number.isFinite(serial) && serial > 0) {
+        const excelDate = XLSX.SSF.parse_date_code(serial)
+        if (excelDate && excelDate.y >= 1000 && excelDate.y <= 9999 && excelDate.m >= 1 && excelDate.m <= 12 && excelDate.d >= 1 && excelDate.d <= 31) {
+            return `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`
+        }
+    }
+
+    const dateParts = raw.match(/^(\d{4})[-/]([01]?\d)[-/]([0-3]?\d)/)
+    if (dateParts) {
+        const year = Number(dateParts[1])
+        const month = Number(dateParts[2])
+        const day = Number(dateParts[3])
+        const parsed = new Date(Date.UTC(year, month - 1, day))
+        if (year >= 1000 && year <= 9999 && parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day) {
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        }
+    }
+
     const parsed = new Date(raw)
-    return Number.isNaN(parsed.getTime()) ? new Date().toISOString().slice(0, 10) : parsed.toISOString().slice(0, 10)
+    return Number.isNaN(parsed.getTime()) || parsed.getUTCFullYear() < 1000 || parsed.getUTCFullYear() > 9999 ? fallback : parsed.toISOString().slice(0, 10)
 }
 
 function hasKey(row: ImportRecord, keys: string[]) {
