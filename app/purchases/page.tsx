@@ -7,7 +7,7 @@ import { useAccounting } from '@/lib/context'
 import { Purchase } from '@/lib/context'
 import { formatCurrency, makeID, getCurrentDate, PAYMENT_TERMS, canEdit, getStatusBadgeClass, parseNumeric } from '@/lib/utils'
 import { downloadExcel } from '@/lib/export-utils'
-import { parseExcelFile, parseImportDate } from '@/lib/import-utils'
+import { parseExcelFile } from '@/lib/import-utils'
 
 const branchOptions = ['All Branches', 'Head Office', 'Warehouse 01', 'Warehouse 02', 'Retail Outlet']
 const paymentMethods = ['All', 'Cash', 'Bank Transfer', 'Card', 'Cheque', 'Mobile Money', 'Multiple']
@@ -58,7 +58,7 @@ export default function PurchasesPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('All')
   const [selectedBranch, setSelectedBranch] = useState('All Branches')
   const [selectedCategory, setSelectedCategory] = useState('All Categories')
-  const [selectedDateRange, setSelectedDateRange] = useState('All Dates')
+  const [selectedDateRange, setSelectedDateRange] = useState('This Month')
   const [customFrom, setCustomFrom] = useState(getCurrentDate())
   const [customTo, setCustomTo] = useState(getCurrentDate())
   const [currentPage, setCurrentPage] = useState(1)
@@ -265,7 +265,7 @@ export default function PurchasesPage() {
     setSelectedPaymentMethod('All')
     setSelectedBranch('All Branches')
     setSelectedCategory('All Categories')
-    setSelectedDateRange('All Dates')
+    setSelectedDateRange('This Month')
     setCustomFrom(getCurrentDate())
     setCustomTo(getCurrentDate())
     setCurrentPage(1)
@@ -323,7 +323,7 @@ export default function PurchasesPage() {
       const product = String(row['product'] || row['item'] || row['description'] || '').trim()
       const invoiceNumber = String(row['invoice number'] || row['invoiceno'] || row['invoice'] || `IMP-${Date.now()}-${index}`).trim()
       const purchaseOrder = String(row['purchase order'] || row['po'] || row['order number'] || '').trim()
-      const date = parseImportDate(row['purchase date'] || row['date'])
+      const date = String(row['purchase date'] || row['date'] || getCurrentDate()).trim()
       const category = String(row['category'] || row['dept'] || row['department'] || 'Inventory').trim() || 'Inventory'
       const branch = String(row['branch'] || row['location'] || 'Head Office').trim() || 'Head Office'
       const paymentMethod = String(row['payment method'] || row['bank'] || 'Cash').trim() || 'Cash'
@@ -334,7 +334,7 @@ export default function PurchasesPage() {
       const tax = Math.max(0, parseNumeric(row['tax'] || 0))
       const shipping = Math.max(0, parseNumeric(row['shipping'] || row['freight'] || 0))
       const amountPaid = Math.max(0, parseNumeric(row['amount paid'] || row['paid'] || (paymentStatus === 'PAID' ? (qty * unitPrice - discount + tax + shipping) : 0)))
-      const dueDate = parseImportDate(row['due date'] || row['duedate'] || row['due'])
+      const dueDate = String(row['due date'] || row['duedate'] || row['due'] || getCurrentDate()).trim()
       const notes = String(row['notes'] || row['memo'] || row['description'] || '').trim()
 
       const subtotal = qty * unitPrice

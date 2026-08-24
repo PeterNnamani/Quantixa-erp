@@ -55,7 +55,7 @@ export function parseImportDate(value: unknown): string {
     const serial = typeof value === 'number' ? value : /^\d+(?:\.\d+)?$/.test(raw) ? Number(raw) : NaN
     if (Number.isFinite(serial) && serial > 0) {
         const excelDate = XLSX.SSF.parse_date_code(serial)
-        if (excelDate && excelDate.y >= 1 && excelDate.y <= 9999 && excelDate.m >= 1 && excelDate.m <= 12 && excelDate.d >= 1 && excelDate.d <= 31) {
+        if (excelDate && excelDate.y >= 1000 && excelDate.y <= 9999 && excelDate.m >= 1 && excelDate.m <= 12 && excelDate.d >= 1 && excelDate.d <= 31) {
             return `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`
         }
     }
@@ -65,16 +65,14 @@ export function parseImportDate(value: unknown): string {
         const year = Number(dateParts[1])
         const month = Number(dateParts[2])
         const day = Number(dateParts[3])
-        const parsed = new Date(0)
-        parsed.setUTCFullYear(year, month - 1, day)
-        parsed.setUTCHours(0, 0, 0, 0)
-        if (year >= 1 && year <= 9999 && parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day) {
+        const parsed = new Date(Date.UTC(year, month - 1, day))
+        if (year >= 1000 && year <= 9999 && parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day) {
             return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
         }
     }
 
     const parsed = new Date(raw)
-    return Number.isNaN(parsed.getTime()) || parsed.getUTCFullYear() < 1 || parsed.getUTCFullYear() > 9999 ? fallback : parsed.toISOString().slice(0, 10)
+    return Number.isNaN(parsed.getTime()) || parsed.getUTCFullYear() < 1000 || parsed.getUTCFullYear() > 9999 ? fallback : parsed.toISOString().slice(0, 10)
 }
 
 function hasKey(row: ImportRecord, keys: string[]) {

@@ -34,7 +34,7 @@ export default function ExpensesPage() {
     const [status, setStatus] = useState<'All Statuses' | ExpenseStatus>('All Statuses')
     const [category, setCategory] = useState('All Categories')
     const [department, setDepartment] = useState('All Departments')
-    const [period, setPeriod] = useState('All dates')
+    const [period, setPeriod] = useState('This month')
     const [selectedId, setSelectedId] = useState(state.expenses[0]?.id ?? '')
     const [receiptName, setReceiptName] = useState('')
     const [newCategory, setNewCategory] = useState('')
@@ -113,7 +113,7 @@ export default function ExpensesPage() {
     }
 
     const exportExpenses = () => downloadExcel('quantixa-expenses.xlsx', filteredExpenses.map((expense) => ({ Date: expense.date, Number: expense.id, Description: expense.desc, Category: expense.category, Amount: expense.amount, Status: displayStatus(expense), Account: expense.bank })))
-    const resetFilters = () => { setSearch(''); setStatus('All Statuses'); setCategory('All Categories'); setDepartment('All Departments'); setPeriod('All dates') }
+    const resetFilters = () => { setSearch(''); setStatus('All Statuses'); setCategory('All Categories'); setDepartment('All Departments'); setPeriod('This month') }
 
     return (
         <AppLayout>

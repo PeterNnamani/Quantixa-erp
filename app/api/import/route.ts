@@ -93,7 +93,7 @@ async function findOrCreateContact(contact: any, companyId: string): Promise<str
         updated_at: new Date().toISOString(),
     }
 
-    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, async (values) => supabaseAdmin!
+    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
         .from('contacts')
         .insert(values)
         .select('id')
@@ -156,7 +156,7 @@ async function findOrCreateProduct(product: any, companyId: string): Promise<str
     }
 
     if (existing && existing.length > 0) {
-        const { data: updated, error: updateErr } = await writeWithSchemaFallback(insertData, async (values) => supabaseAdmin!
+        const { data: updated, error: updateErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
             .from('products')
             .update(values)
             .eq('id', existing[0].id)
@@ -169,7 +169,7 @@ async function findOrCreateProduct(product: any, companyId: string): Promise<str
         return updated?.[0]?.id || existing[0].id
     }
 
-    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, async (values) => supabaseAdmin!
+    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
         .from('products')
         .insert(values)
         .select('id')
@@ -222,7 +222,7 @@ async function findOrCreateStaff(staff: any, companyId: string): Promise<string 
     }
 
     if (existing && existing.length > 0) {
-        const { data: updated, error: updateErr } = await writeWithSchemaFallback(insertData, async (values) => supabaseAdmin!
+        const { data: updated, error: updateErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
             .from('users')
             .update(values)
             .eq('id', existing[0].id)
@@ -235,7 +235,7 @@ async function findOrCreateStaff(staff: any, companyId: string): Promise<string 
         return updated?.[0]?.id || existing[0].id
     }
 
-    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, async (values) => supabaseAdmin!
+    const { data: inserted, error: insertErr } = await writeWithSchemaFallback(insertData, (values) => supabaseAdmin!
         .from('users')
         .insert(values)
         .select('id')
@@ -273,7 +273,7 @@ async function insertSaleRecords(sales: any[], contactMap: ContactMap, companyId
         updated_at: new Date().toISOString(),
     }))
 
-    const { error: salesErr } = await writeRowsWithSchemaFallback(saleRows, async (rows) => supabaseAdmin!.from('sales').upsert(rows, { onConflict: 'reference' }))
+    const { error: salesErr } = await writeRowsWithSchemaFallback(saleRows, (rows) => supabaseAdmin!.from('sales').upsert(rows, { onConflict: 'reference' }))
     if (salesErr) {
         throw salesErr
     }
@@ -310,7 +310,7 @@ async function insertSaleRecords(sales: any[], contactMap: ContactMap, companyId
     })
 
     if (saleItems.length > 0) {
-        const { error: saleItemsErr } = await writeRowsWithSchemaFallback(saleItems, async (rows) => supabaseAdmin!.from('sale_items').insert(rows))
+        const { error: saleItemsErr } = await writeRowsWithSchemaFallback(saleItems, (rows) => supabaseAdmin!.from('sale_items').insert(rows))
         if (saleItemsErr) {
             throw saleItemsErr
         }
@@ -345,7 +345,7 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap, c
         updated_at: new Date().toISOString(),
     }))
 
-    const { error: purchasesErr } = await writeRowsWithSchemaFallback(purchaseRows, async (rows) => supabaseAdmin!.from('purchases').upsert(rows, { onConflict: 'reference' }))
+    const { error: purchasesErr } = await writeRowsWithSchemaFallback(purchaseRows, (rows) => supabaseAdmin!.from('purchases').upsert(rows, { onConflict: 'reference' }))
     if (purchasesErr) {
         throw purchasesErr
     }
@@ -382,7 +382,7 @@ async function insertPurchaseRecords(purchases: any[], contactMap: ContactMap, c
     })
 
     if (purchaseItems.length > 0) {
-        const { error: purchaseItemsErr } = await writeRowsWithSchemaFallback(purchaseItems, async (rows) => supabaseAdmin!.from('purchase_items').insert(rows))
+        const { error: purchaseItemsErr } = await writeRowsWithSchemaFallback(purchaseItems, (rows) => supabaseAdmin!.from('purchase_items').insert(rows))
         if (purchaseItemsErr) {
             throw purchaseItemsErr
         }
@@ -405,7 +405,7 @@ async function insertExpenseRecords(expenses: any[], companyId: string): Promise
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }))
-    const { error } = await writeRowsWithSchemaFallback(rows, async (compatibleRows) => supabaseAdmin!.from('expenses').upsert(compatibleRows, { onConflict: 'reference' }))
+    const { error } = await writeRowsWithSchemaFallback(rows, (compatibleRows) => supabaseAdmin!.from('expenses').upsert(compatibleRows, { onConflict: 'reference' }))
     if (error) throw error
 }
 

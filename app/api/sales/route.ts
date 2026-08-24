@@ -31,38 +31,42 @@ export async function POST(request: Request) {
         const payload = await request.json()
         const companyId = String(payload.companyId || '').trim()
         const sale = payload.sale
-        if (!companyId || !sale?.id || !sale.customer || !Array.isArray(sale.items) || sale.items.length === 0) {
-            return NextResponse.json({ success: false, error: 'A company, customer, and sale items are required.' }, { status: 400 })
+        if (!companyId || !sale?.id || !Array.isArray(sale.items) || sale.items.length === 0) {
+            return NextResponse.json({ success: false, error: 'A company and sale items are required.' }, { status: 400 })
         }
 
-        const customerName = String(sale.customer).trim()
-        let { data: customer, error: customerLookupError } = await supabaseAdmin
-            .from('contacts')
-            .select('id')
-            .eq('company_id', companyId)
-            .eq('type', 'customer')
-            .eq('name', customerName)
-            .limit(1)
-            .maybeSingle()
-
-        if (customerLookupError) throw customerLookupError
-        if (!customer) {
-            const result = await supabaseAdmin
+        const customerName = String(sale.customer || '').trim()
+        let customer: { id: string } | null = null
+        if (customerName) {
+            let customerLookupError
+            const lookupResult = await supabaseAdmin
                 .from('contacts')
-                .insert({ company_id: companyId, type: 'customer', name: customerName })
                 .select('id')
-                .single()
-            customer = result.data
-            customerLookupError = result.error
+                .eq('company_id', companyId)
+                .eq('type', 'customer')
+                .eq('name', customerName)
+                .limit(1)
+                .maybeSingle()
+            customer = lookupResult.data
+            customerLookupError = lookupResult.error
             if (customerLookupError) throw customerLookupError
+            if (!customer) {
+                const result = await supabaseAdmin
+                    .from('contacts')
+                    .insert({ company_id: companyId, type: 'customer', name: customerName })
+                    .select('id')
+                    .single()
+                customer = result.data
+                customerLookupError = result.error
+                if (customerLookupError) throw customerLookupError
+            }
         }
-        if (!customer) throw new Error('Unable to resolve the customer record.')
 
         const saleRow = {
             company_id: companyId,
             reference: String(sale.id),
             sale_date: sale.date,
-            customer_id: customer.id,
+            customer_id: customer?.id || null,
             payment_method: sale.paymentMethod || 'Transfer',
             payment_account: sale.paymentAccount || null,
             payment_status: sale.paymentStatus || 'PAID',

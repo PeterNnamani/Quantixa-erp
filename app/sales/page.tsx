@@ -167,7 +167,7 @@ export default function SalesPage() {
   }
 
   const handleSaveSale = async () => {
-    if (!formData.customer || formData.items.some((i) => !i.product || !i.qty || !i.unitPrice)) {
+    if (formData.items.some((i) => !i.product || !i.qty || !i.unitPrice)) {
       alert('Please fill in all fields')
       return
     }
@@ -473,15 +473,16 @@ export default function SalesPage() {
             <div className="form-grid">
               <div className="fg">
                 <label>Date *</label>
-                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} placeholder="Select date" />
               </div>
               <div className="fg">
-                <label>Customer *</label>
-                <input type="text" value={formData.customer} onChange={(e) => setFormData({ ...formData, customer: e.target.value })} />
+                <label>Customer</label>
+                <input type="text" value={formData.customer} onChange={(e) => setFormData({ ...formData, customer: e.target.value })} placeholder="Enter customer name (optional)" />
               </div>
               <div className="fg">
                 <label>Payment Method *</label>
                 <select value={formData.paymentMethod} onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}>
+                  <option value="" disabled>Select payment method</option>
                   {PAYMENT_TERMS.map((term) => (
                     <option key={term} value={term}>{term}</option>
                   ))}
@@ -494,6 +495,7 @@ export default function SalesPage() {
                     <div className="field-hint">Create a bank account in Settings before recording this payment.</div>
                   ) : (
                     <select value={selectedPaymentAccount} onChange={(e) => setFormData({ ...formData, paymentAccount: e.target.value })} disabled={accountOptions.length === 1}>
+                      <option value="" disabled>Select receiving account</option>
                       {accountOptions.map((account) => <option key={account} value={account}>{account}</option>)}
                     </select>
                   )}
@@ -502,6 +504,7 @@ export default function SalesPage() {
               <div className="fg">
                 <label>Payment Status *</label>
                 <select value={formData.paymentStatus} onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}>
+                  <option value="" disabled>Select payment status</option>
                   <option value="PAID">PAID</option>
                   <option value="CREDIT">CREDIT</option>
                 </select>
@@ -536,7 +539,7 @@ export default function SalesPage() {
 
             <div className="fg">
               <label>Notes</label>
-              <input type="text" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+              <input type="text" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Add notes (optional)" />
             </div>
 
             <div className="btn-group">
