@@ -6083,7 +6083,7 @@ html[data-theme='dark'] .pricing-row span {
 
 @media print {
   @page {
-    size: 76mm auto;
+    size: 80mm auto;
     margin: 0;
   }
 
@@ -6100,27 +6100,64 @@ html[data-theme='dark'] .pricing-row span {
     position: absolute;
     inset: 0;
     display: grid;
-    width: 76mm;
-    min-height: 100%;
-    padding: 5mm;
+    box-sizing: border-box;
+    width: 80mm;
+    min-height: 0;
+    gap: 8px;
+    padding: 4mm;
     border: 0;
     border-radius: 0;
     box-shadow: none;
     background: #fff;
     color: #111;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   .invoice-print-button {
     display: none !important;
   }
 
+  .invoice-document .invoice-header {
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom-width: 1px;
+  }
+
+  .invoice-document .invoice-brand {
+    font-size: 18px;
+  }
+
+  .invoice-document .invoice-label,
+  .invoice-document .detail-row,
+  .invoice-document table {
+    font-size: 10px;
+  }
+
+  .invoice-document .detail-section {
+    gap: 4px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .invoice-document .detail-section-title {
+    font-size: 11px;
+  }
+
   .invoice-document .detail-row {
     border-bottom: 1px solid #ddd;
+    padding: 2px 0;
   }
 
   .invoice-document .tbl-wrap {
     max-height: none !important;
     overflow: visible !important;
+  }
+
+  .invoice-document table th,
+  .invoice-document table td {
+    padding: 4px 3px;
+    word-break: break-word;
   }
 }
 
