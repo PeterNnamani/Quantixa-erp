@@ -15,22 +15,27 @@ export default function AnnualReportPage() {
     const [includeVAT, setIncludeVAT] = useState(false)
 
     const currentYear = new Date().getUTCFullYear().toString()
-    const annualSales = state.sales.filter((sale) => sale.date?.startsWith(currentYear) && sale.status !== 'VOID')
-    const annualPurchaseRows = state.purchases.filter((purchase) => purchase.date?.startsWith(currentYear) && purchase.status !== 'VOID')
-    const annualExpenseRows = state.expenses.filter((expense) => expense.date?.startsWith(currentYear) && expense.status !== 'VOID')
-    const annualBankTransactions = state.bankTxns.filter((txn) => txn.date?.startsWith(currentYear))
+    const yearStart = `${currentYear}-01-01`
+    const yearEnd = `${currentYear}-12-31`
+    const inYear = (date?: string) => Boolean(date && date >= yearStart && date <= yearEnd)
+    const annualSales = state.sales.filter((sale) => inYear(sale.date) && sale.status !== 'VOID')
+    const annualPurchaseRows = state.purchases.filter((purchase) => inYear(purchase.date) && purchase.status !== 'VOID')
+    const annualExpenseRows = state.expenses.filter((expense) => inYear(expense.date) && expense.status !== 'VOID')
+    const annualBankTransactions = state.bankTxns.filter((txn) => inYear(txn.date))
     const annualRevenue = annualSales.reduce((sum, sale) => sum + sale.totalAmount, 0)
     const annualExpenses = annualExpenseRows.reduce((sum, expense) => sum + expense.amount, 0)
     const annualPurchases = annualPurchaseRows.reduce((sum, purchase) => sum + purchase.total, 0)
-    const annualNetProfit = annualRevenue - annualPurchases - annualExpenses
+    const annualPostedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && inYear(entry.entryDate)).map((entry) => entry.id))
+    const cogsAccountIds = new Set(state.chartOfAccounts.filter((account) => account.name.toLowerCase().includes('cost of goods sold')).map((account) => account.id))
+    const costOfGoodsSold = state.journalLines.filter((line) => cogsAccountIds.has(line.accountId) && annualPostedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+    const annualNetProfit = annualRevenue - costOfGoodsSold - annualExpenses
     const bankAccounts = Object.entries(state.banks)
     const bankBalance = bankAccounts.reduce((sum, [, balance]) => sum + Number(balance || 0), 0)
     const cashReceived = annualBankTransactions.filter((txn) => Number(txn.amount) > 0).reduce((sum, txn) => sum + Number(txn.amount), 0)
     const cashPaid = annualBankTransactions.filter((txn) => Number(txn.amount) < 0).reduce((sum, txn) => sum + Math.abs(Number(txn.amount)), 0)
     const cashAccount = state.chartOfAccounts.find((account) => account.name.toLowerCase().includes('cash') && !account.name.toLowerCase().includes('bank'))
-    const postedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && entry.entryDate?.startsWith(currentYear)).map((entry) => entry.id))
     const cashAccountBalance = cashAccount
-        ? Number(cashAccount.openingBalance || 0) + state.journalLines.filter((line) => line.accountId === cashAccount.id && postedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+        ? Number(cashAccount.openingBalance || 0) + state.journalLines.filter((line) => line.accountId === cashAccount.id && state.journalEntries.some((entry) => entry.id === line.entryId && entry.status === 'POSTED' && entry.entryDate <= yearEnd)).reduce((sum, line) => sum + line.debit - line.credit, 0)
         : 0
     const inventoryValue = state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0)
     const loansBalance = state.loans.reduce((sum, loan) => sum + Number(loan.balance ?? loan.amount ?? 0), 0)
@@ -70,7 +75,7 @@ export default function AnnualReportPage() {
                 filename: 'annual-report.pdf', reportTitle: 'Annual Report', periodLabel: currentYear,
                 highlights: [{ label: 'Revenue', value: formatCurrency(annualRevenue) }, { label: 'Net profit', value: formatCurrency(annualNetProfit) }, { label: 'Total assets', value: formatCurrency(totalAssets) }, { label: 'Cash movement', value: formatCurrency(cashReceived - cashPaid) }],
                 sections: [
-                    { title: 'Profit and Loss Statement', columns: ['Description', 'Amount'], rows: [['Revenue', annualRevenue], ['Cost of purchases', annualPurchases], ['Operating expenses', annualExpenses], ...(includeVAT ? [['VAT on revenue', reportVAT] as [string, number]] : [])], total: ['Net profit', annualNetProfit] },
+                    { title: 'Profit and Loss Statement', columns: ['Description', 'Amount'], rows: [['Revenue', annualRevenue], ['Cost of goods sold', costOfGoodsSold], ['Operating expenses', annualExpenses], ...(includeVAT ? [['VAT on revenue', reportVAT] as [string, number]] : [])], total: ['Net profit', annualNetProfit] },
                     { title: 'Statement of Financial Position', columns: ['Description', 'Amount'], rows: [['Bank accounts', bankBalance], ['Cash account', cashAccountBalance], ['Inventory', inventoryValue], ['Loans', loansBalance], ['Payables', payablesBalance]], total: ['Net assets', totalAssets - totalLiabilities] },
                     { title: 'Cash Flow Statement', columns: ['Description', 'Amount'], rows: [['Cash received', cashReceived], ['Cash paid', -cashPaid]], total: ['Net movement', cashReceived - cashPaid] },
                     { title: 'Activity Schedule', columns: ['Description', 'Count', 'Amount'], rows: [['Sales', annualSales.length, annualRevenue], ['Purchases', annualPurchaseRows.length, annualPurchases], ['Expenses', annualExpenseRows.length, annualExpenses]], total: ['Total activity', transactionCount, annualRevenue + annualPurchases + annualExpenses] },
@@ -161,7 +166,7 @@ export default function AnnualReportPage() {
                                 <div className="statement-title">Liabilities</div>
                                 <div className="statement-row"><span>Loans</span><strong>{formatCurrency(loansBalance)}</strong></div>
                                 <div className="statement-row"><span>Payables</span><strong>{formatCurrency(payablesBalance)}</strong></div>
-                                <div className="statement-row net-row"><span>Equity</span><strong>{formatCurrency(annualNetProfit)}</strong></div>
+                                <div className="statement-row net-row"><span>Net Assets / Equity</span><strong>{formatCurrency(totalAssets - totalLiabilities)}</strong></div>
                             </div>
                         </div>
                     </div>

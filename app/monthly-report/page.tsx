@@ -15,21 +15,26 @@ export default function MonthlyReportPage() {
     const [includeVAT, setIncludeVAT] = useState(false)
 
     const currentMonth = new Date().toISOString().slice(0, 7)
-    const monthlySales = useMemo(() => state.sales.filter((sale) => sale.date?.startsWith(currentMonth) && sale.status !== 'VOID'), [state.sales, currentMonth])
-    const monthlyPurchases = useMemo(() => state.purchases.filter((purchase) => purchase.date?.startsWith(currentMonth) && purchase.status !== 'VOID'), [state.purchases, currentMonth])
-    const monthlyExpenses = useMemo(() => state.expenses.filter((expense) => expense.date?.startsWith(currentMonth) && expense.status !== 'VOID'), [state.expenses, currentMonth])
-    const monthlyTransactions = useMemo(() => state.bankTxns.filter((txn) => txn.date?.startsWith(currentMonth)), [state.bankTxns, currentMonth])
+    const monthStart = `${currentMonth}-01`
+    const monthEnd = new Date(Date.UTC(Number(currentMonth.slice(0, 4)), Number(currentMonth.slice(5, 7)), 0)).toISOString().slice(0, 10)
+    const inMonth = (date?: string) => Boolean(date && date >= monthStart && date <= monthEnd)
+    const monthlySales = useMemo(() => state.sales.filter((sale) => inMonth(sale.date) && sale.status !== 'VOID'), [state.sales, monthStart, monthEnd])
+    const monthlyPurchases = useMemo(() => state.purchases.filter((purchase) => inMonth(purchase.date) && purchase.status !== 'VOID'), [state.purchases, monthStart, monthEnd])
+    const monthlyExpenses = useMemo(() => state.expenses.filter((expense) => inMonth(expense.date) && expense.status !== 'VOID'), [state.expenses, monthStart, monthEnd])
+    const monthlyTransactions = useMemo(() => state.bankTxns.filter((txn) => inMonth(txn.date)), [state.bankTxns, monthStart, monthEnd])
     const totalRevenue = useMemo(() => monthlySales.reduce((sum, sale) => sum + sale.totalAmount, 0), [monthlySales])
     const totalExpenses = useMemo(() => monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0), [monthlyExpenses])
     const totalPurchases = useMemo(() => monthlyPurchases.reduce((sum, purchase) => sum + purchase.total, 0), [monthlyPurchases])
-    const netProfit = totalRevenue - totalPurchases - totalExpenses
+    const monthlyPostedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && inMonth(entry.entryDate)).map((entry) => entry.id))
+    const cogsAccountIds = new Set(state.chartOfAccounts.filter((account) => account.name.toLowerCase().includes('cost of goods sold')).map((account) => account.id))
+    const costOfGoodsSold = state.journalLines.filter((line) => cogsAccountIds.has(line.accountId) && monthlyPostedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+    const netProfit = totalRevenue - costOfGoodsSold - totalExpenses
     const inventoryValue = useMemo(() => state.inventory.reduce((sum, item) => sum + item.unitCost * item.closing, 0), [state.inventory])
     const bankAccounts = Object.entries(state.banks)
     const totalBankBalance = bankAccounts.reduce((sum, [, balance]) => sum + Number(balance || 0), 0)
     const cashAccount = state.chartOfAccounts.find((account) => account.name.toLowerCase().includes('cash') && !account.name.toLowerCase().includes('bank'))
-    const monthlyPostedEntryIds = new Set(state.journalEntries.filter((entry) => entry.status === 'POSTED' && entry.entryDate?.startsWith(currentMonth)).map((entry) => entry.id))
     const cashAccountBalance = cashAccount
-        ? Number(cashAccount.openingBalance || 0) + state.journalLines.filter((line) => line.accountId === cashAccount.id && monthlyPostedEntryIds.has(line.entryId)).reduce((sum, line) => sum + line.debit - line.credit, 0)
+        ? Number(cashAccount.openingBalance || 0) + state.journalLines.filter((line) => line.accountId === cashAccount.id && state.journalEntries.some((entry) => entry.id === line.entryId && entry.status === 'POSTED' && entry.entryDate <= monthEnd)).reduce((sum, line) => sum + line.debit - line.credit, 0)
         : 0
     const cashReceived = monthlyTransactions.filter((txn) => Number(txn.amount) > 0).reduce((sum, txn) => sum + Number(txn.amount), 0)
     const cashPaid = monthlyTransactions.filter((txn) => Number(txn.amount) < 0).reduce((sum, txn) => sum + Math.abs(Number(txn.amount)), 0)
@@ -46,9 +51,11 @@ export default function MonthlyReportPage() {
 
     const pAndL = [
         { label: 'Sales Revenue', amount: formatCurrency(totalRevenue) },
-        { label: 'Purchases', amount: formatCurrency(totalPurchases) },
+        { label: 'Cost of Goods Sold', amount: formatCurrency(costOfGoodsSold) },
         { label: 'Expenses', amount: formatCurrency(totalExpenses) },
     ]
+
+    const reportExportData = { Period: currentMonth, Revenue: totalRevenue, Purchases: totalPurchases, CostOfGoodsSold: costOfGoodsSold, Expenses: totalExpenses, NetProfit: netProfit, Transactions: monthlySales.length + monthlyPurchases.length + monthlyExpenses.length }
 
     const salesCards = [
         { label: 'Total Sales', value: formatCurrency(totalRevenue) },
@@ -72,7 +79,7 @@ export default function MonthlyReportPage() {
                 filename: `monthly-report-${activeRange.toLowerCase()}.pdf`, reportTitle: 'Monthly Report', periodLabel: `${currentMonth} | ${activeRange} view`,
                 highlights: [{ label: 'Revenue', value: formatCurrency(totalRevenue) }, { label: 'Net profit', value: formatCurrency(netProfit) }, { label: 'Inventory value', value: formatCurrency(inventoryValue) }, { label: 'Cash movement', value: formatCurrency(cashReceived - cashPaid) }],
                 sections: [
-                    { title: 'Profit and Loss Statement', columns: ['Description', 'Amount'], rows: [['Sales revenue', totalRevenue], ['Purchases', totalPurchases], ['Operating expenses', totalExpenses], ...(includeVAT ? [['VAT on revenue', reportVAT] as [string, number]] : [])], total: ['Net profit', netProfit] },
+                    { title: 'Profit and Loss Statement', columns: ['Description', 'Amount'], rows: [['Sales revenue', totalRevenue], ['Cost of goods sold', costOfGoodsSold], ['Operating expenses', totalExpenses], ...(includeVAT ? [['VAT on revenue', reportVAT] as [string, number]] : [])], total: ['Net profit', netProfit] },
                     { title: 'Statement of Financial Position', columns: ['Description', 'Amount'], rows: [['Bank accounts', totalBankBalance], ['Cash account', cashAccountBalance], ['Inventory', inventoryValue]], total: ['Current assets', totalBankBalance + cashAccountBalance + inventoryValue] },
                     { title: 'Cash Flow Statement', columns: ['Description', 'Amount'], rows: [['Cash received', cashReceived], ['Cash paid', -cashPaid]], total: ['Net movement', cashReceived - cashPaid] },
                     { title: 'Activity Schedule', columns: ['Description', 'Count', 'Amount'], rows: [['Sales', monthlySales.length, totalRevenue], ['Purchases', monthlyPurchases.length, totalPurchases], ['Expenses', monthlyExpenses.length, totalExpenses]], total: ['Total activity', monthlySales.length + monthlyPurchases.length + monthlyExpenses.length, totalRevenue + totalPurchases + totalExpenses] },
@@ -151,7 +158,7 @@ export default function MonthlyReportPage() {
                         <div className="statement-block">
                             <div className="statement-section">
                                 <div className="statement-title">Income</div>
-                                {pAndL.slice(0, 2).map((row) => (
+                                {pAndL.slice(0, 1).map((row) => (
                                     <div key={row.label} className="statement-row">
                                         <span>{row.label}</span>
                                         <strong>{row.amount}</strong>
@@ -164,7 +171,7 @@ export default function MonthlyReportPage() {
                             </div>
                             <div className="statement-section">
                                 <div className="statement-title">Expenses</div>
-                                {pAndL.slice(2).map((row) => (
+                                {pAndL.slice(1).map((row) => (
                                     <div key={row.label} className="statement-row">
                                         <span>{row.label}</span>
                                         <strong>{row.amount}</strong>
