@@ -132,15 +132,16 @@ export default function BulkImport({ label = 'Bulk upload', tableColumns }: { la
 
             applyStockMovement(prepared.payload.purchases, 'purchased')
             applyStockMovement(prepared.payload.sales, 'sold')
-            updateState({
-                sales: [...state.sales, ...prepared.payload.sales as any[]],
-                purchases: [...state.purchases, ...prepared.payload.purchases as any[]],
-                expenses: [...state.expenses, ...importedExpenses],
-                staffMembers: [...state.staffMembers, ...importedStaff],
-                inventory: nextInventory,
-                customerList: Array.from(new Set([...state.customerList, ...prepared.payload.contacts.filter((contact: any) => contact.type === 'customer').map((contact: any) => String(contact.name))])),
-                supplierList: Array.from(new Set([...state.supplierList, ...prepared.payload.contacts.filter((contact: any) => contact.type === 'supplier' || contact.type === 'vendor').map((contact: any) => String(contact.name))])),
-            })
+            const importedCustomers = prepared.payload.contacts.filter((contact: any) => contact.type === 'customer').map((contact: any) => String(contact.name))
+            const importedSuppliers = prepared.payload.contacts.filter((contact: any) => contact.type === 'supplier' || contact.type === 'vendor').map((contact: any) => String(contact.name))
+            const updates: Record<string, unknown> = { inventory: nextInventory }
+            if (prepared.payload.sales.length > 0) updates.sales = [...state.sales, ...prepared.payload.sales]
+            if (prepared.payload.purchases.length > 0) updates.purchases = [...state.purchases, ...prepared.payload.purchases]
+            if (importedExpenses.length > 0) updates.expenses = [...state.expenses, ...importedExpenses]
+            if (importedStaff.length > 0) updates.staffMembers = [...state.staffMembers, ...importedStaff]
+            if (importedCustomers.length > 0) updates.customerList = Array.from(new Set([...state.customerList, ...importedCustomers]))
+            if (importedSuppliers.length > 0) updates.supplierList = Array.from(new Set([...state.supplierList, ...importedSuppliers]))
+            updateState(updates)
             addAuditLog('IMPORT', 'BULK', fileName, `Imported ${prepared.summary.sales} sales, ${prepared.summary.purchases} purchases, ${prepared.summary.expenses} expenses, ${prepared.summary.products} products, ${prepared.summary.staff} staff, and ${prepared.summary.contacts} contacts.`)
             if (progressTimer.current !== null) window.clearInterval(progressTimer.current)
             progressTimer.current = null

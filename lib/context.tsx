@@ -4,19 +4,25 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from './supabase.browser'
 import { getDefaultRoles, type AccessLevels, type PermissionKey, type RoleDefinition } from '@/lib/rbac'
 
-function isMissingDeviceUsedColumn(error: unknown): boolean {
-  return typeof error === 'object' && error !== null
-    && (error as { code?: string }).code === 'PGRST204'
-    && /device_used/i.test(String((error as { message?: string }).message || ''))
+function missingSchemaColumn(error: unknown, values: Record<string, unknown>): string | null {
+  if (typeof error !== 'object' || error === null || (error as { code?: string }).code !== 'PGRST204') return null
+  const message = String((error as { message?: string }).message || '')
+  const match = message.match(/['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?\s+(?:column|field)\b/i)
+    || message.match(/(?:column|field)(?:\s+of)?\s+['"]?([a-zA-Z_][a-zA-Z0-9_]*)['"]?/i)
+  const column = match?.[1]
+  return column && Object.prototype.hasOwnProperty.call(values, column) ? column : null
 }
 
 async function upsertSaleWithSchemaFallback(saleRow: Record<string, unknown>) {
-  let result = await supabase!.from('sales').upsert(saleRow, { onConflict: 'reference' }).select('id').single()
-  if (isMissingDeviceUsedColumn(result.error)) {
-    const { device_used: _deviceUsed, ...compatibleSaleRow } = saleRow
-    result = await supabase!.from('sales').upsert(compatibleSaleRow, { onConflict: 'reference' }).select('id').single()
+  const compatibleSaleRow = { ...saleRow }
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const result = await supabase!.from('sales').upsert(compatibleSaleRow, { onConflict: 'reference' }).select('id').single()
+    if (!result.error) return result
+    const unsupportedColumn = missingSchemaColumn(result.error, compatibleSaleRow)
+    if (!unsupportedColumn) return result
+    delete compatibleSaleRow[unsupportedColumn]
   }
-  return result
+  return { data: null, error: new Error('Sale could not match the database schema.') }
 }
 
 function enrichStoredUser(raw: any) {
