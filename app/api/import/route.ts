@@ -453,7 +453,15 @@ export async function POST(request: Request) {
         await insertPurchaseRecords(purchases, contactMap, companyId)
         await insertExpenseRecords(expenses, companyId)
 
-        return NextResponse.json({ success: true })
+        const counts = {
+            sales: sales.length,
+            purchases: purchases.length,
+            expenses: expenses.length,
+            products: products.length,
+            staff: staff.length,
+            contacts: contacts.length,
+        }
+        return NextResponse.json({ success: true, counts: { ...counts, total: Object.values(counts).reduce((total, count) => total + count, 0) } })
     } catch (error) {
         return NextResponse.json({ success: false, error: formatErrorMessage(error) }, { status: 500 })
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ChangeEvent, type CSSProperties } from 'react'
+import { useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import { FileUp, X } from 'lucide-react'
 import { useAccounting } from '@/lib/context'
 import { parseSpreadsheetFile, prepareGenericImportPayload, type ImportSummary } from '@/lib/import-utils'
@@ -14,6 +14,8 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
     const [summary, setSummary] = useState<ImportSummary | null>(null)
     const [busy, setBusy] = useState(false)
     const [progress, setProgress] = useState<number | null>(null)
+    const [savedCount, setSavedCount] = useState(0)
+    const progressTimer = useRef<number | null>(null)
 
     const close = () => {
         if (busy) return
@@ -23,6 +25,7 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
         setError('')
         setSummary(null)
         setProgress(null)
+        setSavedCount(0)
     }
 
     const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -53,15 +56,22 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
         setBusy(true)
         setError('')
         setProgress(0)
+        setSavedCount(0)
         try {
+            const progressStartedAt = Date.now()
             const prepared = prepareGenericImportPayload(rows)
             setSummary(prepared.summary)
+            const totalRecords = prepared.summary.sales + prepared.summary.purchases + prepared.summary.expenses + prepared.summary.products + prepared.summary.staff + prepared.summary.contacts
+            progressTimer.current = window.setInterval(() => {
+                setProgress((current) => current === null ? current : Math.min(94, current + 1))
+                setSavedCount((current) => Math.min(Math.max(0, totalRecords - 1), current + 1))
+            }, 180)
             const result = await new Promise<any>((resolve, reject) => {
                 const request = new XMLHttpRequest()
                 request.open('POST', '/api/import')
                 request.setRequestHeader('Content-Type', 'application/json')
                 request.upload.onprogress = (event) => {
-                    if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 80))
+                    if (event.lengthComputable) setProgress((current) => Math.max(current || 0, Math.min(70, Math.round((event.loaded / event.total) * 70))))
                 }
                 request.onload = () => {
                     if (request.status < 200 || request.status >= 300) {
@@ -77,8 +87,9 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
                 request.onerror = () => reject(new Error('Network error during upload.'))
                 request.send(JSON.stringify({ ...prepared.payload, companyId: user.companyId, staffId: user.staffId }))
             })
-            setProgress(92)
             if (!result.success) throw new Error(result.error || 'The database rejected this import.')
+            const remainingDisplayTime = Math.max(0, 2200 - (Date.now() - progressStartedAt))
+            if (remainingDisplayTime > 0) await new Promise((resolve) => window.setTimeout(resolve, remainingDisplayTime))
 
             const importedExpenses = prepared.payload.expenses.map((expense: any) => ({
                 id: String(expense.id), date: String(expense.date), desc: String(expense.description), category: String(expense.category), amount: Number(expense.amount || 0), bank: String(expense.bank || ''), status: String(expense.status || 'Pending Approval'), enteredBy: user.name, notes: String(expense.notes || ''),
@@ -131,12 +142,19 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
                 supplierList: Array.from(new Set([...state.supplierList, ...prepared.payload.contacts.filter((contact: any) => contact.type === 'supplier' || contact.type === 'vendor').map((contact: any) => String(contact.name))])),
             })
             addAuditLog('IMPORT', 'BULK', fileName, `Imported ${prepared.summary.sales} sales, ${prepared.summary.purchases} purchases, ${prepared.summary.expenses} expenses, ${prepared.summary.products} products, ${prepared.summary.staff} staff, and ${prepared.summary.contacts} contacts.`)
+            if (progressTimer.current !== null) window.clearInterval(progressTimer.current)
+            progressTimer.current = null
+            setSavedCount(Number(result.counts?.total || totalRecords))
             setProgress(100)
             window.setTimeout(() => setProgress(null), 450)
         } catch (uploadError) {
+            if (progressTimer.current !== null) window.clearInterval(progressTimer.current)
+            progressTimer.current = null
             setError(uploadError instanceof Error ? uploadError.message : 'Import failed.')
             setProgress(null)
         } finally {
+            if (progressTimer.current !== null) window.clearInterval(progressTimer.current)
+            progressTimer.current = null
             setBusy(false)
         }
     }
@@ -157,6 +175,7 @@ export default function BulkImport({ label = 'Bulk upload' }: { label?: string }
             <div className="bulk-import-progress">
                 <div className="bulk-import-progress-ring" style={{ '--progress': `${progress}%` } as CSSProperties}><span>{progress}%</span></div>
                 <strong>{progress === 100 ? 'Import complete' : 'Saving imported records'}</strong>
+                    <span>{savedCount} of {summary ? summary.sales + summary.purchases + summary.expenses + summary.products + summary.staff + summary.contacts : 0} records saved</span>
                 <span>{fileName}</span>
             </div>
         </div>}
