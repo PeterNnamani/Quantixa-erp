@@ -107,17 +107,6 @@ export default function SalesPage() {
     profitToday: todaySales.reduce((sum, sale) => sum + sale.totalAmount * 0.18, 0),
   }
 
-  const customerInfo = selectedSale
-    ? {
-      customer: selectedSale.customer,
-      phone: `+234 ${Math.floor(8000000000 + Math.random() * 99999999)}`,
-      email: `${selectedSale.customer.split(' ')[0]?.toLowerCase() || 'customer'}@example.com`,
-      address: 'Victoria Island, Lagos',
-      creditLimit: 5000000,
-      outstandingBalance: selectedSale.balance,
-    }
-    : null
-
   const handleAddItem = () => {
     setFormData({
       ...formData,
@@ -219,6 +208,8 @@ export default function SalesPage() {
     }
 
     updateState({ sales: [...state.sales, sale], inventory: inventoryUpdates })
+    setSelectedSaleId(sale.id)
+    setCurrentPage(1)
     addAuditLog('CREATE', 'SALE', sale.id, `Sale created for ${sale.customer}: ${formatCurrency(totalAmount)}`)
     setShowForm(false)
     setFormData({
@@ -366,6 +357,13 @@ export default function SalesPage() {
   const handlePrintSales = () => {
     if (typeof window !== 'undefined') {
       addAuditLog('PRINT', 'SALE', 'ALL', 'Sales report printed.')
+      window.print()
+    }
+  }
+
+  const handlePrintInvoice = () => {
+    if (typeof window !== 'undefined' && selectedSale) {
+      addAuditLog('PRINT', 'SALE', selectedSale.id, `Invoice printed for ${selectedSale.customer}`)
       window.print()
     }
   }
@@ -653,7 +651,7 @@ export default function SalesPage() {
                           <td><span className={`badge ${sale.paymentStatus === 'PAID' ? 'b-green' : 'b-amber'}`}>{sale.paymentStatus}</span></td>
                           <td>{sale.orderStatus}</td>
                           <td>{sale.salesRep}</td>
-                          <td><button className="btn btn-sm btn-secondary" type="button">View</button></td>
+                          <td><button className="btn btn-sm btn-secondary" type="button" onClick={(event) => { event.stopPropagation(); handleViewSale(sale.id) }}>View</button></td>
                         </tr>
                       ))
                     )}
@@ -671,7 +669,11 @@ export default function SalesPage() {
             </div>
           </div>
 
-          <div className="detail-panel">
+          <div className="detail-panel invoice-document">
+            <div className="invoice-header">
+              <div><div className="invoice-brand">QUANTIXA</div><div className="invoice-label">Sales invoice</div></div>
+              <button className="btn btn-primary invoice-print-button" type="button" onClick={handlePrintInvoice}>Print invoice</button>
+            </div>
             <div className="detail-section">
               <div className="detail-section-title">Invoice Details</div>
               <div className="detail-row"><span>Invoice</span><strong>{selectedSale?.id || '-'}</strong></div>
@@ -685,15 +687,13 @@ export default function SalesPage() {
             <div className="detail-section">
               <div className="detail-section-title">Customer Information</div>
               <div className="detail-row"><span>Customer</span><strong>{customerInfo?.customer || '-'}</strong></div>
-              <div className="detail-row"><span>Phone</span><strong>{customerInfo?.phone || '-'}</strong></div>
-              <div className="detail-row"><span>Email</span><strong>{customerInfo?.email || '-'}</strong></div>
-              <div className="detail-row"><span>Address</span><strong>{customerInfo?.address || '-'}</strong></div>
-              <div className="detail-row"><span>Credit Limit</span><strong>{formatCurrency(customerInfo?.creditLimit ?? 0)}</strong></div>
-              <div className="detail-row"><span>Outstanding</span><strong>{formatCurrency(customerInfo?.outstandingBalance ?? 0)}</strong></div>
+              <div className="detail-row"><span>Phone</span><strong>{selectedSale?.customerDetails?.phone || '-'}</strong></div>
+              <div className="detail-row"><span>Email</span><strong>{selectedSale?.customerDetails?.email || '-'}</strong></div>
+              <div className="detail-row"><span>Address</span><strong>{selectedSale?.customerDetails?.address || '-'}</strong></div>
             </div>
 
             <div className="detail-section">
-              <div className="detail-section-title">Products Sold</div>
+              <div className="detail-section-title">Items purchased</div>
               <div className="tbl-wrap" style={{ maxHeight: '260px', overflowY: 'auto' }}>
                 <table>
                   <thead>

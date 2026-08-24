@@ -2599,6 +2599,28 @@ html[data-theme='dark'] .topbar {
   box-shadow: var(--shadow-sm);
 }
 
+.invoice-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--text);
+}
+
+.invoice-brand {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.invoice-label {
+  margin-top: 4px;
+  color: var(--text3);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -6056,6 +6078,43 @@ html[data-theme='dark'] .pricing-row span {
 
   .toggle-button {
     flex: 1;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .invoice-document,
+  .invoice-document * {
+    visibility: visible !important;
+  }
+
+  .invoice-document {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    width: 100%;
+    padding: 28px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #111;
+  }
+
+  .invoice-print-button {
+    display: none !important;
+  }
+
+  .invoice-document .detail-row {
+    border-bottom: 1px solid #ddd;
+  }
+
+  .invoice-document .tbl-wrap {
+    max-height: none !important;
+    overflow: visible !important;
   }
 }
 

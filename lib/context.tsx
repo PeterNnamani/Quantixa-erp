@@ -97,6 +97,11 @@ export interface Sale {
   balance?: number
   branch?: string
   orderStatus?: string
+  customerDetails?: {
+    phone?: string
+    email?: string
+    address?: string
+  }
 }
 
 export interface Purchase {
@@ -362,12 +367,19 @@ const defaultState: AppState = {
   journalLines: [],
 }
 
-function normalizeRemoteSales(data: any[]): AppState['sales'] {
+function normalizeRemoteSales(data: any[], saleItems: any[] = []): AppState['sales'] {
+  const itemsBySale = new Map<string, any[]>()
+  saleItems.forEach((item) => {
+    const items = itemsBySale.get(item.sale_id) || []
+    items.push({ product: item.product_name || '', dept: item.department || '', qty: Number(item.qty || 0), unitPrice: Number(item.unit_price || 0), total: Number(item.total || 0) })
+    itemsBySale.set(item.sale_id, items)
+  })
   return (data || []).map((item: any) => ({
     id: item.id,
     date: item.sale_date || item.created_at?.slice(0, 10) || '',
-    customer: item.customer_name || item.customer_id || 'Unknown Customer',
-    items: [],
+    customer: item.contacts?.name || item.customer_name || item.customer_id || 'Unknown Customer',
+    customerDetails: item.contacts ? { phone: item.contacts.phone || '', email: item.contacts.email || '', address: item.contacts.address || '' } : undefined,
+    items: itemsBySale.get(item.id) || [],
     totalAmount: Number(item.total_amount || 0),
     paymentMethod: item.payment_method || '',
     paymentStatus: item.payment_status || '',
@@ -532,8 +544,9 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       if (!supabase || !user?.companyId) return
       const companyId = user.companyId
       try {
-        const [{ data: salesData, error: salesErr }, { data: purchasesData, error: purchasesErr }, { data: expensesData, error: expensesErr }, { data: categoriesData, error: categoriesErr }, { data: inventoryData, error: inventoryErr }, { data: prepaymentsData, error: prepaymentsErr }, { data: contactsData, error: contactsErr }, { data: banksData, error: banksErr }, { data: txnsData, error: txnsErr }, { data: loansData, error: loansErr }, { data: receivablesData, error: receivablesErr }, { data: payablesData, error: payablesErr }, { data: accountsData, error: accountsErr }, { data: entriesData, error: entriesErr }, { data: linesData, error: linesErr }] = await Promise.all([
-          supabase.from('sales').select('*').eq('company_id', companyId).order('sale_date', { ascending: false }).limit(200),
+        const [{ data: salesData, error: salesErr }, { data: saleItemsData, error: saleItemsErr }, { data: purchasesData, error: purchasesErr }, { data: expensesData, error: expensesErr }, { data: categoriesData, error: categoriesErr }, { data: inventoryData, error: inventoryErr }, { data: prepaymentsData, error: prepaymentsErr }, { data: contactsData, error: contactsErr }, { data: banksData, error: banksErr }, { data: txnsData, error: txnsErr }, { data: loansData, error: loansErr }, { data: receivablesData, error: receivablesErr }, { data: payablesData, error: payablesErr }, { data: accountsData, error: accountsErr }, { data: entriesData, error: entriesErr }, { data: linesData, error: linesErr }] = await Promise.all([
+          supabase.from('sales').select('*, contacts(name,phone,email,address)').eq('company_id', companyId).order('sale_date', { ascending: false }).limit(200),
+          supabase.from('sale_items').select('*').eq('company_id', companyId),
           supabase.from('purchases').select('*').eq('company_id', companyId).order('purchase_date', { ascending: false }).limit(200),
           supabase.from('expenses').select('*').eq('company_id', companyId).order('expense_date', { ascending: false }).limit(200),
           supabase.from('expense_categories').select('name').eq('company_id', companyId).order('name'),
@@ -551,6 +564,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         ])
 
         if (salesErr) console.error('Error loading sales from Supabase', salesErr)
+        if (saleItemsErr) console.error('Error loading sale items from Supabase', saleItemsErr)
         if (purchasesErr) console.error('Error loading purchases from Supabase', purchasesErr)
         if (expensesErr) console.error('Error loading expenses from Supabase', expensesErr)
         if (categoriesErr && categoriesErr.code !== 'PGRST205') console.error('Error loading expense categories from Supabase', categoriesErr)
@@ -574,7 +588,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
 
         if (!mounted) return
 
-        const remoteSales = salesData && salesData.length > 0 ? normalizeRemoteSales(salesData) : []
+        const remoteSales = salesData && salesData.length > 0 ? normalizeRemoteSales(salesData, saleItemsData || []) : []
         const remotePurchases = purchasesData && purchasesData.length > 0 ? normalizeRemotePurchases(purchasesData) : []
         const remoteExpenses = expensesData && expensesData.length > 0 ? normalizeRemoteExpenses(expensesData) : []
         const remoteExpenseCategories = (categoriesData || []).map((item: any) => item.name).filter(Boolean)
@@ -758,6 +772,16 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
                 throw prepaymentsPersistErr
               }
             }
+            const scheduleRows = prepayments.flatMap((prepayment) => prepayment.schedule.map((schedule) => ({
+              id: schedule.id || undefined,
+              company_id: companyId,
+              prepayment_id: prepayment.id,
+              period: schedule.period,
+              amount: schedule.amount,
+              recognized: schedule.recognized,
+              recognition_date: schedule.recognitionDate,
+            })))
+            const scheduleUpserts = scheduleRows.filter((row) => row.id)
             const scheduleInserts = scheduleRows.filter((row) => !row.id && row.prepayment_id)
 
             if (scheduleUpserts.length > 0) {
@@ -765,6 +789,96 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
             }
             if (scheduleInserts.length > 0) {
               await supabase.from('prepayment_schedules').insert(scheduleInserts)
+            }
+          }
+
+          if (normalizedUpdates.sales) {
+            const sales = normalizedUpdates.sales as Sale[]
+            for (const sale of sales) {
+              const customerName = sale.customer || 'Walk-in Customer'
+              let { data: customer } = await supabase.from('contacts').select('id').eq('company_id', companyId).eq('type', 'customer').eq('name', customerName).maybeSingle()
+              if (!customer) {
+                const result = await supabase.from('contacts').insert({ company_id: companyId, type: 'customer', name: customerName }).select('id').single()
+                if (result.error) throw result.error
+                customer = result.data
+              }
+              const saleRow = {
+                company_id: companyId,
+                reference: sale.id,
+                sale_date: sale.date,
+                customer_id: customer.id,
+                branch: sale.branch || null,
+                sales_rep: sale.enteredBy || null,
+                payment_method: sale.paymentMethod || 'Transfer',
+                payment_status: sale.paymentStatus || 'PAID',
+                status: sale.status || 'ACTIVE',
+                notes: sale.notes || null,
+                subtotal: sale.totalAmount || 0,
+                total_amount: sale.totalAmount || 0,
+                amount_paid: sale.amountPaid ?? (sale.paymentStatus === 'PAID' ? sale.totalAmount : 0),
+                balance: sale.balance ?? (sale.paymentStatus === 'PAID' ? 0 : sale.totalAmount),
+              }
+              const { data: storedSale, error: saleError } = await supabase.from('sales').upsert(saleRow, { onConflict: 'reference' }).select('id').single()
+              if (saleError) throw saleError
+              const { error: deleteItemsError } = await supabase.from('sale_items').delete().eq('sale_id', storedSale.id)
+              if (deleteItemsError) throw deleteItemsError
+              if (sale.items?.length) {
+                const { error: itemError } = await supabase.from('sale_items').insert(sale.items.map((item) => ({
+                  company_id: companyId,
+                  sale_id: storedSale.id,
+                  product_name: item.product,
+                  department: item.dept || null,
+                  qty: item.qty,
+                  unit_price: item.unitPrice,
+                  total: item.total,
+                })))
+                if (itemError) throw itemError
+              }
+            }
+          }
+
+          if (normalizedUpdates.purchases) {
+            const purchases = normalizedUpdates.purchases as Purchase[]
+            for (const purchase of purchases) {
+              let { data: supplier } = await supabase.from('contacts').select('id').eq('company_id', companyId).eq('type', 'supplier').eq('name', purchase.supplier).maybeSingle()
+              if (!supplier) {
+                const result = await supabase.from('contacts').insert({ company_id: companyId, type: 'supplier', name: purchase.supplier }).select('id').single()
+                if (result.error) throw result.error
+                supplier = result.data
+              }
+              const { data: storedPurchase, error: purchaseError } = await supabase.from('purchases').upsert({
+                company_id: companyId,
+                reference: purchase.id,
+                purchase_date: purchase.date,
+                supplier_id: supplier.id,
+                branch: purchase.branch || null,
+                invoice_number: purchase.invoiceNumber || null,
+                purchase_order: purchase.purchaseOrder || null,
+                payment_method: purchase.paymentMethod || purchase.bank || 'Cash',
+                payment_status: purchase.paymentStatus || 'PAID',
+                status: purchase.status || 'Completed',
+                notes: purchase.notes || null,
+                subtotal: purchase.qty * purchase.unitPrice,
+                discount: purchase.discount || 0,
+                tax: purchase.items?.[0]?.tax || 0,
+                shipping: purchase.transCost || 0,
+                total: purchase.total || 0,
+                amount_paid: purchase.amountPaid ?? 0,
+                balance: purchase.balance ?? 0,
+                due_date: purchase.dueDate || null,
+              }, { onConflict: 'reference' }).select('id').single()
+              if (purchaseError) throw purchaseError
+              const { error: purchaseItemError } = await supabase.from('purchase_items').upsert({
+                company_id: companyId,
+                purchase_id: storedPurchase.id,
+                product_name: purchase.product,
+                qty: purchase.qty,
+                unit_price: purchase.unitPrice,
+                discount: purchase.discount || 0,
+                tax: purchase.items?.[0]?.tax || 0,
+                total: purchase.total || 0,
+              })
+              if (purchaseItemError) throw purchaseItemError
             }
           }
 
