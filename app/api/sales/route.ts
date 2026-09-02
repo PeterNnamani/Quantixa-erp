@@ -22,6 +22,23 @@ async function upsertSaleWithSchemaFallback(saleRow: Record<string, unknown>) {
     return { data: null, error: new Error('Sale could not match the database schema.') }
 }
 
+function formatErrorMessage(error: unknown): string {
+    if (!error) return 'Unknown server error'
+    if (error instanceof Error) return error.message
+    if (typeof error === 'string') return error
+    if (typeof error === 'object') {
+        if ('message' in error && typeof (error as { message?: unknown }).message === 'string') {
+            return (error as { message: string }).message
+        }
+        try {
+            return JSON.stringify(error)
+        } catch {
+            return String(error)
+        }
+    }
+    return String(error)
+}
+
 export async function POST(request: Request) {
     try {
         if (!supabaseAdmin) {
@@ -96,6 +113,6 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, saleId: storedSale.id })
     } catch (error) {
-        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : String(error) }, { status: 400 })
+        return NextResponse.json({ success: false, error: formatErrorMessage(error) }, { status: 400 })
     }
 }
